@@ -7,6 +7,7 @@
 
 * [Architecture](Architecture.md)
 * [Specification](Specification.md)
+* [Test Vectors](Test-Vectors.md)
 
 ## Reference Implementation
 
