@@ -34,7 +34,7 @@ example.
 In recent years, the cryptography community has moved towards transparency ledgers for important cryptographic designs.
 TLS certificates are now required to be published in a Certificate Transparency ledger. WhatsApp now uses a mechanism
 called [Key Transparency](https://engineering.fb.com/2023/04/13/security/whatsapp-key-transparency/) to secure their
-End-to-Eend Encryption.
+End-to-End Encryption.
 
 To that end, we hope to build a PKI for the Fediverse primarily focused on transparency logs. 
 
