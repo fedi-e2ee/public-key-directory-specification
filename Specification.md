@@ -70,9 +70,88 @@ The key words "**MUST**", "**MUST NOT**", "**REQUIRED**", "**SHALL**", "**SHALL 
 "**RECOMMENDED**", "**MAY**", and "**OPTIONAL**" in this document are to be interpreted as described in 
 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
+## Concepts
+
+### Identity Binding
+
+This project will map ActivityPub Actor IDs to a set of one or more Public Keys. Optionally, some number of
+Auxiliary Data records may also be supported, in order for other protocols to build atop the Public Key Directory.
+
+The task of resolving aliases to Actor IDs is left to the client software.
+
+### Public Key Encoding
+
+Each public key will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) string
+prefixed by the cryptography protocol name followed by a colon.
+
+For example: `ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM`
+
+### Protocol Signatures
+
+Each digital signature will be calculated over the following information:
+
+1. The value of the top-level `@context` attribute.
+2. The value of the top-level `action` attribute.
+3. The JSON serialization of the top-level `message` attribute.
+
+To ensure domain separation, we will use [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition) function, with a tweak: We will insert the top-level
+key (`@context`, `action`, `message`) before each piece.
+
+For example:
+
+```python
+def signMessage(secret_key, message):
+    messageToSign = preAuthEncode(
+        b'@context',
+        message.context,
+        b'action',
+        message.action,
+        b'message',
+        json_stringify(sort_by_key(message.message))
+    )
+    return crypto_sign(secret_key, messageToSign)
+```
+
 ## Protocol Messages
 
+This section outlines the different message types that will be passed from the Fediverse Server to the 
+Public Key Directory Server.
+
+Each protocol message will be a UTF-8 encoded JSON string. Dictionary keys **MUST** be unique within the same level.
+Dictionary keys **SHOULD** be sorted. Participants **MAY** use whitespace, but it is not required.
+
+Each protocol message will consist of the same structure:
+
+```json5
+{
+  /* The version number used in @context may change in the future: */
+  "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+  /* The action, such as AddKey or RevokeKey, goes here: */
+  "action": "",
+  "message": {
+    /* 
+    The actual message contents required for the specific action goes here.
+    Its contents may vary from action to action.
+    */
+  },
+  /* A signature calcualted over "@context", "action", and "message". */
+  "signature": ""
+}
+```
+
 ### AddKey
+
+An `AddKey` message associated with an Actor is intended to associate a new Public Key to this actor.
+
+The first `AddKey` for any given Actor **MUST** be self-signed by the same public key being added.
+Every subsequent `AddKey` must be signed by an existing, non-revoked public key. (Self-signing is
+not permitted for any message after the first.)
+
+#### AddKey Message Attributes
+
+* `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+* `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+* `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
 
 ### RevokeKey
 
