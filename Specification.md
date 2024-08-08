@@ -44,7 +44,7 @@ keys for encrypted file sharing).
 
 ### This Document
 
-We propose a specification for a Public Key Directory server, which acts a both a storage layer and shim for a Merkle
+We propose a specification for a Public Key Directory server, which acts as both a storage layer and shim for a Merkle
 Tree-based append-only data ledger.
 
 We specify a protocol for communicating with the Public Key Directory server, which will mostly be performed in the
@@ -75,7 +75,7 @@ The key words "**MUST**", "**MUST NOT**", "**REQUIRED**", "**SHALL**", "**SHALL 
 ### Identity Binding
 
 This project will map ActivityPub Actor IDs to a set of one or more Public Keys. Optionally, some number of
-Auxiliary Data records may also be supported, in order for other protocols to build atop the Public Key Directory.
+Auxiliary Data records may also be supported, in order for other protocols to build atop the Public Key Directory(PKD).
 
 The task of resolving aliases to Actor IDs is left to the client software.
 
@@ -116,7 +116,7 @@ def signMessage(secret_key, message):
 
 Every time an `AddKey` message is accepted by the Public Key Directory, it will generate a 256-bit random
 unique `key-id` for that public key. This value is not secret or sensitive in any way, and is only used to
-point to an exiting public key to reduce the amount of rejected signatures software must publish.
+point to an existing public key to reduce the amount of rejected signatures software must publish.
 
 Every message except revocations and the first `AddKey` for an Actor **SHOULD** include a `key-id` value.
 
@@ -189,7 +189,7 @@ def getAuxDataId(aux_type, data):
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the 
-Public Key Directory Server.
+Public Key Directory server.
 
 Each protocol message will be a UTF-8 encoded JSON string. Dictionary keys **MUST** be unique within the same level.
 Dictionary keys **SHOULD** be sorted. Participants **MAY** use whitespace, but it is not required.
