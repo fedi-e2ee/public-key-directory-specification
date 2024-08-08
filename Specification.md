@@ -112,6 +112,16 @@ def signMessage(secret_key, message):
     return crypto_sign(secret_key, messageToSign)
 ```
 
+### Key Identifiers
+
+Every time an `AddKey` message is accepted by the Public Key Directory, it will generate a 256-bit random
+unique `key-id` for that public key. This value is not secret or sensitive in any way, and is only used to
+point to an exiting public key to reduce the amount of rejected signatures software must publish.
+
+Every message except revocations and the first `AddKey` for an Actor **SHOULD** include a `key-id` value.
+
+The `key-id` attribute **MUST NOT** be an encoded representation of the public key.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the 
@@ -139,6 +149,10 @@ Each protocol message will consist of the same structure:
 }
 ```
 
+Some protocol messages **SHOULD** also include a top level `"key-id"` attribute, which will help
+implementations select one of many public keys to validate the signature. If no `key-id` is provided,
+each valid public key **MAY** be tried.
+
 ### AddKey
 
 An `AddKey` message associated with an Actor is intended to associate a new Public Key to this actor.
@@ -147,11 +161,16 @@ The first `AddKey` for any given Actor **MUST** be self-signed by the same publi
 Every subsequent `AddKey` must be signed by an existing, non-revoked public key. (Self-signing is
 not permitted for any message after the first.)
 
-#### AddKey Message Attributes
+The first `AddKey` will not have a `key-id` outside of the message.  Every subsequent `AddKey` for
+a given Actor **SHOULD** have a `key-id`.
 
-* `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-* `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
-* `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
+#### AddKey Attributes
+
+* `message` -- **map**
+  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+  * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+  * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
+* `key-id` -- **string(Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
 
 ### RevokeKey
 
