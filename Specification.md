@@ -101,14 +101,14 @@ For example:
 
 ```python
 def signMessage(secret_key, message):
-    messageToSign = preAuthEncode(
+    messageToSign = preAuthEncode([
         b'@context',
         message.context,
         b'action',
         message.action,
         b'message',
         json_stringify(sort_by_key(message.message))
-    )
+    ])
     return crypto_sign(secret_key, messageToSign)
 ```
 
@@ -150,6 +150,41 @@ These values **MAY** be encrypted and stored in case of emergency. There is no t
 to the message format, so they can be issued at any time.
 
 If you stumble upon another user's secret key, generating a revocation token should be straightforward.
+
+### Auxiliary Data
+
+The Public Key Directory will advertise a list of Auxiliary Extensions, which can be developed at a later
+time, that define the types and formats of Auxiliary Data that will be accepted by a particular PKD server.
+
+For example, a PKD Server may include `age-v1` in its list of Auxiliary Extensions, which in turn allows
+users to submit `AddAuxData` and `RevokeAuxData` messages that include an [age v1](https://github.com/FiloSottile/age)
+public key.
+
+The intent of Auxiliary Data is to allow developers to build their PKD extensions in order to integrate  with their own
+systems without interfering with the normal operation of the PKD server. This also allows us to be stricter about our
+cryptography primitive choices.
+
+For example, if someone wanted to build a protocol that used `ssh-rsa` public keys, they can without us needing to
+natively support RSA at all. They'll just need to shove them into Auxiliary Data.
+
+#### Auxiliary Data Identifiers
+
+Every Auxiliary Data will have a deterministic unique identifier based on the extension and the contents of the data.
+
+It can be calculated as follows, using the `preAuthEncode` function from PASETO (PAE):
+
+```python
+def getAuxDataId(aux_type, data):
+    return hmac_sha256(
+        "FediPKD1-Auxiliary-Data-IDKeyGen" # this key is a constant for v1 of this protocol specification
+        PAE([
+            b'aux_type',
+            aux_type,
+            b'data',
+            data
+        ])
+    )
+```
 
 ## Protocol Messages
 
@@ -290,7 +325,36 @@ The only way to un-fireproof an Actor is to use a Revocation token on their only
 
 ### AddAuxData
 
+See [Auxiliary Data](#auxiliary-data) above for an explanation.
+
+These messages will append some Auxiliary Data to an Actor, provided that the Public Key Directory server supports the
+relevant extension, and the data provided conforms to whatever validation criteria the extension defines.
+
+#### AddAuxData Attributes
+
+* `message` -- **map**
+  * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
+  * `aux-data` -- **string** (required): The auxiliary data.
+  * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, the server
+    will validate that the aux-id is valid for the given type and data. 
+  * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+
 ### RevokeAuxData
+
+This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
+
+#### RevokeAuxData Attributes
+
+* `message` -- **map**
+  * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
+  * `aux-data` -- **string** (optional): The auxiliary data.
+  * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, the server
+    will validate that the aux-id is valid for the given type and data.
+  * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+
+Note that either `message.auth-data` **OR** `message.aux-id` is required in order for revocation to succeed.
 
 ## The Federated Public Key Directory
 
