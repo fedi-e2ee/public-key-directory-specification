@@ -176,7 +176,7 @@ It can be calculated as follows, using the `preAuthEncode` function from PASETO 
 ```python
 def getAuxDataId(aux_type, data):
     return hmac_sha256(
-        "FediPKD1-Auxiliary-Data-IDKeyGen" # this key is a constant for v1 of this protocol specification
+        b'FediPKD1-Auxiliary-Data-IDKeyGen' # this key is a constant for v1 of this protocol specification
         PAE([
             b'aux_type',
             aux_type,
