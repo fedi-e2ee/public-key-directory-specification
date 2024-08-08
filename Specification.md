@@ -122,6 +122,35 @@ Every message except revocations and the first `AddKey` for an Actor **SHOULD** 
 
 The `key-id` attribute **MUST NOT** be an encoded representation of the public key.
 
+The `key-id` is not covered in the protocol messages being signed. Instead, it is a hint to the signature 
+validation software which public key to select when there is more than one option. Their values are totally
+arbitrary and, aside from uniqueness, serve no other purpose.
+
+### Revocation Tokens
+
+A revocation token is a compact token that a user can issue at any time to revoke an existing public key.
+If they issue a revocation against their only public key, the Public Key Directory will treat it as a
+BurnDown.
+
+Revocation tokens are base64url-encoded strings in the following format:
+
+```
+tmp := version || REVOCATION_CONSTANT || public_key 
+revocation_token := base64url_encode(tmp || Sign(secret_key, tmp))
+```
+
+Where:
+ * `version` is the version of the protocol being used (currently, `FediPKD1`).
+ * `REVOCATION_CONSTANT` is a domain-separated constant for revoking an existing key. Its current value is
+   the `0xFE` byte repeated 32 times followed by `revoke-public-key`.
+ * `Sign(sk, m)` performs the digital signature algorithm corresponding to the current protocol version.
+   (Currently, Ed25519.)
+
+These values **MAY** be encrypted and stored in case of emergency. There is no temporal or random component
+to the message format, so they can be issued at any time.
+
+If you stumble upon another user's secret key, generating a revocation token should be straightforward.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the 
@@ -164,6 +193,8 @@ not permitted for any message after the first.)
 The first `AddKey` will not have a `key-id` outside of the message.  Every subsequent `AddKey` for
 a given Actor **SHOULD** have a `key-id`.
 
+Like most messages, `AddKey` must be sent from an Fediverse Server that supports HTTP Signatures.
+
 #### AddKey Attributes
 
 * `message` -- **map**
@@ -174,11 +205,88 @@ a given Actor **SHOULD** have a `key-id`.
 
 ### RevokeKey
 
+A `RevokeKey` message marks an existing public key as untrusted. There is no undo operation for public
+key revocation. `RevokeKey` is but one mechanism for public key revocation, intended to be used by
+the Actor that normally possesses the key.
+
+Attempting to issue a `RevokeKey` **MUST** fail unless there is another public key associated with this
+Actor. The key used to sign the `RevokeKey` cannot be the same as the key being revoked.
+
+See [BurnDown](#burndown) for clearing all keys and starting over (unless [Fireproof](#fireproof) was
+ever issued).
+
+#### RevokeKey Attributes
+
+* `message` -- **map**
+  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+  * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+  * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
+* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+
+### RevokeKeyThirdParty
+
+This is a special message type in two ways:
+
+1. It can bypass the Fediverse server entirely, and be submitted directly to the Public Key Directory.
+2. It can be issued by an unrelated third party.
+
+If the user doesn't possess any other public keys, this message bypasses the usual `RevokeKey` 
+restriction where the user continue to must have a valid public key. Instead, the Actor will be
+treated as if they ran a successful `BurnDown`, and allows them to start over.
+
+Because the contents of this revocation token are signed, no `signature` is needed outside of the
+`message` map. Nor is any `key-id`.
+
+#### RevokeKeyThirdParty Attributes
+
+* `revocation-token` --**string (Signature)** (required): See [Revocation Tokens](#revocation-tokens).
+
 ### MoveIdentity
+
+This moves all the mappings from the old Actor ID to the new Actor ID.
+
+The message **MUST** be signed by a valid secret key for the `old-actor`, but the HTTP Signature **MAY** 
+come from either Fediverse Server instance.
+
+This message **MUST** be rejected if there are existing public keys for the target `new-actor`.
+
+#### MoveIdentity
+
+* `message` -- **map**
+    * `old-actor` -- **string (Actor ID)** (required): Who is being moved.
+    * `new-actor` -- **string (Actor ID)** (required): Their new Actor ID.
+    * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 
 ### BurnDown
 
+A `BurnDown` message acts as a soft delete for all public keys and auxiliary data for a given
+Actor, unless they have previously issued a `Fireproof` message to disable this account recovery
+mechanism.
+
+This allows a user to issue a self-signed `AddKey` and start over.
+
+#### BurnDown Attributes
+
+* `message` -- **map**
+    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+    * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+
 ### Fireproof
+
+Where `BurnDown` resets the state for a given Actor to allow account recovery, `Fireproof` opts out of
+this recovery mechanism entirely.
+
+The only way to un-fireproof an Actor is to use a Revocation token on their only Public Key. See
+[the relevant Security Considerations section](#revocation-and-account-recovery).
+
+#### BurnDown Attributes
+
+* `message` -- **map**
+    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+    * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 
 ### AddAuxData
 
@@ -207,3 +315,23 @@ enabling the hot-swapping of cryptographic primitives by configuration.
 
 Other software and protocols are welcome to be compatible with our designs, but we will make no effort to support
 incumbent designs or protocols (i.e., the PGP ecosystem and its Web Of Trust model).
+
+### Revocation and Account Recovery
+
+Public key revocation is a thorny topic, and is difficult to balance for all threat models.
+
+Some users may want the ability to re-establish themselves in the protocol, no matter how badly
+they mismanage their keys. Thus, their instance being able to issue a [`BurnDown`](#burndown) is
+essential as a break-glass fature for account recovery.
+
+Other users may expect a higher degree of security, and may wish to opt out of this `BurnDown`
+capability from their Fediverse instance. Once they have opted out, there is no way to undo
+opting out. It's a one-way door to prevent misuse.
+
+[`RevokeKeyThirdParty`](#revokekeythirdparty) is an emergency feature that allows anyone to
+pull the plug on a compromised identity key. Every time one is issued, the community should
+pay close attention to the Actor affected by it.
+
+If a third party issues a `RevokeKeyThirdParty` with a valid revocation token for a fireproof
+user's only valid public key, the system **MUST** prioritize handling the key compromise as a
+higher priority. This means that `Fireproof` is ignored in this edge case.
