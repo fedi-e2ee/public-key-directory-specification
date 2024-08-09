@@ -339,7 +339,7 @@ relevant extension, and the data provided conforms to whatever validation criter
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, the server
     will validate that the aux-id is valid for the given type and data. 
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
-* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the Aux Data.
 
 ### RevokeAuxData
 
