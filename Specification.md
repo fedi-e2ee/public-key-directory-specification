@@ -333,6 +333,7 @@ relevant extension, and the data provided conforms to whatever validation criter
 #### AddAuxData Attributes
 
 * `message` -- **map**
+  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
   * `aux-data` -- **string** (required): The auxiliary data.
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, the server
@@ -347,6 +348,7 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
 #### RevokeAuxData Attributes
 
 * `message` -- **map**
+  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
   * `aux-data` -- **string** (optional): The auxiliary data.
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, the server
