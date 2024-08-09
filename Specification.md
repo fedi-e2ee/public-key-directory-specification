@@ -186,6 +186,40 @@ def getAuxDataId(aux_type, data):
     )
 ```
 
+### Actor ID Shreddability
+
+While the security benefits of a public immutable append-only ledger are enormous, some jurisdictions may rule that an
+Actor ID is in scope of some legislation; e.g., the European Union's Right to be Forgotten. Since Actor ID is the only
+component of the Public Key Server that might reasonably be considered PII, it's worth special consideration.
+
+Presently, there is no clear legal guidance on how to best navigate this issue. There are untested legal theories, but
+none backed up by case law.
+
+In the absence of a clear path to compliance that doesn't also introduce a risk for backdoors, we will instead make a
+best effort technological solution. Keep in mind, this is not a tested legal mechanism, and is more aligned with the
+_spirit of the law_ than anything a lawyer would advise.
+
+Consequently, we will add a layer of indirection to the underlying Message storage and SigSum integration, for handling
+Actor IDs:
+
+1. Every Message will have a 256-bit random key, selected by the Public Key Directory server.
+2. Actor IDs will be encrypted with the key from (1), using a committing authenticated encryption mode.
+
+When requesting data from the ledger, the Message will be returned as-is, along with the key necessary to decrypt it.
+The key is not included in the SigSum data, but stored alongside the record.
+
+To satisfy a "right to be forgotten" request, the key for the relevant blocks will be erased. The ciphertext will 
+persist forever, but without the correct key, the contents will be indistinguishable from randomness. Thus, the
+system will irrevocably forget the Actor ID for those records.
+
+It's important to note that this is not a security feature, it is intended to allow the system to forget how to read
+a specific record while still maintaining an immutable history. It does not guarantee that other clients and servers
+did not persist the key necessary to comprehend the contents of the deleted records, since it's always published
+alongside the ciphertext in the REST API until the time of erasure. 
+
+However, it does mean that the liability is with those other clients and servers rather than our ledger, and that is
+sufficient for de-risking our use case.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the 
