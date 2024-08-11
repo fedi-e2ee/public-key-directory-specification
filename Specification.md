@@ -81,8 +81,8 @@ The task of resolving aliases to Actor IDs is left to the client software.
 
 ### Public Key Encoding
 
-Each public key will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) string
-prefixed by the cryptography protocol name followed by a colon.
+Each public key will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
+string prefixed by the cryptography protocol name followed by a colon.
 
 For example: `ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM`
 
@@ -114,25 +114,25 @@ def signPayload(secret_key, payload):
 
 ### Key Identifiers
 
-Every time an `AddKey` message is accepted by the Public Key Directory, it will generate a 256-bit random
-unique `key-id` for that public key. This value is not secret or sensitive in any way, and is only used to
-point to an existing public key to reduce the amount of rejected signatures software must publish.
+Every time an `AddKey` message is accepted by the Public Key Directory, it will generate a 256-bit random unique 
+`key-id` for that public key. This value is not secret or sensitive in any way, and is only used to point to an existing
+public key to reduce the amount of rejected signatures software must publish.
 
 Every message except revocations and the first `AddKey` for an Actor **SHOULD** include a `key-id` value.
 
 The `key-id` attribute **MUST NOT** be an encoded representation of the public key.
 
-The `key-id` is not covered in the protocol messages being signed. Instead, it is a hint to the signature 
-validation software which public key to select when there is more than one option. Their values are totally
-arbitrary and, aside from uniqueness, serve no other purpose.
+The `key-id` is not covered in the protocol messages being signed. Instead, it is a hint to the signature validation 
+software which public key to select when there is more than one option. Their values are totally arbitrary and, aside
+from uniqueness, serve no other purpose.
 
 ### Revocation Tokens
 
-A revocation token is a compact token that a user can issue at any time to revoke an existing public key.
-If they issue a revocation against their only public key, the Public Key Directory will treat it as a
-BurnDown.
+A revocation token is a compact token that a user can issue at any time to revoke an existing public key. If they issue
+a revocation against their only public key, the Public Key Directory will treat it as a `BurnDown`.
 
-Revocation tokens are base64url-encoded strings in the following format:
+Revocation tokens are [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded strings in the 
+following format:
 
 ```
 tmp := version || REVOCATION_CONSTANT || public_key 
@@ -146,19 +146,18 @@ Where:
  * `Sign(sk, m)` performs the digital signature algorithm corresponding to the current protocol version.
    (Currently, Ed25519.)
 
-These values **MAY** be encrypted and stored in case of emergency. There is no temporal or random component
-to the message format, so they can be issued at any time.
+These values **MAY** be encrypted and stored in case of emergency. There is no temporal or random component to the 
+message format, so they can be issued at any time.
 
 If you stumble upon another user's secret key, generating a revocation token should be straightforward.
 
 ### Auxiliary Data
 
-The Public Key Directory will advertise a list of Auxiliary Extensions, which can be developed at a later
-time, that define the types and formats of Auxiliary Data that will be accepted by a particular PKD server.
+The Public Key Directory will advertise a list of Auxiliary Extensions, which can be developed at a later time, that 
+define the types and formats of Auxiliary Data that will be accepted by a particular PKD server.
 
-For example, a PKD Server may include `age-v1` in its list of Auxiliary Extensions, which in turn allows
-users to submit `AddAuxData` and `RevokeAuxData` messages that include an [age v1](https://github.com/FiloSottile/age)
-public key.
+For example, a PKD Server may include `age-v1` in its list of Auxiliary Extensions, which in turn allows users to submit
+`AddAuxData` and `RevokeAuxData` messages that include an [age v1](https://github.com/FiloSottile/age) public key.
 
 The intent of Auxiliary Data is to allow developers to build their PKD extensions in order to integrate  with their own
 systems without interfering with the normal operation of the PKD server. This also allows us to be stricter about our
@@ -214,21 +213,21 @@ When requesting data from the ledger, the Message will be returned as-is, along 
 The key is not included in the SigSum data, but stored alongside the record.
 
 To satisfy a "right to be forgotten" request, the key for the relevant blocks will be erased. The ciphertext will 
-persist forever, but without the correct key, the contents will be indistinguishable from randomness. Thus, the
-system will irrevocably forget the Actor ID for those records.
+persist forever, but without the correct key, the contents will be indistinguishable from randomness. Thus, the system
+will irrevocably forget the Actor ID for those records.
 
-It's important to note that this is not a security feature, it is intended to allow the system to forget how to read
-a specific record while still maintaining an immutable history. It does not guarantee that other clients and servers
-did not persist the key necessary to comprehend the contents of the deleted records, since it's always published
-alongside the ciphertext in the REST API until the time of erasure. 
+It's important to note that this is not a security feature, it is intended to allow the system to forget how to read a 
+specific record while still maintaining an immutable history. It does not guarantee that other clients and servers did 
+not persist the key necessary to comprehend the contents of the deleted records, since it's always published alongside
+the ciphertext in the REST API until the time of erasure. 
 
 However, it does mean that the liability is with those other clients and servers rather than our ledger, and that is
 sufficient for de-risking our use case.
 
 ## Protocol Messages
 
-This section outlines the different message types that will be passed from the Fediverse Server to the 
-Public Key Directory server.
+This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
+Directory server.
 
 Each protocol message will be a UTF-8 encoded JSON string. Dictionary keys **MUST** be unique within the same level.
 Dictionary keys **SHOULD** be sorted. Participants **MAY** use whitespace, but it is not required.
@@ -252,9 +251,8 @@ Each protocol message will consist of the same structure:
 }
 ```
 
-Some protocol messages **SHOULD** also include a top level `"key-id"` attribute, which will help
-implementations select one of many public keys to validate the signature. If no `key-id` is provided,
-each valid public key **MAY** be tried.
+Some protocol messages **SHOULD** also include a top level `"key-id"` attribute, which will help implementations select
+one of many public keys to validate the signature. If no `key-id` is provided, each valid public key **MAY** be tried.
 
 An additional top level `"actor-id-key"` **SHOULD** also be included, unless the user has explicitly opted out of this
 mechanism. Opting out prevents them from asserting their Right to be Forgotten, and is not recommended.
@@ -265,15 +263,15 @@ The following subsections each describe a different Protocol Message type.
 
 An `AddKey` message associated with an Actor is intended to associate a new Public Key to this actor.
 
-The first `AddKey` for any given Actor **MUST** be self-signed by the same public key being added.
-Every subsequent `AddKey` must be signed by an existing, non-revoked public key. (Self-signing is
-not permitted for any message after the first.)
+The first `AddKey` for any given Actor **MUST** be self-signed by the same public key being added. Every subsequent
+`AddKey` must be signed by an existing, non-revoked public key. (Self-signing is not permitted for any message after the
+first.)
 
-The first `AddKey` will not have a `key-id` outside of the message.  Every subsequent `AddKey` for
-a given Actor **SHOULD** have a `key-id`.
+The first `AddKey` will not have a `key-id` outside of the message.  Every subsequent `AddKey` for a given Actor 
+**SHOULD** have a `key-id`.
 
-All `AddKey` messages for a given actor must be sent from the actor's Fediverse Server, which **MUST** 
-support HTTP Signatures.
+All `AddKey` messages for a given actor must be sent from the actor's Fediverse Server, which **MUST** support HTTP 
+Signatures.
 
 #### AddKey Attributes
 
@@ -284,20 +282,18 @@ support HTTP Signatures.
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
 * `key-id` -- **string (Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
-  `message.actor`.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
 ### RevokeKey
 
-A `RevokeKey` message marks an existing public key as untrusted. There is no undo operation for public
-key revocation. `RevokeKey` is but one mechanism for public key revocation, intended to be used by
-the Actor that normally possesses the key.
+A `RevokeKey` message marks an existing public key as untrusted. There is no undo operation for public key revocation. 
+`RevokeKey` is but one mechanism for public key revocation, intended to be used by the Actor that normally possesses the
+key.
 
-Attempting to issue a `RevokeKey` **MUST** fail unless there is another public key associated with this
-Actor. The key used to sign the `RevokeKey` cannot be the same as the key being revoked.
+Attempting to issue a `RevokeKey` **MUST** fail unless there is another public key associated with this Actor. The key
+used to sign the `RevokeKey` cannot be the same as the key being revoked.
 
-See [BurnDown](#burndown) for clearing all keys and starting over (unless [Fireproof](#fireproof) was
-ever issued).
+See [BurnDown](#burndown) for clearing all keys and starting over (unless [Fireproof](#fireproof) was ever issued).
 
 #### RevokeKey Attributes
 
@@ -308,8 +304,7 @@ ever issued).
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
-  `message.actor`.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
 ### RevokeKeyThirdParty
 
@@ -318,12 +313,12 @@ This is a special message type in two ways:
 1. It can bypass the Fediverse server entirely, and be submitted directly to the Public Key Directory.
 2. It can be issued by an unrelated third party.
 
-If the user doesn't possess any other public keys, this message bypasses the usual `RevokeKey` 
-restriction where the user continue to must have a valid public key. Instead, the Actor will be
-treated as if they ran a successful `BurnDown`, and allows them to start over.
+If the user doesn't possess any other public keys, this message bypasses the usual `RevokeKey` restriction where the 
+user continue to must have a valid public key. Instead, the Actor will be treated as if they ran a successful 
+`BurnDown`, and allows them to start over.
 
-Because the contents of this revocation token are signed, no `signature` is needed outside of the
-`message` map. Nor is any `key-id`.
+Because the contents of this revocation token are signed, no `signature` is needed outside the `message` map. Nor is any
+`key-id`.
 
 #### RevokeKeyThirdParty Attributes
 
@@ -334,8 +329,8 @@ Because the contents of this revocation token are signed, no `signature` is need
 
 This moves all the mappings from the old Actor ID to the new Actor ID.
 
-The message **MUST** be signed by a valid secret key for the `old-actor`, but the HTTP Signature **MAY** 
-come from either Fediverse Server instance.
+The message **MUST** be signed by a valid secret key for the `old-actor`, but the HTTP Signature **MAY** come from 
+either Fediverse Server instance.
 
 This message **MUST** be rejected if there are existing public keys for the target `new-actor`.
 
@@ -356,9 +351,8 @@ This message **MUST** be rejected if there are existing public keys for the targ
 
 ### BurnDown
 
-A `BurnDown` message acts as a soft delete for all public keys and auxiliary data for a given
-Actor, unless they have previously issued a `Fireproof` message to disable this account recovery
-mechanism.
+A `BurnDown` message acts as a soft delete for all public keys and auxiliary data for a given Actor, unless they have
+previously issued a `Fireproof` message to disable this account recovery mechanism.
 
 This allows a user to issue a self-signed `AddKey` and start over.
 
@@ -370,8 +364,7 @@ This allows a user to issue a self-signed `AddKey` and start over.
       This may be encrypted (if `actor-id-key` is set) at the time of creation.
     * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
-  `message.actor`.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
 ### Fireproof
 
@@ -389,8 +382,7 @@ The only way to un-fireproof an Actor is to use a Revocation token on their only
       This may be encrypted (if `actor-id-key` is set) at the time of creation.
     * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
-  `message.actor`.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
 ### AddAuxData
 
@@ -407,12 +399,11 @@ relevant extension, and the data provided conforms to whatever validation criter
     This may be encrypted (if `actor-id-key` is set) at the time of creation.
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
   * `aux-data` -- **string** (required): The auxiliary data.
-  * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, the server
-    will validate that the aux-id is valid for the given type and data. 
+  * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
+    the server will validate that the aux-id is valid for the given type and data. 
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the Aux Data.
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
-  `message.actor`.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
 ### RevokeAuxData
 
@@ -426,12 +417,11 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
     This may be encrypted (if `actor-id-key` is set) at the time of creation.
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
   * `aux-data` -- **string** (optional): The auxiliary data.
-  * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, the server
-    will validate that the aux-id is valid for the given type and data.
+  * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
+    the server will validate that the aux-id is valid for the given type and data.
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
-  `message.actor`.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
 Note that either `message.auth-data` **OR** `message.aux-id` is required in order for revocation to succeed.
 
@@ -529,21 +519,19 @@ incumbent designs or protocols (i.e., the PGP ecosystem and its Web Of Trust mod
 
 Public key revocation is a thorny topic, and is difficult to balance for all threat models.
 
-Some users may want the ability to re-establish themselves in the protocol, no matter how badly
-they mismanage their keys. Thus, their instance being able to issue a [`BurnDown`](#burndown) is
-essential as a break-glass fature for account recovery.
+Some users may want the ability to re-establish themselves in the protocol, no matter how badly they mismanage their 
+keys. Thus, their instance being able to issue a [`BurnDown`](#burndown) is essential as a break-glass feature for 
+account recovery.
 
-Other users may expect a higher degree of security, and may wish to opt out of this `BurnDown`
-capability from their Fediverse instance. Once they have opted out, there is no way to undo
-opting out. It's a one-way door to prevent misuse.
+Other users may expect a higher degree of security, and may wish to opt out of this `BurnDown` capability from their
+Fediverse instance. Once they have opted out, there is no way to undo opting out. It's a one-way door to prevent misuse.
 
-[`RevokeKeyThirdParty`](#revokekeythirdparty) is an emergency feature that allows anyone to
-pull the plug on a compromised identity key. Every time one is issued, the community should
-pay close attention to the Actor affected by it.
+[`RevokeKeyThirdParty`](#revokekeythirdparty) is an emergency feature that allows anyone to pull the plug on a 
+compromised identity key. Every time one is issued, the community should pay close attention to the Actor affected by it.
 
-If a third party issues a `RevokeKeyThirdParty` with a valid revocation token for a fireproof
-user's only valid public key, the system **MUST** prioritize handling the key compromise as a
-higher priority. This means that `Fireproof` is ignored in this edge case.
+If a third party issues a `RevokeKeyThirdParty` with a valid revocation token for a fireproof user's only valid public 
+key, the system **MUST** prioritize handling the key compromise as a higher priority. This means that `Fireproof` is 
+ignored in this edge case.
 
 ### Encryption of Actor IDs
 
