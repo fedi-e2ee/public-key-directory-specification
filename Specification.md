@@ -496,7 +496,9 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 ### Cryptographic Agility
 
 The cryptographic components specified by the initial version of this specification are
-[Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) (which includes SHA-512 internally) and SHA-256 (for SigSum).
+[Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) (which includes SHA-512 internally), SHA-256, and AES-256.
+SHA-256 is used by SigSum, as well as for key derivation and message authentication (via HKDF an HMAC respectively)
+for Actor ID encryption. The actual Actor IDs will be encrypted with AES-256 in Counter Mode.
 
 Future versions of this specification should make an effort to minimize the amount of complexity for implementors.
 To that end, cryptographic agility will only be satisfied by the introduction of new protocol versions, rather than
