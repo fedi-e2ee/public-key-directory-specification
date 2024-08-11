@@ -202,8 +202,13 @@ _spirit of the law_ than anything a lawyer would advise.
 Consequently, we will add a layer of indirection to the underlying Message storage and SigSum integration, for handling
 Actor IDs:
 
-1. Every Message will have a 256-bit random key, selected by the Public Key Directory server.
+1. Every Message will have a unique 256-bit random key. This can be generated client-side or provided by the Public Key
+   Directory, so long as the keys never repeat. The Public Key Directory will include a key-generation API endpoint for
+   generating 256-bit keys for this purpose.
 2. Actor IDs will be encrypted with the key from (1), using a committing authenticated encryption mode.
+
+During insert, clients will provide both an encrypted representation of the Actor ID in `message.actor`, and disclose
+the accompanying key in the `actor-id-key` attribute (outside of message, and not covered by the signature).
 
 When requesting data from the ledger, the Message will be returned as-is, along with the key necessary to decrypt it.
 The key is not included in the SigSum data, but stored alongside the record.
@@ -270,7 +275,9 @@ Like most messages, `AddKey` must be sent from an Fediverse Server that supports
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
-* `key-id` -- **string(Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
+* `key-id` -- **string (Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
+  `message.actor`.
 
 ### RevokeKey
 
@@ -290,7 +297,9 @@ ever issued).
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
-* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
+  `message.actor`.
 
 ### RevokeKeyThirdParty
 
@@ -323,9 +332,15 @@ This message **MUST** be rejected if there are existing public keys for the targ
 
 * `message` -- **map**
     * `old-actor` -- **string (Actor ID)** (required): Who is being moved.
+      This may be encrypted (if `old-actor-id-key` is set) at the time of creation.
     * `new-actor` -- **string (Actor ID)** (required): Their new Actor ID.
+      This may be encrypted (if `new-actor-id-key` is set) at the time of creation.
     * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `new-actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
+  `message.old-actor`.
+* `old-actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
+  `message.new-actor`.
 
 ### BurnDown
 
@@ -339,8 +354,11 @@ This allows a user to issue a self-signed `AddKey` and start over.
 
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+      This may be encrypted (if `actor-id-key` is set) at the time of creation.
     * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
+  `message.actor`.
 
 ### Fireproof
 
@@ -354,8 +372,11 @@ The only way to un-fireproof an Actor is to use a Revocation token on their only
 
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+      This may be encrypted (if `actor-id-key` is set) at the time of creation.
     * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
+  `message.actor`.
 
 ### AddAuxData
 
@@ -368,12 +389,15 @@ relevant extension, and the data provided conforms to whatever validation criter
 
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+    This may be encrypted (if `actor-id-key` is set) at the time of creation.
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
   * `aux-data` -- **string** (required): The auxiliary data.
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, the server
     will validate that the aux-id is valid for the given type and data. 
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the Aux Data.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
+  `message.actor`.
 
 ### RevokeAuxData
 
@@ -383,12 +407,15 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
 
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+    This may be encrypted (if `actor-id-key` is set) at the time of creation.
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
   * `aux-data` -- **string** (optional): The auxiliary data.
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, the server
     will validate that the aux-id is valid for the given type and data.
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
+  `message.actor`.
 
 Note that either `message.auth-data` **OR** `message.aux-id` is required in order for revocation to succeed.
 
@@ -399,6 +426,70 @@ Note that either `message.auth-data` **OR** `message.aux-id` is required in orde
 ### Gossip Protocol
 
 ### SigSum Integration
+
+## Cryptography Protocols
+
+### Encrypting IDs to Enable Crypto-Shredding 
+
+We use HKDF to derive two distinct keys for our protocol. One for AES, the other for HMAC-SHA2. We encrypt then MAC
+to avoid the [Cryptographic Doom Principle](https://moxie.org/2011/12/13/the-cryptographic-doom-principle.html).
+
+We opt to not use AES-GCM to ensure the ciphertext and authentication tag are key-committing, where GCM does not provide
+this security property.
+
+We use a total of 384 bits of randomness (256 for key derivation, 128 for the AES-CTR nonce). After 2^128 Actor IDs have
+been encrypted, we expect a key+nonce collision probability of approximately 2^-128.
+
+Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded.
+
+#### Actor ID Encryption Algorithm
+
+**Inputs**:
+
+1. Actor ID (string, plaintext)
+2. Input Key Material
+
+**Output**:
+
+1. A compact binary string that represents an encrypted Actor ID.
+
+**Algorithm**:
+
+1. Set the version prefix `h` to `0x01`.
+2. Generate 32 bytes of random data, `r`.
+3. Derive an encryption key, `Ek`, through HKDF-SHA256 with a NULL salt and an info string set to
+   `"FediE2EE-v1-ActorID-Encryption-Key" || h || r`.
+4. Derive an authentication key, `Ak`, through HKDF-SHA256 with a NULL salt and an info string set to
+   `"FediE2EE-v1-ActorID-Message-Auth-Key" || h || r`. 
+5. Generate a 128-bit random nonce, `n`. 
+6. Encrypt the Actor ID using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
+7. Calculate the HMAC-SHA256 of `h || r || n || c` to obtain the authentication tag, `t`.
+8. Return `h || r || n || c || t`.
+
+#### Actor ID Decryption Algorithm
+
+**Inputs**:
+
+1. Encrypted Actor ID (string, ciphertext)
+2. Input Key Material
+
+**Output**:
+
+1. Plaintext Actor ID, or decryption failure.
+
+**Algorithm**:
+
+1. Decompose input 1 into `h`, `r`, `n,` `c`, and `t`.
+2. Ensure `h` is equal to the expected version prefix (`0x01` currently).
+3. Derive an authentication key, `Ak`, through HKDF-SHA256 with a NULL salt and an info string set to
+   `"FediE2EE-v1-ActorID-Message-Auth-Key" || h || r`.
+4. Recalculate the HMAC-SHA256 of `h || r || n || c` to obtain the candidate authentication tag, `t2`.
+5. Compare `t` with `t2`, using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
+   If the two are not equal, return a decryption error.
+6. Derive an encryption key, `Ek`, through HKDF-SHA256 with a NULL salt and an info string set to
+   `"FediE2EE-v1-ActorID-Encryption-Key" || h || r`.
+7. Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the Actor ID, `p`.
+8. Return `p`.
 
 ## Security Considerations
 
@@ -435,3 +526,15 @@ pay close attention to the Actor affected by it.
 If a third party issues a `RevokeKeyThirdParty` with a valid revocation token for a fireproof
 user's only valid public key, the system **MUST** prioritize handling the key compromise as a
 higher priority. This means that `Fireproof` is ignored in this edge case.
+
+### Encryption of Actor IDs
+
+The main security consideration of encrypted Actor IDs is to ensure that the contents are indistinguishable from random
+once the key has been securely erased.
+
+Thus, without the key, it should be computationally infeasible to recover the plaintext Actor ID. With this security
+guarantee in place, so long as all parties honor the request of the key to be erased in response to a "right to be
+forgotten" request, the plaintext is effectively deleted.
+
+This allows operators to store Actor IDs and honor such requests without having to violate the integrity of the
+underlying transparency log.
