@@ -97,19 +97,19 @@ Each digital signature will be calculated over the following information:
 To ensure domain separation, we will use [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition) function, with a tweak: We will insert the top-level
 key (`@context`, `action`, `message`) before each piece.
 
-For example:
+For example, a Python function might look like this:
 
 ```python
-def signMessage(secret_key, message):
-    messageToSign = preAuthEncode([
+def signPayload(secret_key, payload):
+    payloadToSign = preAuthEncode([
         b'@context',
-        message.context,
+        payload.context,
         b'action',
-        message.action,
+        payload.action,
         b'message',
-        json_stringify(sort_by_key(message.message))
+        json_stringify(sort_by_key(payload.message))
     ])
-    return crypto_sign(secret_key, messageToSign)
+    return crypto_sign(secret_key, payloadToSign)
 ```
 
 ### Key Identifiers
@@ -256,6 +256,11 @@ Some protocol messages **SHOULD** also include a top level `"key-id"` attribute,
 implementations select one of many public keys to validate the signature. If no `key-id` is provided,
 each valid public key **MAY** be tried.
 
+An additional top level `"actor-id-key"` **SHOULD** also be included, unless the user has explicitly opted out of this
+mechanism. Opting out prevents them from asserting their Right to be Forgotten, and is not recommended.
+
+The following subsections each describe a different Protocol Message type.
+
 ### AddKey
 
 An `AddKey` message associated with an Actor is intended to associate a new Public Key to this actor.
@@ -267,12 +272,15 @@ not permitted for any message after the first.)
 The first `AddKey` will not have a `key-id` outside of the message.  Every subsequent `AddKey` for
 a given Actor **SHOULD** have a `key-id`.
 
-Like most messages, `AddKey` must be sent from an Fediverse Server that supports HTTP Signatures.
+All `AddKey` messages for a given actor must be sent from the actor's Fediverse Server, which **MUST** 
+support HTTP Signatures.
 
 #### AddKey Attributes
 
+* `action` -- **string (Action Type)** (requied): Must be set to `AddKey`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+    This may be encrypted (if `actor-id-key` is set) at the time of creation.
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
 * `key-id` -- **string (Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
@@ -293,8 +301,10 @@ ever issued).
 
 #### RevokeKey Attributes
 
+* `action` -- **string (Action Type)** (requied): Must be set to `RevokeKey`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+    This may be encrypted (if `actor-id-key` is set) at the time of creation.
   * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
@@ -317,6 +327,7 @@ Because the contents of this revocation token are signed, no `signature` is need
 
 #### RevokeKeyThirdParty Attributes
 
+* `action` -- **string (Action Type)** (requied): Must be set to `RevokeKeyThirdParty`.
 * `revocation-token` --**string (Signature)** (required): See [Revocation Tokens](#revocation-tokens).
 
 ### MoveIdentity
@@ -330,6 +341,7 @@ This message **MUST** be rejected if there are existing public keys for the targ
 
 #### MoveIdentity
 
+* `action` -- **string (Action Type)** (requied): Must be set to `MoveIdentity`.
 * `message` -- **map**
     * `old-actor` -- **string (Actor ID)** (required): Who is being moved.
       This may be encrypted (if `old-actor-id-key` is set) at the time of creation.
@@ -352,6 +364,7 @@ This allows a user to issue a self-signed `AddKey` and start over.
 
 #### BurnDown Attributes
 
+* `action` -- **string (Action Type)** (requied): Must be set to `BurnDown`.
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
       This may be encrypted (if `actor-id-key` is set) at the time of creation.
@@ -370,6 +383,7 @@ The only way to un-fireproof an Actor is to use a Revocation token on their only
 
 #### BurnDown Attributes
 
+* `action` -- **string (Action Type)** (requied): Must be set to `BurnDown`.
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
       This may be encrypted (if `actor-id-key` is set) at the time of creation.
@@ -387,6 +401,7 @@ relevant extension, and the data provided conforms to whatever validation criter
 
 #### AddAuxData Attributes
 
+* `action` -- **string (Action Type)** (requied): Must be set to `AddAuxData`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
     This may be encrypted (if `actor-id-key` is set) at the time of creation.
@@ -405,6 +420,7 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
 
 #### RevokeAuxData Attributes
 
+* `action` -- **string (Action Type)** (requied): Must be set to `RevokeAuxData`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
     This may be encrypted (if `actor-id-key` is set) at the time of creation.
