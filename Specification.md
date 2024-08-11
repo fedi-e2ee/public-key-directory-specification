@@ -284,6 +284,22 @@ Signatures.
 * `key-id` -- **string (Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
+#### AddKey Validation Steps
+
+After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
+validating an `AddKey` message are as follows:
+
+1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+   error status.
+2. If there are no other public keys for the provided Actor, use the given public key (it is self-signed) and go to 
+   step 5. If the signature is invalid, return an error status.
+3. Otherwise, if the `key-id` is provided, select this public key for the given Actor. If there is no public key for
+   this Actor with a matching `key-id`, return an error status.
+4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one 
+   succeeds. If none of them do, return an error status.
+5. Validate the message signature for the given public key.
+6. If the signature is valid in step 5, process the message.
+
 ### RevokeKey
 
 A `RevokeKey` message marks an existing public key as untrusted. There is no undo operation for public key revocation. 
@@ -306,6 +322,20 @@ See [BurnDown](#burndown) for clearing all keys and starting over (unless [Firep
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
+#### RevokeKey Validation Steps
+
+After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
+validating an `RevokeKey` message are as follows:
+
+1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+   error status.
+2. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public 
+   key for this Actor with a matching `key-id`, return an error status.
+3. If a `key-id` was not provided, perform step 4 for each valid and trusted public key for this Actor until one
+   succeeds. If none of them do, return an error status.
+4. Validate the message signature for the given public key.
+5. If the signature is valid in step 4, process the message.
+
 ### RevokeKeyThirdParty
 
 This is a special message type in two ways:
@@ -325,6 +355,17 @@ Because the contents of this revocation token are signed, no `signature` is need
 * `action` -- **string (Action Type)** (requied): Must be set to `RevokeKeyThirdParty`.
 * `revocation-token` --**string (Signature)** (required): See [Revocation Tokens](#revocation-tokens).
 
+#### RevokeKeyThirdParty Validation Steps
+
+These tokens can be submitted directly to the Public Key Directory server at any time, with or without the involvement
+of any Fediverse instances.
+
+1. Decode the revocation token from base64url.
+2. Split the revocation token into `version`, `REVOCATION_CONSTANT`, `public_key`, and `signature`
+3. Validate signature for  `version || REVOCATION_CONSTANT || public_key`, using `public_key`.
+4. If the signature is valid in step 3, revoke this public key for all Actors that share it.
+   (In practice, this **SHOULD** only be one, but if that's ever not the case, we revoke them all here.)
+
 ### MoveIdentity
 
 This moves all the mappings from the old Actor ID to the new Actor ID.
@@ -334,7 +375,7 @@ either Fediverse Server instance.
 
 This message **MUST** be rejected if there are existing public keys for the target `new-actor`.
 
-#### MoveIdentity
+#### MoveIdentity Attributes
 
 * `action` -- **string (Action Type)** (requied): Must be set to `MoveIdentity`.
 * `message` -- **map**
@@ -348,6 +389,22 @@ This message **MUST** be rejected if there are existing public keys for the targ
   `message.old-actor`.
 * `old-actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
   `message.new-actor`.
+
+#### MoveIdentity Validation Steps
+
+After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
+validating an `MoveIdentity` message are as follows:
+
+1. If `old-actor-id-key` is provided, decrypt `message.old-actor` to obtain the Old Actor ID. If the decryption fails,
+   return an error status.
+2. If `new-actor-id-key` is provided, decrypt `message.new-actor` to obtain the New Actor ID. If the decryption fails,
+   return an error status.
+3. If the `key-id` is provided, select this public key for the Old Actor and proceed to step 5. If there is no public
+   key for this Actor with a matching `key-id`, return an error status.
+4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
+   succeeds. If none of them do, return an error status.
+5. Validate the message signature for the given public key.
+6. If the signature is valid in step 5, process the message.
 
 ### BurnDown
 
@@ -366,6 +423,21 @@ This allows a user to issue a self-signed `AddKey` and start over.
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
+#### BurnDown Validation Steps
+
+After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
+validating an `BurnDown` message are as follows:
+
+1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+   error status.
+2. If this actor has ever issued a `Fireproof` message, abort.
+3. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public
+   key for this Actor with a matching `key-id`, return an error status.
+4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
+   succeeds. If none of them do, return an error status.
+5. Validate the message signature for the given public key.
+6. If the signature is valid in step 5, process the message.
+
 ### Fireproof
 
 Where `BurnDown` resets the state for a given Actor to allow account recovery, `Fireproof` opts out of
@@ -374,7 +446,7 @@ this recovery mechanism entirely.
 The only way to un-fireproof an Actor is to use a Revocation token on their only Public Key. See
 [the relevant Security Considerations section](#revocation-and-account-recovery).
 
-#### BurnDown Attributes
+#### Fireproof Attributes
 
 * `action` -- **string (Action Type)** (requied): Must be set to `BurnDown`.
 * `message` -- **map**
@@ -383,6 +455,20 @@ The only way to un-fireproof an Actor is to use a Revocation token on their only
     * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
+
+#### Fireproof Validation Steps
+
+After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
+validating an `Fireproof` message are as follows:
+
+1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+   error status.
+2. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public
+   key for this Actor with a matching `key-id`, return an error status.
+3. If a `key-id` was not provided, perform step 4 for each valid and trusted public key for this Actor until one
+   succeeds. If none of them do, return an error status.
+4. Validate the message signature for the given public key.
+5. If the signature is valid in step 4, process the message.
 
 ### AddAuxData
 
@@ -405,6 +491,23 @@ relevant extension, and the data provided conforms to whatever validation criter
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the Aux Data.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
+#### AddAuxData Validation Steps
+
+After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
+validating an `AddAuxData` message are as follows:
+
+1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+   error status.
+2. If `message.aux-type` does not match any of the identifiers for supported Auxiliary Data extensions for this Public 
+   Key Directory, abort.
+3. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public
+   key for this Actor with a matching `key-id`, return an error status.
+4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
+   succeeds. If none of them do, return an error status.
+5. Validate the message signature for the given public key.
+6. If the signature is valid in step 5, validate the contents of `message.aux-data` in accordance to the rules defined
+   in the extension for the given `message.aux-type`. Otherwise, return an error status.
+
 ### RevokeAuxData
 
 This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
@@ -424,6 +527,23 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
 Note that either `message.auth-data` **OR** `message.aux-id` is required in order for revocation to succeed.
+
+#### RevokeAuxData Validation Steps
+
+After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
+validating an `RevokeAuxData` message are as follows:
+
+1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+   error status.
+2. If `message.aux-id` is provided, proceed to step 4.
+3. Otherwise, if `message.aux-data` is provided, recalculate the expected `aux-id`, then proceed to step 4.
+4. If there is no existing Auxiliary Data with a matching `aux-id` (whether provided or calculated), abort.
+5. If the `key-id` is provided, select this public key for the given Actor and proceed to step 7. If there is no public
+   key for this Actor with a matching `key-id`, return an error status.
+6. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor until one
+   succeeds. If none of them do, return an error status.
+7. Validate the message signature for the given public key.
+8. If the signature is valid in step 7, proceed with the revocation of the Auxiliary Data for this Actor.
 
 ## The Federated Public Key Directory
 
