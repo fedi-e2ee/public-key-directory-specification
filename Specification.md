@@ -238,6 +238,35 @@ the ciphertext in the REST API until the time of erasure.
 However, it does mean that the liability is with those other clients and servers rather than our ledger, and that is
 sufficient for de-risking our use case.
 
+#### Is This Crypto-Shredding Mechanism Sufficient?
+
+We cannot be certain, as the authors of this specification are not lawyers, but there is some precedent that may be 
+helpful in making a risk assessment. According to [page 75 of this study](https://www.europarl.europa.eu/RegData/etudes/STUD/2019/634445/EPRS_STU(2019)634445_EN.pdf)
+which analyzes the relationship between GDPR and blockchain technology:
+
+> Article 17 GDPR does not define erasure, and the Regulation's recitals are equally mum on how this term should be 
+> understood. It might be assumed that a **common-sense understanding** of this terminology ought to be embraced.
+
+While we are not build a blockchain, per se, transparency logs do have similar limitations on erasing history.
+
+The study goes on to say this:
+
+> There are, however, indications that the obligation inherent to **Article 17 GDPR** does not have to be interpreted as
+> requiring the outright destruction of data. In _Google Spain_, the delisting of information from research results was 
+> considered to amount to erasure. It is important to note, however, that in this case, this is all that was requested 
+> of Google by the claimant, who did not have control over the original data source (an online newspaper publication). 
+> Had the claimant wished to obtain the outright destruction of the relevant data it would have had to address the
+> newspaper, not Google. This may be taken as an indication that what the GDPR requires is that the obligation resting
+> on data controllers is to do all they can to secure a result as close as possible to the destruction of their data 
+> within the limits of thei own factual possibilities.
+
+(That "thei" typo is in present in the linked study.) However, the most important excerpt is: 
+
+> There does not, however, appear to be consensus in all Member States on this matter.
+
+What is proposed in this specification is a technical mechanism that may not be deemed sufficient, or may prove to be
+overkill. It's anyone's guess.
+
 ### Timestamps
 
 All timestamps must adhere to the rules defined in [RFC 9557](https://www.rfc-editor.org/rfc/rfc9557.html#name-examples),
