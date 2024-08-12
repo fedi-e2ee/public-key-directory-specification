@@ -288,8 +288,10 @@ The following subsections each describe a different Protocol Message type.
 An `AddKey` message associated with an Actor is intended to associate a new Public Key to this actor.
 
 The first `AddKey` for any given Actor **MUST** be self-signed by the same public key being added. Every subsequent
-`AddKey` must be signed by an existing, non-revoked public key. (Self-signing is not permitted for any message after the
-first. A successful `BurnDown`, or `RevokeKeyThirdParty` of their last public key permits another self-signed `AddKey`.)
+`AddKey` must be signed by an existing, non-revoked public key. 
+
+Self-signing is not permitted for any message after the first. A successful `BurnDown`, or `RevokeKeyThirdParty` of 
+their last public key, permits another self-signed `AddKey`.
 
 The first `AddKey` will not have a `key-id` outside of the message.  Every subsequent `AddKey` for a given Actor 
 **SHOULD** have a `key-id`.
