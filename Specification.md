@@ -687,6 +687,18 @@ enabling the hot-swapping of cryptographic primitives by configuration.
 Other software and protocols are welcome to be compatible with our designs, but we will make no effort to support
 incumbent designs or protocols (i.e., the PGP ecosystem and its Web Of Trust model).
 
+### Encryption of Actor IDs
+
+The main security consideration of encrypted Actor IDs is to ensure that the contents are indistinguishable from random
+once the key has been securely erased.
+
+Thus, without the key, it should be computationally infeasible to recover the plaintext Actor ID. With this security
+guarantee in place, so long as all parties honor the request of the key to be erased in response to a "right to be
+forgotten" request, the plaintext is effectively deleted.
+
+This allows operators to store Actor IDs and honor such requests without having to violate the integrity of the
+underlying transparency log.
+
 ### Revocation and Account Recovery
 
 Public key revocation is a thorny topic, and is difficult to balance for all threat models.
@@ -704,18 +716,6 @@ compromised identity key. Every time one is issued, the community should pay clo
 If a third party issues a `RevokeKeyThirdParty` with a valid revocation token for a fireproof user's only valid public 
 key, the system **MUST** prioritize handling the key compromise as a higher priority. This means that `Fireproof` is 
 ignored in this edge case.
-
-### Encryption of Actor IDs
-
-The main security consideration of encrypted Actor IDs is to ensure that the contents are indistinguishable from random
-once the key has been securely erased.
-
-Thus, without the key, it should be computationally infeasible to recover the plaintext Actor ID. With this security
-guarantee in place, so long as all parties honor the request of the key to be erased in response to a "right to be
-forgotten" request, the plaintext is effectively deleted.
-
-This allows operators to store Actor IDs and honor such requests without having to violate the integrity of the
-underlying transparency log.
 
 ### Minimal Trust of Instance Operators
 
