@@ -489,6 +489,10 @@ The only way to un-fireproof an Actor is to use a Revocation token on their only
 
 This message **MAY** be sent out-of-band to the Public Key Directory without the Fediverse server's involvement.
 
+`Fireproof` is only intended to prevent `BurnDown` (which the instance hosting the Actor may perform without a valid
+signature from the same Actor). It does not prevent users from having no valid public keys (i.e., if someone issues a
+`RevokeKeyThirdParty` against their only trusted public key.)
+
 #### Fireproof Attributes
 
 * `action` -- **string (Action Type)** (required): Must be set to `BurnDown`.
