@@ -17,6 +17,8 @@ end-to-end encryption.
 
 This challenge is not unique to federated systems and is usually solved by some sort of Public Key Infrastructure (PKI).
 
+#### Public Key Infrastructures
+
 The classic SSH approach to addressing this problem is "Trust On First Use". Simple yet effective in many threat models.
 
 The earliest designs for SSL/TLS required the use of Certificate Authorities, whose public keys would be provided by
@@ -36,11 +38,14 @@ TLS certificates are now required to be published in a Certificate Transparency 
 called [Key Transparency](https://engineering.fb.com/2023/04/13/security/whatsapp-key-transparency/) to secure their
 End-to-End Encryption.
 
-To that end, we hope to build a PKI for the Fediverse primarily focused on transparency logs. 
+To that end, we hope to build a PKI for the Fediverse primarily focused on transparency logs.
 
-The primary use case is to support End-to-End Encryption for ActivityPub messages between users. However, we also want
-to support developers seeking supplemental use cases (e.g., exchanging [age](https://github.com/FiloSottile/age) public
-keys for encrypted file sharing).
+#### Use Case
+
+The primary use case is to support End-to-End Encryption for ActivityPub direct messages between users.
+
+However, we also want to support developers seeking supplemental use cases (e.g., exchanging [age](https://github.com/FiloSottile/age) public keys for 
+encrypted file sharing).
 
 ### This Document
 
@@ -51,7 +56,7 @@ We specify a protocol for communicating with the Public Key Directory server, wh
 context of a Fediverse server.
 
 We further specify a public JSON REST API for reading public keys for specific Fediverse users, that the Public Key
-Directory software will implement. 
+Directory software will implement.
 
 Finally, we discuss some security considerations for building atop our Public Key Directory server.
 
@@ -88,11 +93,15 @@ For example: `ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM`
 
 ### Protocol Signatures
 
+Every [Protocol Message](#protocol-messages) will contain a digital signature. Unless otherwise specified, these
+signatures will always be calculated the same way:
+
 Each digital signature will be calculated over the following information:
 
 1. The value of the top-level `@context` attribute.
 2. The value of the top-level `action` attribute.
 3. The JSON serialization of the top-level `message` attribute.
+   Object keys **MUST** be sorted in ASCII byte order, and there **MUST** be no duplicate keys. 
 
 To ensure domain separation, we will use [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition) function, with a tweak: We will insert the top-level
 key (`@context`, `action`, `message`) before each piece.
@@ -120,7 +129,8 @@ public key to reduce the amount of rejected signatures software must publish.
 
 Every message except revocations and the first `AddKey` for an Actor **SHOULD** include a `key-id` value.
 
-The `key-id` attribute **MUST NOT** be an encoded representation of the public key.
+The `key-id` attribute **MUST NOT** be an encoded representation of the public key. The motivation for this restriction
+is to prevent accidental misuse (i.e., someone just decoding the public key from a message and trusting it blindly).
 
 The `key-id` is not covered in the protocol messages being signed. Instead, it is a hint to the signature validation 
 software which public key to select when there is more than one option. Their values are totally arbitrary and, aside
@@ -150,6 +160,9 @@ These values **MAY** be encrypted and stored in case of emergency. There is no t
 message format, so they can be issued at any time.
 
 If you stumble upon another user's secret key, generating a revocation token should be straightforward.
+
+Security researchers are encouraged to push revocation tokens whenever another person's secret key is compromised, and
+said security researcher has deemed it necessary to do so to minimize harm.
 
 ### Auxiliary Data
 
@@ -205,6 +218,7 @@ Actor IDs:
    Directory, so long as the keys never repeat. The Public Key Directory will include a key-generation API endpoint for
    generating 256-bit keys for this purpose.
 2. Actor IDs will be encrypted with the key from (1), using a committing authenticated encryption mode.
+   The encryption steps are described in [a later section](#encrypting-ids-to-enable-crypto-shredding-).
 
 During insert, clients will provide both an encrypted representation of the Actor ID in `message.actor`, and disclose
 the accompanying key in the `actor-id-key` attribute (outside of message, and not covered by the signature).
@@ -230,9 +244,10 @@ This section outlines the different message types that will be passed from the F
 Directory server.
 
 Each protocol message will be a UTF-8 encoded JSON string. Dictionary keys **MUST** be unique within the same level.
-Dictionary keys **SHOULD** be sorted. Participants **MAY** use whitespace, but it is not required.
+Dictionary keys **SHOULD** be sorted. Participants **MAY** use whitespace, but it is not required or recommended.
 
-Each protocol message will consist of the same structure:
+Most protocol messages will consist of the same structure. Each Protocol Message is formally defined in subsequent
+subsections of this document:
 
 ```json5
 {
@@ -240,6 +255,8 @@ Each protocol message will consist of the same structure:
   "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
   /* The action, such as AddKey or RevokeKey, goes here: */
   "action": "",
+  // actor-id-key sometimes goes here
+  // key-id sometimes goes here
   "message": {
     /* 
     The actual message contents required for the specific action goes here.
