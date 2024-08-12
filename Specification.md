@@ -289,7 +289,7 @@ An `AddKey` message associated with an Actor is intended to associate a new Publ
 
 The first `AddKey` for any given Actor **MUST** be self-signed by the same public key being added. Every subsequent
 `AddKey` must be signed by an existing, non-revoked public key. (Self-signing is not permitted for any message after the
-first. A successful `BurnDown` permits another self-signed `AddKey`.)
+first. A successful `BurnDown`, or `RevokeKeyThirdParty` of their last public key permits another self-signed `AddKey`.)
 
 The first `AddKey` will not have a `key-id` outside of the message.  Every subsequent `AddKey` for a given Actor 
 **SHOULD** have a `key-id`.
@@ -299,7 +299,7 @@ Signatures.
 
 #### AddKey Attributes
 
-* `action` -- **string (Action Type)** (requied): Must be set to `AddKey`.
+* `action` -- **string (Action Type)** (required): Must be set to `AddKey`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
     This may be encrypted (if `actor-id-key` is set) at the time of creation.
@@ -337,7 +337,7 @@ See [BurnDown](#burndown) for clearing all keys and starting over (unless [Firep
 
 #### RevokeKey Attributes
 
-* `action` -- **string (Action Type)** (requied): Must be set to `RevokeKey`.
+* `action` -- **string (Action Type)** (required): Must be set to `RevokeKey`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
     This may be encrypted (if `actor-id-key` is set) at the time of creation.
@@ -369,15 +369,20 @@ This is a special message type in two ways:
 
 If the user doesn't possess any other public keys, this message bypasses the usual `RevokeKey` restriction where the 
 user continue to must have a valid public key. Instead, the Actor will be treated as if they ran a successful 
-`BurnDown`, and allows them to start over.
+`BurnDown`, and allows them to start over with an `AddKey`.
+
+Since you need the secret key tog generate the revocation token for a given public key, `Fireproof` does not prevent
+third parties from revoking public keys.
+
+This does not cancel out a previous `Fireproof` status. Future `BurnDown` messages may fail.
 
 Because the contents of this revocation token are signed, no `signature` is needed outside the `message` map. Nor is any
 `key-id`.
 
 #### RevokeKeyThirdParty Attributes
 
-* `action` -- **string (Action Type)** (requied): Must be set to `RevokeKeyThirdParty`.
-* `revocation-token` --**string (Signature)** (required): See [Revocation Tokens](#revocation-tokens).
+* `action` -- **string (Action Type)** (required): Must be set to `RevokeKeyThirdParty`.
+* `revocation-token` --**string** (required): See [Revocation Tokens](#revocation-tokens).
 
 #### RevokeKeyThirdParty Validation Steps
 
@@ -401,7 +406,7 @@ This message **MUST** be rejected if there are existing public keys for the targ
 
 #### MoveIdentity Attributes
 
-* `action` -- **string (Action Type)** (requied): Must be set to `MoveIdentity`.
+* `action` -- **string (Action Type)** (required): Must be set to `MoveIdentity`.
 * `message` -- **map**
     * `old-actor` -- **string (Actor ID)** (required): Who is being moved.
       This may be encrypted (if `old-actor-id-key` is set) at the time of creation.
@@ -484,7 +489,7 @@ This message **MAY** be sent out-of-band to the Public Key Directory without the
 
 #### Fireproof Attributes
 
-* `action` -- **string (Action Type)** (requied): Must be set to `BurnDown`.
+* `action` -- **string (Action Type)** (required): Must be set to `BurnDown`.
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
       This may be encrypted (if `actor-id-key` is set) at the time of creation.
@@ -515,7 +520,7 @@ relevant extension, and the data provided conforms to whatever validation criter
 
 #### AddAuxData Attributes
 
-* `action` -- **string (Action Type)** (requied): Must be set to `AddAuxData`.
+* `action` -- **string (Action Type)** (required): Must be set to `AddAuxData`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
     This may be encrypted (if `actor-id-key` is set) at the time of creation.
@@ -550,7 +555,7 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
 
 #### RevokeAuxData Attributes
 
-* `action` -- **string (Action Type)** (requied): Must be set to `RevokeAuxData`.
+* `action` -- **string (Action Type)** (required): Must be set to `RevokeAuxData`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
     This may be encrypted (if `actor-id-key` is set) at the time of creation.
