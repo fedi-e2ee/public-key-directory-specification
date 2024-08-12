@@ -282,7 +282,7 @@ An `AddKey` message associated with an Actor is intended to associate a new Publ
 
 The first `AddKey` for any given Actor **MUST** be self-signed by the same public key being added. Every subsequent
 `AddKey` must be signed by an existing, non-revoked public key. (Self-signing is not permitted for any message after the
-first.)
+first. A successful `BurnDown` permits another self-signed `AddKey`.)
 
 The first `AddKey` will not have a `key-id` outside of the message.  Every subsequent `AddKey` for a given Actor 
 **SHOULD** have a `key-id`.
@@ -428,17 +428,25 @@ validating an `MoveIdentity` message are as follows:
 A `BurnDown` message acts as a soft delete for all public keys and auxiliary data for a given Actor, unless they have
 previously issued a `Fireproof` message to disable this account recovery mechanism.
 
+Unlike most Fediverse messages, a `BurnDown` is issued by an operator account on the Fediverse instance that hosts the
+Actor in question. Servers are responsible for ensuring only trusted administrators are permitted to issue `BurnDown`
+messages for other users.
+
 This allows a user to issue a self-signed `AddKey` and start over.
 
 #### BurnDown Attributes
 
-* `action` -- **string (Action Type)** (requied): Must be set to `BurnDown`.
+* `action` -- **string (Action Type)** (required): Must be set to `BurnDown`.
 * `message` -- **map**
-    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-      This may be encrypted (if `actor-id-key` is set) at the time of creation.
+    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user that is being
+      burned down. This may be encrypted (if `actor-id-key` is set) at the time of creation.
+    * `operator` -- **string (Actor ID)** (required): The instance operator that is issuing the `BurnDown` on behalf
+      of the user. This may be encrypted (if `operator-id-key` is set) at the time of creation.
     * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
+* `operator-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in 
+  `message.operator`.
 
 #### BurnDown Validation Steps
 
@@ -448,12 +456,14 @@ validating an `BurnDown` message are as follows:
 1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
    error status.
 2. If this actor has ever issued a `Fireproof` message, abort.
-3. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public
-   key for this Actor with a matching `key-id`, return an error status.
-4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
-   succeeds. If none of them do, return an error status.
-5. Validate the message signature for the given public key.
-6. If the signature is valid in step 5, process the message.
+3. If `operator-id-key` is provided, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
+   decryption fails, return an error status.
+4. If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 6. If there is no
+   public key for this Actor with a matching `key-id`, return an error status.
+5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor (Operator) until
+   one succeeds. If none of them do, return an error status.
+6. Validate the message signature for the given public key.
+7. If the signature is valid in step 6, process the message.
 
 ### Fireproof
 
@@ -462,6 +472,8 @@ this recovery mechanism entirely.
 
 The only way to un-fireproof an Actor is to use a Revocation token on their only Public Key. See
 [the relevant Security Considerations section](#revocation-and-account-recovery).
+
+This message **MAY** be sent out-of-band to the Public Key Directory without the Fediverse server's involvement.
 
 #### Fireproof Attributes
 
