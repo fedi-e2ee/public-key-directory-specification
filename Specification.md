@@ -572,6 +572,14 @@ validating an `RevokeAuxData` message are as follows:
 
 ## Cryptography Protocols
 
+This section details any nontrivial cryptographic protocols used in the Public Key Directory server.
+
+Nontrivial is a subjective categorization. For example, signing a message with Ed25519 is considered trivial because a
+separate specification exists for Ed25519. That is not a criticism of the algorithm.
+
+The authors of this specification strongly recommend asking an applied cryptography expert develop these cryptographic
+components.
+
 ### Encrypting IDs to Enable Crypto-Shredding 
 
 We use HKDF to derive two distinct keys for our protocol. One for AES, the other for HMAC-SHA2. We encrypt then MAC
@@ -581,7 +589,8 @@ We opt to not use AES-GCM to ensure the ciphertext and authentication tag are ke
 this security property.
 
 We use a total of 384 bits of randomness (256 for key derivation, 128 for the AES-CTR nonce). After 2^128 Actor IDs have
-been encrypted, we expect a key+nonce collision probability of approximately 2^-128.
+been encrypted, we expect a key+nonce collision probability of approximately 2^-128. This is in addition to the 256-bit
+input key material (stored in the `actor-id-key` attribute).
 
 Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded.
 
@@ -681,3 +690,48 @@ forgotten" request, the plaintext is effectively deleted.
 
 This allows operators to store Actor IDs and honor such requests without having to violate the integrity of the
 underlying transparency log.
+
+### Minimal Trust of Instance Operators
+
+A malicious operator of your Fediverse server can do the following:
+
+1. Issue an `AddKey` protocol message for any Actor that doesn't currently have a Public Key registered to the PKD.
+2. Issue a `BurnDown` protocol message for any Actor that has not previously issued a `Fireproof` message.
+
+The first capability is necessary in order to bootstrap trust on first use. These messages must be signed by your
+server to ensure that the first public key you register has come from your Fediverse server. However, a malicious admin
+can issue `AddKey` messages for users that have not currently enrolled.
+
+The second capability is an emergency break-glass feature to allow a user that has lost all their secret keys to regain
+access to their account. The instance operator can publish a `BurnDown` to "reset" the PKD for a given Actor, which
+distrusts all of that Actor's public keys and allows them to start over with a fresh `AddKey` to enroll from zero.
+
+A malicious instance operator could use this to replace a user's public key with one the operator can sign messages for.
+Therefore, we strongly recommend that independent third parties scrutinize any use of `BurnDown`.
+
+If users wish to opt out of being able to ever issue a `BurnDown`, they can issue a `Fireproof` at any time to turn this
+feature off. There is no way to reverse this opt-out. This is a deliberate design decision to enable power users to
+choose security over convenience, even if it risks losing access to their account if all their secret keys are lost.
+
+#### Position Statement From the Authors
+
+Any attempt to enable account recovery is necessarily a backdoor, no matter how it's designed or implemented. This is
+tautology: granting access when you have no credentials to gain access is a violation of the integrity (and, sometimes,
+the confidentiality) of a system.
+
+Conversely, [security at the cost of usability comes at the cost of security](https://security.stackexchange.com/a/6116).
+We introduced this capability in our designs in order to improve the usability of protocols that build upon our Public
+Key Directory project. We include an explicit, irreversible opt-out mechanism for any users that might feel threatened
+by the existence of this capability.
+
+We believe this strikes the right balance between security and usability. It's important that this is communicated
+transparently to users, and they are made aware of the `Fireproof` opt-out mechanism (and its consequences).
+
+Security researchers and whistleblowers **SHOULD** keep up-to-date on any use of `BurnDown` in their social graph, as
+well as any suspicious `AddKey` messages for users that have no interest in end-to-end encryption. Both signals may
+serve as clues that someone may be up to no good, but they could also indicate a harmless human error. Don't jump to
+conclusions based on these issuances alone.
+
+Finally, the entire point of using Transparency Logs is to force attackers to publish their activity, which enables
+defenders and activists to be immediately aware of the potentially malicious actions. You cannot attack the network
+to impersonate a flammable Actor without risking detection.
