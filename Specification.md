@@ -296,7 +296,7 @@ Signatures.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
     This may be encrypted (if `actor-id-key` is set) at the time of creation.
-  * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+  * `time` -- **string (Timestamp)** (required): The current timestamp ([RFC 9557](https://www.rfc-editor.org/rfc/rfc9557.html#name-examples)-compatible).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
 * `key-id` -- **string (Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
@@ -334,7 +334,7 @@ See [BurnDown](#burndown) for clearing all keys and starting over (unless [Firep
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
     This may be encrypted (if `actor-id-key` is set) at the time of creation.
-  * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+  * `time` -- **string (Timestamp)** (required): The current timestamp ([RFC 9557](https://www.rfc-editor.org/rfc/rfc9557.html#name-examples)-compatible).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
@@ -400,7 +400,7 @@ This message **MUST** be rejected if there are existing public keys for the targ
       This may be encrypted (if `old-actor-id-key` is set) at the time of creation.
     * `new-actor` -- **string (Actor ID)** (required): Their new Actor ID.
       This may be encrypted (if `new-actor-id-key` is set) at the time of creation.
-    * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+    * `time` -- **string (Timestamp)** (required): The current timestamp ([RFC 9557](https://www.rfc-editor.org/rfc/rfc9557.html#name-examples)-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `new-actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
   `message.old-actor`.
@@ -442,7 +442,7 @@ This allows a user to issue a self-signed `AddKey` and start over.
       burned down. This may be encrypted (if `actor-id-key` is set) at the time of creation.
     * `operator` -- **string (Actor ID)** (required): The instance operator that is issuing the `BurnDown` on behalf
       of the user. This may be encrypted (if `operator-id-key` is set) at the time of creation.
-    * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+    * `time` -- **string (Timestamp)** (required): The current timestamp ([RFC 9557](https://www.rfc-editor.org/rfc/rfc9557.html#name-examples)-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 * `operator-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in 
@@ -481,7 +481,7 @@ This message **MAY** be sent out-of-band to the Public Key Directory without the
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
       This may be encrypted (if `actor-id-key` is set) at the time of creation.
-    * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+    * `time` -- **string (Timestamp)** (required): The current timestamp ([RFC 9557](https://www.rfc-editor.org/rfc/rfc9557.html#name-examples)-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
@@ -516,7 +516,7 @@ relevant extension, and the data provided conforms to whatever validation criter
   * `aux-data` -- **string** (required): The auxiliary data.
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
     the server will validate that the aux-id is valid for the given type and data. 
-  * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+  * `time` -- **string (Timestamp)** (required): The current timestamp ([RFC 9557](https://www.rfc-editor.org/rfc/rfc9557.html#name-examples)-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the Aux Data.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
@@ -551,7 +551,7 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
   * `aux-data` -- **string** (optional): The auxiliary data.
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
     the server will validate that the aux-id is valid for the given type and data.
-  * `time` -- **string (Timestamp)** (required): The current timestamp (ISO 8601-compatible).
+  * `time` -- **string (Timestamp)** (required): The current timestamp ([RFC 9557](https://www.rfc-editor.org/rfc/rfc9557.html#name-examples)-compatible).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
 
