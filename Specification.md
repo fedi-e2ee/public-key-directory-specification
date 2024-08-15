@@ -128,6 +128,7 @@ Every time an `AddKey` message is accepted by the Public Key Directory, it will 
 public key to reduce the amount of rejected signatures software must publish.
 
 Every message except revocations and the first `AddKey` for an Actor **SHOULD** include a `key-id` value.
+Each `key-id` is encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5).
 
 The `key-id` attribute **MUST NOT** be an encoded representation of the public key. The motivation for this restriction
 is to prevent accidental misuse (i.e., someone just decoding the public key from a message and trusting it blindly).
