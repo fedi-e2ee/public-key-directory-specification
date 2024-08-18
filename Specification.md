@@ -431,8 +431,9 @@ of any Fediverse instances.
 
 This moves all the mappings from the old Actor ID to the new Actor ID.
 
-The message **MUST** be signed by a valid secret key for the `old-actor`, but the HTTP Signature **MAY** come from 
-either Fediverse Server instance.
+The message **MUST** be signed by a valid secret key for the `old-actor`, whereas the HTTP Signature **MUST** come from 
+the new Fediverse Server instance. This grants users the ability to move their identity to a new instance, provided they
+can successfully authenticate to the new instance.
 
 This message **MUST** be rejected if there are existing public keys for the target `new-actor`.
 
