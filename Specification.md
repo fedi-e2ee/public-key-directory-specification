@@ -69,6 +69,9 @@ communicate with the Public Key Directory.
 
 Backwards compatibility with existing systems (i.e., the PGP ecosystem) is a non-goal.
 
+Legal compliance frameworks (e.g., GDPR) are largely out of scope. We make some design considerations that aim to 
+alleviate specific technical issues that would otherwise *introduce* compliance obstacles, but go no further.
+
 ### Notation and Conventions
 
 The key words "**MUST**", "**MUST NOT**", "**REQUIRED**", "**SHALL**", "**SHALL NOT**", "**SHOULD**", "**SHOULD NOT**",
@@ -199,27 +202,28 @@ def getAuxDataId(aux_type, data):
     )
 ```
 
-### Actor ID Shreddability
+### Message Attribute Shreddability
 
 While the security benefits of a public immutable append-only ledger are enormous, some jurisdictions may rule that an
-Actor ID is in scope of some legislation; e.g., the European Union's Right to be Forgotten. Since Actor ID is the only
-component of the Public Key Server that might reasonably be considered PII, it's worth special consideration.
+Actor ID is in scope of some legislation; e.g., the European Union's Right to be Forgotten (part of the GDPR). The
+introduction of an append-only immutable data ledger is not logically compatible with these laws (which stipulate that
+a person can request their history be deleted on demand).
 
 Presently, there is no clear legal guidance on how to best navigate this issue. There are untested legal theories, but
-none backed up by case law.
+none backed up by case law. Additionally, using a totally anonymous look-up-table introduces the risk of rewritten 
+on-the-fly by the Public Key Directory administrators. This is an unacceptable risk.
 
-In the absence of a clear path to compliance that doesn't also introduce a risk for backdoors, we will instead make a
-best effort technological solution. Keep in mind, this is not a tested legal mechanism, and is more aligned with the
-_spirit of the law_ than anything a lawyer would advise.
+As a best-effort, good faith design decision, we will introduce the technical capability to "shred" Actor IDs (which may
+contain usernames, and usernames are definitely PII in scope of the *Right to be Forgotten*) and other fields.
 
 Consequently, we will add a layer of indirection to the underlying Message storage and SigSum integration, for handling
-Actor IDs:
+sensitive attributes (e.g., Actor ID):
 
 1. Every Message will have a unique 256-bit random key. This can be generated client-side or provided by the Public Key
    Directory, so long as the keys never repeat. The Public Key Directory will include a key-generation API endpoint for
    generating 256-bit keys for this purpose.
-2. Actor IDs will be encrypted with the key from (1), using a committing authenticated encryption mode.
-   The encryption steps are described in [a later section](#encrypting-ids-to-enable-crypto-shredding-).
+2. Each attribute will be encrypted with the key from (1), using a committing authenticated encryption mode.
+   The encryption steps are described in [a later section](#message-attribute-encryption-algorithm).
 
 During insert, clients will provide both an encrypted representation of the Actor ID in `message.actor`, and disclose
 the accompanying key in the `actor-id-key` attribute (outside of message, and not covered by the signature).
@@ -238,35 +242,6 @@ the ciphertext in the REST API until the time of erasure.
 
 However, it does mean that the liability is with those other clients and servers rather than our ledger, and that is
 sufficient for de-risking our use case.
-
-#### Is This Crypto-Shredding Mechanism Sufficient?
-
-We cannot be certain, as the authors of this specification are not lawyers, but there is some precedent that may be 
-helpful in making a risk assessment. According to [page 75 of this study](https://www.europarl.europa.eu/RegData/etudes/STUD/2019/634445/EPRS_STU(2019)634445_EN.pdf)
-which analyzes the relationship between GDPR and blockchain technology:
-
-> Article 17 GDPR does not define erasure, and the Regulation's recitals are equally mum on how this term should be 
-> understood. It might be assumed that a **common-sense understanding** of this terminology ought to be embraced.
-
-While we are not build a blockchain, per se, transparency logs do have similar limitations on erasing history.
-
-The study goes on to say this:
-
-> There are, however, indications that the obligation inherent to **Article 17 GDPR** does not have to be interpreted as
-> requiring the outright destruction of data. In _Google Spain_, the delisting of information from research results was 
-> considered to amount to erasure. It is important to note, however, that in this case, this is all that was requested 
-> of Google by the claimant, who did not have control over the original data source (an online newspaper publication). 
-> Had the claimant wished to obtain the outright destruction of the relevant data it would have had to address the
-> newspaper, not Google. This may be taken as an indication that what the GDPR requires is that the obligation resting
-> on data controllers is to do all they can to secure a result as close as possible to the destruction of their data 
-> within the limits of thei own factual possibilities.
-
-(That "thei" typo is in present in the linked study.) However, the most important excerpt is: 
-
-> There does not, however, appear to be consensus in all Member States on this matter.
-
-What is proposed in this specification is a technical mechanism that may not be deemed sufficient, or may prove to be
-overkill. It's anyone's guess.
 
 ### Timestamps
 
@@ -338,23 +313,27 @@ Signatures.
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
 * `key-id` -- **string (Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
+* `symmetric-keys` -- **map**
+  * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
+  * `public-key` -- **string (Cryptography key)** (optional): The key used to encrypt `message.public-key`.
 
 #### AddKey Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `AddKey` message are as follows:
 
-1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
-   error status.
-2. If there are no other public keys for the provided Actor, use the given public key (it is self-signed) and go to 
-   step 5. If the signature is invalid, return an error status.
-3. Otherwise, if the `key-id` is provided, select this public key for the given Actor. If there is no public key for
+1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
+   return an error status.
+2. If `symmetric-keys.public-key` is provided, decrypt `message.public-key`. If the decryption fails,
+   return an error status.
+3. If there are no other public keys for the provided Actor, use the given public key (it is self-signed) and go to 
+   step 6. If the signature is invalid, return an error status.
+4. Otherwise, if the `key-id` is provided, select this public key for the given Actor. If there is no public key for
    this Actor with a matching `key-id`, return an error status.
-4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one 
+5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one 
    succeeds. If none of them do, return an error status.
-5. Validate the message signature for the given public key.
-6. If the signature is valid in step 5, process the message.
+6. Validate the message signature for the given public key.
+7. If the signature is valid in step 6, process the message.
 
 ### RevokeKey
 
@@ -376,15 +355,17 @@ See [BurnDown](#burndown) for clearing all keys and starting over (unless [Firep
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
+* `symmetric-keys` -- **map**
+    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
+    * `public-key` -- **string (Cryptography key)** (optional): The key used to encrypt `message.public-key`.
 
 #### RevokeKey Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `RevokeKey` message are as follows:
 
-1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
-   error status.
+1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, 
+   return an error status.
 2. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public 
    key for this Actor with a matching `key-id`, return an error status.
 3. If a `key-id` was not provided, perform step 4 for each valid and trusted public key for this Actor until one
@@ -447,20 +428,19 @@ This message **MUST** be rejected if there are existing public keys for the targ
       This may be encrypted (if `new-actor-id-key` is set) at the time of creation.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
-* `new-actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
-  `message.old-actor`.
-* `old-actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in
-  `message.new-actor`.
+* `symmetric-keys` -- **map**
+    * `old-actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.old-actor`.
+    * `new-actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.new-actor`.
 
 #### MoveIdentity Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `MoveIdentity` message are as follows:
 
-1. If `old-actor-id-key` is provided, decrypt `message.old-actor` to obtain the Old Actor ID. If the decryption fails,
-   return an error status.
-2. If `new-actor-id-key` is provided, decrypt `message.new-actor` to obtain the New Actor ID. If the decryption fails,
-   return an error status.
+1. If `symmetric-keys.old-actor` is provided, decrypt `message.old-actor` to obtain the Old Actor ID. If the decryption
+   fails, return an error status.
+2. If `symmetric-keys.new-actor` is provided, decrypt `message.new-actor` to obtain the New Actor ID. If the decryption
+   fails, return an error status.
 3. If the `key-id` is provided, select this public key for the Old Actor and proceed to step 5. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
 4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
@@ -489,19 +469,20 @@ This allows a user to issue a self-signed `AddKey` and start over.
       of the user. This may be encrypted (if `operator-id-key` is set) at the time of creation.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
-* `operator-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in 
-  `message.operator`.
+* `symmetric-keys` -- **map**
+    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
+    * `operator` -- **string (Cryptography key)** (optional): The key used to encrypt `message.operator`.
+    * `public-key` -- **string (Cryptography key)** (optional): The key used to encrypt `message.public-key`.
 
 #### BurnDown Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `BurnDown` message are as follows:
 
-1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
-   error status.
+1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
+   return an error status.
 2. If this actor has ever issued a `Fireproof` message, abort.
-3. If `operator-id-key` is provided, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
+3. If `symmetric-keys.operator` is provided, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
    decryption fails, return an error status.
 4. If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 6. If there is no
    public key for this Actor with a matching `key-id`, return an error status.
@@ -532,15 +513,16 @@ signature from the same Actor). It does not prevent users from having no valid p
       This may be encrypted (if `actor-id-key` is set) at the time of creation.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
+* `symmetric-keys` -- **map**
+    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
 
 #### Fireproof Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `Fireproof` message are as follows:
 
-1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
-   error status.
+1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
+   return an error status.
 2. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
 3. If a `key-id` was not provided, perform step 4 for each valid and trusted public key for this Actor until one
@@ -567,23 +549,27 @@ relevant extension, and the data provided conforms to whatever validation criter
     the server will validate that the aux-id is valid for the given type and data. 
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the Aux Data.
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
+* `symmetric-keys` -- **map**
+    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
+    * `aux-data` -- **string (Cryptography key)** (optional): The key used to encrypt `message.aux-data`.
 
 #### AddAuxData Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `AddAuxData` message are as follows:
 
-1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
-   error status.
-2. If `message.aux-type` does not match any of the identifiers for supported Auxiliary Data extensions for this Public 
+1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
+   return an error status.
+2. If `symmetric-keys.aux-data` is provided, decrypt `message.aux-data`. If the decryption fails, return an error
+   status.
+3. If `message.aux-type` does not match any of the identifiers for supported Auxiliary Data extensions for this Public 
    Key Directory, abort.
-3. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public
+4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 6. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
+5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-5. Validate the message signature for the given public key.
-6. If the signature is valid in step 5, validate the contents of `message.aux-data` in accordance to the rules defined
+6. Validate the message signature for the given public key.
+7. If the signature is valid in step 6, validate the contents of `message.aux-data` in accordance to the rules defined
    in the extension for the given `message.aux-type`. Otherwise, return an error status.
 
 ### RevokeAuxData
@@ -602,7 +588,9 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
     the server will validate that the aux-id is valid for the given type and data.
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
-* `actor-id-key` -- **string (Cryptography key)** (optional): The key used to encrypt the Actor ID in `message.actor`.
+* `symmetric-keys` -- **map**
+    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
+    * `aux-data` -- **string (Cryptography key)** (optional): The key used to encrypt `message.aux-data`.
 
 Note that either `message.auth-data` **OR** `message.aux-id` is required in order for revocation to succeed.
 
@@ -611,17 +599,19 @@ Note that either `message.auth-data` **OR** `message.aux-id` is required in orde
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `RevokeAuxData` message are as follows:
 
-1. If `actor-id-key` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
-   error status.
-2. If `message.aux-id` is provided, proceed to step 4.
-3. Otherwise, if `message.aux-data` is provided, recalculate the expected `aux-id`, then proceed to step 4.
-4. If there is no existing Auxiliary Data with a matching `aux-id` (whether provided or calculated), abort.
-5. If the `key-id` is provided, select this public key for the given Actor and proceed to step 7. If there is no public
+1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
+   return an error status.
+2. If `symmetric-keys.aux-data` is provided, decrypt `message.aux-data`. If the decryption fails, return an error
+   status.
+3. If `message.aux-id` is provided, proceed to step 5.
+4. Otherwise, if `message.aux-data` is provided, recalculate the expected `aux-id`, then proceed to step 5.
+5. If there is no existing Auxiliary Data with a matching `aux-id` (whether provided or calculated), abort.
+6. If the `key-id` is provided, select this public key for the given Actor and proceed to step 8. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-6. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor until one
+7. If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-7. Validate the message signature for the given public key.
-8. If the signature is valid in step 7, proceed with the revocation of the Auxiliary Data for this Actor.
+8. Validate the message signature for the given public key.
+9. If the signature is valid in step 8, proceed with the revocation of the Auxiliary Data for this Actor.
 
 ## The Federated Public Key Directory
 
@@ -641,7 +631,7 @@ separate specification exists for Ed25519. That is not a criticism of the algori
 The authors of this specification strongly recommend asking an applied cryptography expert develop these cryptographic
 components.
 
-### Encrypting IDs to Enable Crypto-Shredding 
+### Encrypting Message Attributes to Enable Crypto-Shredding 
 
 We use HKDF to derive two distinct keys for our protocol. One for AES, the other for HMAC-SHA2. We encrypt then MAC
 to avoid the [Cryptographic Doom Principle](https://moxie.org/2011/12/13/the-cryptographic-doom-principle.html).
@@ -655,12 +645,13 @@ input key material (stored in the `actor-id-key` attribute).
 
 Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded.
 
-#### Actor ID Encryption Algorithm
+#### Message Attribute Encryption Algorithm
 
 **Inputs**:
 
-1. Actor ID (string, plaintext)
-2. Input Key Material
+1. Attribute name (e.g. `actor-id`), denoted `a`
+2. Plaintext (string, plaintext)
+3. Input Key Material
 
 **Output**:
 
@@ -671,20 +662,21 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 1. Set the version prefix `h` to `0x01`.
 2. Generate 32 bytes of random data, `r`.
 3. Derive an encryption key, `Ek`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-ActorID-Encryption-Key" || h || r`.
+   `"FediE2EE-v1-ActorID-Encryption-Key" || h || r || a`.
 4. Derive an authentication key, `Ak`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-ActorID-Message-Auth-Key" || h || r`. 
+   `"FediE2EE-v1-ActorID-Message-Auth-Key" || h || r || a`. 
 5. Generate a 128-bit random nonce, `n`. 
 6. Encrypt the Actor ID using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
 7. Calculate the HMAC-SHA256 of `h || r || n || c` to obtain the authentication tag, `t`.
 8. Return `h || r || n || c || t`.
 
-#### Actor ID Decryption Algorithm
+#### Message Attribute Decryption Algorithm
 
 **Inputs**:
 
-1. Encrypted Actor ID (string, ciphertext)
-2. Input Key Material
+1. Attribute name (e.g. `actor-id`), denoted `a`
+2. Ciphertext (string, ciphertext)
+3. Input Key Material
 
 **Output**:
 
@@ -695,12 +687,12 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 1. Decompose input 1 into `h`, `r`, `n,` `c`, and `t`.
 2. Ensure `h` is equal to the expected version prefix (`0x01` currently).
 3. Derive an authentication key, `Ak`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-ActorID-Message-Auth-Key" || h || r`.
+   `"FediE2EE-v1-ActorID-Message-Auth-Key" || h || r || a`.
 4. Recalculate the HMAC-SHA256 of `h || r || n || c` to obtain the candidate authentication tag, `t2`.
 5. Compare `t` with `t2`, using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
    If the two are not equal, return a decryption error.
 6. Derive an encryption key, `Ek`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-ActorID-Encryption-Key" || h || r`.
+   `"FediE2EE-v1-ActorID-Encryption-Key" || h || r || a`.
 7. Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the Actor ID, `p`.
 8. Return `p`.
 
@@ -722,17 +714,17 @@ enabling the hot-swapping of cryptographic primitives by configuration.
 Other software and protocols are welcome to be compatible with our designs, but we will make no effort to support
 incumbent designs or protocols (i.e., the PGP ecosystem and its Web Of Trust model).
 
-### Encryption of Actor IDs
+### Encryption of Protocol Message Attributes
 
-The main security consideration of encrypted Actor IDs is to ensure that the contents are indistinguishable from random
-once the key has been securely erased.
+The main security consideration of encrypted message attributes (i.e., Actor ID) is to ensure that the contents are 
+indistinguishable from random once the key has been securely erased.
 
-Thus, without the key, it should be computationally infeasible to recover the plaintext Actor ID. With this security
+Thus, without the key, it should be computationally infeasible to recover the plaintext attribute. With this security
 guarantee in place, so long as all parties honor the request of the key to be erased in response to a "right to be
 forgotten" request, the plaintext is effectively deleted.
 
-This allows operators to store Actor IDs and honor such requests without having to violate the integrity of the
-underlying transparency log.
+This allows operators to store these fields and honor such requests without having to violate the integrity of the
+underlying transparency log when a legal request comes in.
 
 ### Revocation and Account Recovery
 
