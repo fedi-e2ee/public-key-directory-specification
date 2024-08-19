@@ -658,7 +658,7 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 
 **Inputs**:
 
-1. Attribute name (e.g. `actor-id`), denoted `a`
+1. Attribute name (e.g. `actor` from `message`), denoted `a`
 2. Plaintext (string, plaintext)
 3. Input Key Material
 
@@ -683,7 +683,7 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 
 **Inputs**:
 
-1. Attribute name (e.g. `actor-id`), denoted `a`
+1. Attribute name (e.g. `actor` from `message`), denoted `a`
 2. Ciphertext (string, ciphertext)
 3. Input Key Material
 
