@@ -1215,6 +1215,43 @@ Finally, make the appropriate changes to the local database (based on what actio
 
 ### JSON REST API
 
+#### GET api/actor/:actor_id
+
+Purpose: List aggregate data about a given actor.
+
+#### GET api/actor/:actor_id/keys
+
+Purpose: List all currently-trusted public keys for a given actor.
+
+#### GET api/actor/:actor_id/key/:key_id
+
+Purpose: Retrieve information about a specific public key.
+
+#### GET api/actor/:actor_id/auxiliary
+
+Purpose: List all currently-trusted auxiliary data for a given actor.
+
+#### GET api/actor/:actor_id/auxiliary/:aux_data_id
+
+Purpose: Retrieve information about a specific auxiliary data.
+
+#### GET api/history
+
+Purpose: View the latest hash stored in the message history.
+
+#### GET api/history/since/:last_hash
+
+Purpose: List up to `PAGINATION_LIMIT` hashes starting after the provided hash, in sequence.
+
+#### GET api/history/view/:hash
+
+Purpose: View information about a specific protocol message. This will also return SigSum inclusion proofs and witness
+co-signatures.
+
+#### POST api/revoke
+
+Purpose: Accepts [`RevokeKeyThirdParty`](#revokekeythirdparty) messages.
+
 ### Gossip Protocol
 
 #### Gossip Protocol Background
