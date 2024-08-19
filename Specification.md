@@ -675,9 +675,13 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 4. Derive an authentication key, `Ak`, through HKDF-SHA256 with a NULL salt and an info string set to
    `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`. 
 5. Generate a 128-bit random nonce, `n`. 
-6. Encrypt the Actor ID using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
-7. Calculate the HMAC-SHA256 of `h || r || n || c` to obtain the authentication tag, `t`.
+6. Encrypt the plaintext attribute using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
+7. Calculate the HMAC-SHA256 of `h || r || n || len(a) || a || len(c) || c`, with `Ak` as the key, to obtain the
+   authentication tag, `t`.
 8. Return `h || r || n || c || t`.
+
+Note: `len(x)` is defined as the big-endian encoding of the number of octets in the byte string `x`, treated as an
+unsigned 64-bit integer.
 
 #### Message Attribute Decryption Algorithm
 
@@ -689,7 +693,7 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 
 **Output**:
 
-1. Plaintext Actor ID, or decryption failure.
+1. Plaintext attribute contents, or decryption failure.
 
 **Algorithm**:
 
@@ -697,13 +701,17 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 2. Ensure `h` is equal to the expected version prefix (`0x01` currently).
 3. Derive an authentication key, `Ak`, through HKDF-SHA256 with a NULL salt and an info string set to
    `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`.
-4. Recalculate the HMAC-SHA256 of `h || r || n || c` to obtain the candidate authentication tag, `t2`.
+4. Recalculate the HMAC-SHA256 of `h || r || n || len(a) || a || len(c) || c`, with `Ak` as the key, to obtain the
+   candidate authentication tag, `t2`.
 5. Compare `t` with `t2`, using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
    If the two are not equal, return a decryption error.
 6. Derive an encryption key, `Ek`, through HKDF-SHA256 with a NULL salt and an info string set to
    `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`.
 7. Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the Actor ID, `p`.
 8. Return `p`.
+
+Note: `len(x)` is defined as the big-endian encoding of the number of octets in the byte string `x`, treated as an
+unsigned 64-bit integer.
 
 ## Security Considerations
 
