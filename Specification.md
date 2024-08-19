@@ -226,7 +226,7 @@ sensitive attributes (e.g., Actor ID):
    The encryption steps are described in [a later section](#message-attribute-encryption-algorithm).
 
 During insert, clients will provide both an encrypted representation of the Actor ID in `message.actor`, and disclose
-the accompanying key in the `actor-id-key` attribute (outside of message, and not covered by the signature).
+the accompanying key in the `symmetric-keys` attribute (outside of message, and not covered by the signature).
 
 When requesting data from the ledger, the Message will be returned as-is, along with the key necessary to decrypt it.
 The key is not included in the SigSum data, but stored alongside the record.
@@ -235,10 +235,12 @@ To satisfy a "right to be forgotten" request, the key for the relevant blocks wi
 persist forever, but without the correct key, the contents will be indistinguishable from randomness. Thus, the system
 will irrevocably forget the Actor ID for those records.
 
-It's important to note that this is not a security feature, it is intended to allow the system to forget how to read a 
-specific record while still maintaining an immutable history. It does not guarantee that other clients and servers did 
-not persist the key necessary to comprehend the contents of the deleted records, since it's always published alongside
-the ciphertext in the REST API until the time of erasure. 
+It's important to note that this is not a security feature, it's meant to eliminate a compliance obstacle.
+
+Crypto-shredding and message attribute encryption are intended to allow the system to forget how to read a specific 
+record while still maintaining an immutable history. It does not guarantee that other clients and servers did not 
+persist the key necessary to comprehend the contents of the deleted records, since it's always published alongside the
+ciphertext in the REST API until the time of erasure. 
 
 However, it does mean that the liability is with those other clients and servers rather than our ledger, and that is
 sufficient for de-risking our use case.
@@ -267,7 +269,6 @@ subsections of this document:
   "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
   /* The action, such as AddKey or RevokeKey, goes here: */
   "action": "",
-  // actor-id-key sometimes goes here
   // key-id sometimes goes here
   "message": {
     /* 
@@ -275,16 +276,17 @@ subsections of this document:
     Its contents may vary from action to action.
     */
   },
-  /* A signature calcualted over "@context", "action", and "message". */
-  "signature": ""
+  /* A signature calculated over "@context", "action", and "message". */
+  "signature": "",
+  "symmetric-keys": {
+    /* These are used to decrypt attributed in the "message" object. They are not signed.
+     * This feature also only exists for compliance purposes, not to accomplish security goals. */
+  }
 }
 ```
 
 Some protocol messages **SHOULD** also include a top level `"key-id"` attribute, which will help implementations select
 one of many public keys to validate the signature. If no `key-id` is provided, each valid public key **MAY** be tried.
-
-An additional top level `"actor-id-key"` **SHOULD** also be included, unless the user has explicitly opted out of this
-mechanism. Opting out prevents them from asserting their Right to be Forgotten, and is not recommended.
 
 The following subsections each describe a different Protocol Message type.
 
@@ -309,9 +311,10 @@ Signatures.
 * `action` -- **string (Action Type)** (required): Must be set to `AddKey`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-    This may be encrypted (if `actor-id-key` is set) at the time of creation.
+    This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
+    This may be encrypted (if `symmetric-keys.public-key` is set at the time of creation).
 * `key-id` -- **string (Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
 * `symmetric-keys` -- **map**
   * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
@@ -351,9 +354,10 @@ See [BurnDown](#burndown) for clearing all keys and starting over (unless [Firep
 * `action` -- **string (Action Type)** (required): Must be set to `RevokeKey`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-    This may be encrypted (if `actor-id-key` is set) at the time of creation.
+    This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
+    This may be encrypted (if `symmetric-keys.public-key` is set at the time of creation).
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
 * `symmetric-keys` -- **map**
     * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
@@ -423,9 +427,9 @@ This message **MUST** be rejected if there are existing public keys for the targ
 * `action` -- **string (Action Type)** (required): Must be set to `MoveIdentity`.
 * `message` -- **map**
     * `old-actor` -- **string (Actor ID)** (required): Who is being moved.
-      This may be encrypted (if `old-actor-id-key` is set) at the time of creation.
+      This may be encrypted (if `symmetric-keys.old-actor` is set at the time of creation).
     * `new-actor` -- **string (Actor ID)** (required): Their new Actor ID.
-      This may be encrypted (if `new-actor-id-key` is set) at the time of creation.
+      This may be encrypted (if `symmetric-keys.new-actor` is set at the time of creation).
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `symmetric-keys` -- **map**
@@ -464,9 +468,9 @@ This allows a user to issue a self-signed `AddKey` and start over.
 * `action` -- **string (Action Type)** (required): Must be set to `BurnDown`.
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user that is being
-      burned down. This may be encrypted (if `actor-id-key` is set) at the time of creation.
+      This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
     * `operator` -- **string (Actor ID)** (required): The instance operator that is issuing the `BurnDown` on behalf
-      of the user. This may be encrypted (if `operator-id-key` is set) at the time of creation.
+      of the user. This may be encrypted (if `symmetric-keys.operator` is set at the time of creation).
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `symmetric-keys` -- **map**
@@ -510,7 +514,7 @@ signature from the same Actor). It does not prevent users from having no valid p
 * `action` -- **string (Action Type)** (required): Must be set to `BurnDown`.
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-      This may be encrypted (if `actor-id-key` is set) at the time of creation.
+      This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `symmetric-keys` -- **map**
@@ -542,9 +546,10 @@ relevant extension, and the data provided conforms to whatever validation criter
 * `action` -- **string (Action Type)** (required): Must be set to `AddAuxData`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-    This may be encrypted (if `actor-id-key` is set) at the time of creation.
+    This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
   * `aux-data` -- **string** (required): The auxiliary data.
+    This may be encrypted (if `symmetric-keys.aux-data` is set at the time of creation).
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
     the server will validate that the aux-id is valid for the given type and data. 
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
@@ -581,9 +586,10 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
 * `action` -- **string (Action Type)** (required): Must be set to `RevokeAuxData`.
 * `message` -- **map**
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-    This may be encrypted (if `actor-id-key` is set) at the time of creation.
+    This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
   * `aux-data` -- **string** (optional): The auxiliary data.
+    This may be encrypted (if `symmetric-keys.aux-data` is set at the time of creation).
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
     the server will validate that the aux-id is valid for the given type and data.
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
@@ -633,6 +639,9 @@ components.
 
 ### Encrypting Message Attributes to Enable Crypto-Shredding 
 
+The goal of attribute encryption is compliance, not security, but we still consider it important to use a committing
+authenticated encryption mode to ensure a backdoor is not possible through an Invisible Salamanders style attack.
+
 We use HKDF to derive two distinct keys for our protocol. One for AES, the other for HMAC-SHA2. We encrypt then MAC
 to avoid the [Cryptographic Doom Principle](https://moxie.org/2011/12/13/the-cryptographic-doom-principle.html).
 
@@ -641,7 +650,7 @@ this security property.
 
 We use a total of 384 bits of randomness (256 for key derivation, 128 for the AES-CTR nonce). After 2^128 Actor IDs have
 been encrypted, we expect a key+nonce collision probability of approximately 2^-128. This is in addition to the 256-bit
-input key material (stored in the `actor-id-key` attribute).
+input key material (stored in the `symmetric-keys` mapping).
 
 Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded.
 
@@ -662,9 +671,9 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 1. Set the version prefix `h` to `0x01`.
 2. Generate 32 bytes of random data, `r`.
 3. Derive an encryption key, `Ek`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-ActorID-Encryption-Key" || h || r || a`.
+   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`.
 4. Derive an authentication key, `Ak`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-ActorID-Message-Auth-Key" || h || r || a`. 
+   `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`. 
 5. Generate a 128-bit random nonce, `n`. 
 6. Encrypt the Actor ID using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
 7. Calculate the HMAC-SHA256 of `h || r || n || c` to obtain the authentication tag, `t`.
@@ -687,12 +696,12 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 1. Decompose input 1 into `h`, `r`, `n,` `c`, and `t`.
 2. Ensure `h` is equal to the expected version prefix (`0x01` currently).
 3. Derive an authentication key, `Ak`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-ActorID-Message-Auth-Key" || h || r || a`.
+   `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`.
 4. Recalculate the HMAC-SHA256 of `h || r || n || c` to obtain the candidate authentication tag, `t2`.
 5. Compare `t` with `t2`, using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
    If the two are not equal, return a decryption error.
 6. Derive an encryption key, `Ek`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-ActorID-Encryption-Key" || h || r || a`.
+   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`.
 7. Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the Actor ID, `p`.
 8. Return `p`.
 
@@ -717,7 +726,8 @@ incumbent designs or protocols (i.e., the PGP ecosystem and its Web Of Trust mod
 ### Encryption of Protocol Message Attributes
 
 The main security consideration of encrypted message attributes (i.e., Actor ID) is to ensure that the contents are 
-indistinguishable from random once the key has been securely erased.
+indistinguishable from random once the key has been securely erased. Beyond that, it only exists for compliance, not
+security.
 
 Thus, without the key, it should be computationally infeasible to recover the plaintext attribute. With this security
 guarantee in place, so long as all parties honor the request of the key to be erased in response to a "right to be
