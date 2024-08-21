@@ -228,8 +228,15 @@ sensitive attributes (e.g., Actor ID):
 During insert, clients will provide both an encrypted representation of the Actor ID in `message.actor`, and disclose
 the accompanying key in the `symmetric-keys` attribute (outside of message, and not covered by the signature).
 
-When requesting data from the ledger, the Message will be returned as-is, along with the key necessary to decrypt it.
+When requesting data from the ledger, the Message will be returned as-is (i.e., ciphertext), along with the decrypted 
+Message (provided the key has not been shredded yet).
+
+To ensure the link between the encrypted message and plaintext message is provable, clients will also generate and 
+publish a commitment of the plaintext. This prevents a server from serving a ciphertext and plaintext
+
 The key is not included in the SigSum data, but stored alongside the record.
+
+The decrypted message is also not included in the SigSum data.
 
 To satisfy a "right to be forgotten" request, the key for the relevant blocks will be erased. The ciphertext will 
 persist forever, but without the correct key, the contents will be indistinguishable from randomness. Thus, the system
@@ -238,12 +245,15 @@ will irrevocably forget the Actor ID for those records.
 It's important to note that this is not a security feature, it's meant to eliminate a compliance obstacle.
 
 Crypto-shredding and message attribute encryption are intended to allow the system to forget how to read a specific 
-record while still maintaining an immutable history. It does not guarantee that other clients and servers did not 
-persist the key necessary to comprehend the contents of the deleted records, since it's always published alongside the
-ciphertext in the REST API until the time of erasure. 
+record while still maintaining an immutable history.
 
-However, it does mean that the liability is with those other clients and servers rather than our ledger, and that is
-sufficient for de-risking our use case.
+> Note: We considered using a zero-knowledge proof for this purpose, but couldn't justify the additional protocol
+> complexity.
+
+It does not guarantee that other clients and servers did not persist the key necessary to comprehend the contents of the
+deleted records, since it's generated client-side, and we cannot control the behavior of client software. However, it 
+does mean that the liability is with those other clients and servers rather than our ledger, and that is sufficient for
+de-risking our use case.
 
 ### Timestamps
 
@@ -654,6 +664,44 @@ input key material (stored in the `symmetric-keys` mapping).
 
 Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded.
 
+We also include a commitment of the plaintext, which is also covered by the ciphertext's authentication tag. This uses
+domain-separated HMAC to calculate a salt, which is then used to calculate an Argon2id KDF output of the plaintext.
+We use Argon2id to make brute-force attacks impractical.
+
+The Argon2id salt is deliberately **NOT** collision-resistant, such that multiple plaintexts can produce the same salt.
+The salt probability space (2^{48}) is large enough to not give an attacker any significant advantage with 
+precomputation, while still allowing multiple plaintexts to generate the same salt (birthday bound = 2^{24} attributes).
+
+#### Message Attribute Plaintext Commitment Algorithm
+
+**Inputs**:
+
+1. Attribute name (e.g. `actor` from `message`), denoted `a`
+2. Plaintext (string, plaintext), denoted `p`
+
+**Output**:
+
+1. A compact binary string that represents a commitment of the plaintext.
+
+**Algorithm**:
+
+1. Set `k` to `0x04bda9c2f2702ba3d345521f553b5e6704604602574c15a58ed265436a541d70ff19c695534c064318975730774f442ede17bae55eb320f2081aa11989108466`,
+   which is the SHA-512 hash of the ASCII string `"FediE2EE-v1-Compliance-Plaintext-Commitment"` (without quotes).
+2. Set `l` to `len(a) || a || len(p) || p`.
+3. Calculate `HMAC-SHA-512(k, l)`. Truncate the output to the rightmost 48 bits (6 bytes). This is equivalent to
+   reducing the result modulo 2^{48}. The output of this step will be denoted as `s`.
+4. Set `C` to the output of the Argon2id function with the following parameters:
+   * `password` = `l`
+   * `salt` = `"FE2EEPKDv1" || s`
+   * `memory cost` = `16777216` (16 MiB)
+   * `iterations` = `3`
+   * `parallelism` = `1`
+   * `output length` = `26` (26 bytes, or 208 bits)
+5. Output `C || s`, which will be called `Q` elsewhere, which will have a total length of 32 bytes (256 bits).
+
+Note: `len(x)` is defined as the big-endian encoding of the number of octets in the byte string `x`, treated as an
+unsigned 64-bit integer.
+
 #### Message Attribute Encryption Algorithm
 
 **Inputs**:
@@ -670,15 +718,17 @@ Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org
 
 1. Set the version prefix `h` to `0x01`.
 2. Generate 32 bytes of random data, `r`.
-3. Derive an encryption key, `Ek`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`.
-4. Derive an authentication key, `Ak`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`. 
-5. Generate a 128-bit random nonce, `n`. 
-6. Encrypt the plaintext attribute using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
-7. Calculate the HMAC-SHA256 of `h || r || n || len(a) || a || len(c) || c`, with `Ak` as the key, to obtain the
-   authentication tag, `t`.
-8. Return `h || r || n || c || t`.
+3. Derive an encryption key, `Ek`, through HKDF-SHA512 with a NULL salt and an info string set to
+   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 256 bits.
+4. Derive an authentication key, `Ak`, through HKDF-SHA512 with a NULL salt and an info string set to
+   `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`, with an output length of 256 bits. 
+5. Generate a 128-bit random nonce, `n`.
+6. Calculate [a commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm), designated `Q`.
+7. Encrypt the plaintext attribute using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
+8. Calculate the HMAC-SHA512 of `h || r || n || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key. 
+   Truncate the HMAC output to the rightmost 32 bytes (256 bits) to obtain `t`. This is equivalent to reducing
+   the HMAC output modulo 2^{256}.
+9. Return `h || r || n || Q || t || c`.
 
 Note: `len(x)` is defined as the big-endian encoding of the number of octets in the byte string `x`, treated as an
 unsigned 64-bit integer.
@@ -697,18 +747,28 @@ unsigned 64-bit integer.
 
 **Algorithm**:
 
-1. Decompose input 1 into `h`, `r`, `n,` `c`, and `t`.
-2. Ensure `h` is equal to the expected version prefix (`0x01` currently).
-3. Derive an authentication key, `Ak`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`.
-4. Recalculate the HMAC-SHA256 of `h || r || n || len(a) || a || len(c) || c`, with `Ak` as the key, to obtain the
-   candidate authentication tag, `t2`.
-5. Compare `t` with `t2`, using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
-   If the two are not equal, return a decryption error.
-6. Derive an encryption key, `Ek`, through HKDF-SHA256 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`.
-7. Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the Actor ID, `p`.
-8. Return `p`.
+1.  Decompose input 1 into `h`, `r`, `n,`, `Q`, `t`, and `c`.
+    * `h` is always 1 byte long
+    * `r` is always 32 bytes long
+    * `n` is always 16 bytes long
+    * `Q` is always 32 bytes long
+    * `t` is always 32 bytes long
+    * `c` is always variable (equal to the length of the plaintext)
+2.  Ensure `h` is equal to the expected version prefix (`0x01` currently). If it is not, return a decryption error.
+3.  Derive an authentication key, `Ak`, through HKDF-SHA512 with a NULL salt and an info string set to
+    `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`, with an output length of 256 bits.
+4.  Recalculate the HMAC-SHA512 of `h || r || n || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key.
+    Truncate the HMAC output to the rightmost 32 bytes (256 bits) to obtain `t2`. This is equivalent to reducing
+    the HMAC output modulo 2^{256}.
+5.  Compare `t` with `t2`, using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
+    If the two are not equal, return a decryption error.
+6.  Derive an encryption key, `Ek`, through HKDF-SHA512 with a NULL salt and an info string set to
+    `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 256 bits.
+7.  Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the Actor ID, `p`.
+8.  Recalculate [the commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm) to obtain  `Q2`.
+9.  Compare `Q` with `Q2` using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
+    If the two are not equal, return a decryption error.
+10. Return `p`.
 
 Note: `len(x)` is defined as the big-endian encoding of the number of octets in the byte string `x`, treated as an
 unsigned 64-bit integer.
