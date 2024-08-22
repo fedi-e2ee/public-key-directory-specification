@@ -40,9 +40,10 @@ class MessageEncryptor
     ): string {
         $h = self::CURRENT_VERSION;
         $r = random_bytes(32);
-        $encKey = hash_hkdf('sha512', $this->ikm, 32, self::INFO_ENCRYPT . $h . $r . $attributeName);
+        $tmp = hash_hkdf('sha512', $this->ikm, 48, self::INFO_ENCRYPT . $h . $r . $attributeName);
+        $encKey = substr($tmp, 0, 32);
+        $n = substr($tmp, 32, 16);
         $macKey = hash_hkdf('sha512', $this->ikm, 32, self::INFO_AUTH . $h . $r . $attributeName);
-        $n = random_bytes(16);
         $Q = self::plaintextCommitment($attributeName, $plaintext);
         $c = openssl_encrypt(
             $plaintext,
@@ -58,14 +59,14 @@ class MessageEncryptor
         $t = substr(
             hash_hmac(
                 'sha512',
-                $h . $r . $n . self::len($attributeName) . $attributeName . self::len($c) . $c . self::len($Q) . $Q,
+                $h . $r . self::len($attributeName) . $attributeName . self::len($c) . $c . self::len($Q) . $Q,
                 $macKey,
                 true
             ),
             32,
             32
         );
-        return $h . $r . $n . $Q . $t. $c ;
+        return $h . $r . $Q . $t. $c ;
     }
 
     /**
@@ -76,15 +77,14 @@ class MessageEncryptor
         string $ciphertext
     ): string {
         $len = strlen($ciphertext);
-        if ($len < 113) {
+        if ($len < 97) {
             throw new Exception('Message is too short');
         }
         $h = substr($ciphertext, 0, 1);
         $r = substr($ciphertext, 1, 32);
-        $n = substr($ciphertext, 33, 16);
-        $Q = substr($ciphertext, 49, 32);
-        $t = substr($ciphertext, 81, 32);
-        $c = substr($ciphertext, 113);
+        $Q = substr($ciphertext, 33, 32);
+        $t = substr($ciphertext, 65, 32);
+        $c = substr($ciphertext, 97);
 
         if (!hash_equals($h, self::CURRENT_VERSION)) {
             throw new Exception('Invalid version prefix');
@@ -93,7 +93,7 @@ class MessageEncryptor
         $t2 = substr(
             hash_hmac(
                 'sha512',
-                $h . $r . $n . self::len($attributeName) . $attributeName . self::len($c) . $c . self::len($Q) . $Q,
+                $h . $r . self::len($attributeName) . $attributeName . self::len($c) . $c . self::len($Q) . $Q,
                 $macKey,
                 true
             ),
@@ -103,7 +103,9 @@ class MessageEncryptor
         if (!hash_equals($t2, $t)) {
             throw new Exception('Invalid authentication tag');
         }
-        $encKey = hash_hkdf('sha512', $this->ikm, 32, self::INFO_ENCRYPT . $h . $r . $attributeName);
+        $tmp = hash_hkdf('sha512', $this->ikm, 48, self::INFO_ENCRYPT . $h . $r . $attributeName);
+        $encKey = substr($tmp, 0, 32);
+        $n = substr($tmp, 32, 16);
         $p = openssl_encrypt(
             $c,
             'aes-256-ctr',
