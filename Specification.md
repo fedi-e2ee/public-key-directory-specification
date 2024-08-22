@@ -658,9 +658,9 @@ to avoid the [Cryptographic Doom Principle](https://moxie.org/2011/12/13/the-cry
 We opt to not use AES-GCM to ensure the ciphertext and authentication tag are key-committing, where GCM does not provide
 this security property.
 
-We use a total of 384 bits of randomness (256 for key derivation, 128 for the AES-CTR nonce). After 2^128 Actor IDs have
-been encrypted, we expect a key+nonce collision probability of approximately 2^-128. This is in addition to the 256-bit
-input key material (stored in the `symmetric-keys` mapping).
+We use a total of 256 bits of randomness. After 2^{85.3} attributes have been encrypted, we expect a key+nonce collision
+probability of approximately 2^-85.3. The AES-CTR nonce is derived alongside the encryption key from a 256-bit IKM and
+256-bit random value.
 
 Ciphertexts and keys are expected to be [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded.
 
@@ -718,17 +718,17 @@ unsigned 64-bit integer.
 
 1. Set the version prefix `h` to `0x01`.
 2. Generate 32 bytes of random data, `r`.
-3. Derive an encryption key, `Ek`, through HKDF-SHA512 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 256 bits.
+3. Derive an encryption key, `Ek`, and nonce, `n`, through HKDF-SHA512 with a NULL salt and an info string set to
+   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 384 bits. The most significant
+   256 bits will be the encryption key, `Ek`, while the remaining 128 bits will be the nonce, `n`.
 4. Derive an authentication key, `Ak`, through HKDF-SHA512 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`, with an output length of 256 bits. 
-5. Generate a 128-bit random nonce, `n`.
-6. Calculate [a commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm), designated `Q`.
-7. Encrypt the plaintext attribute using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
-8. Calculate the HMAC-SHA512 of `h || r || n || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key. 
+   `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`, with an output length of 256 bits.
+5. Calculate [a commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm), designated `Q`.
+6. Encrypt the plaintext attribute using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
+7. Calculate the HMAC-SHA512 of `h || r || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key. 
    Truncate the HMAC output to the rightmost 32 bytes (256 bits) to obtain `t`. This is equivalent to reducing
    the HMAC output modulo 2^{256}.
-9. Return `h || r || n || Q || t || c`.
+8. Return `h || r || Q || t || c`.
 
 Note: `len(x)` is defined as the big-endian encoding of the number of octets in the byte string `x`, treated as an
 unsigned 64-bit integer.
@@ -747,23 +747,23 @@ unsigned 64-bit integer.
 
 **Algorithm**:
 
-1.  Decompose input 1 into `h`, `r`, `n,`, `Q`, `t`, and `c`.
+1.  Decompose input 1 into `h`, `r`, `Q`, `t`, and `c`.
     * `h` is always 1 byte long
     * `r` is always 32 bytes long
-    * `n` is always 16 bytes long
     * `Q` is always 32 bytes long
     * `t` is always 32 bytes long
     * `c` is always variable (equal to the length of the plaintext)
 2.  Ensure `h` is equal to the expected version prefix (`0x01` currently). If it is not, return a decryption error.
 3.  Derive an authentication key, `Ak`, through HKDF-SHA512 with a NULL salt and an info string set to
     `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`, with an output length of 256 bits.
-4.  Recalculate the HMAC-SHA512 of `h || r || n || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key.
+4.  Recalculate the HMAC-SHA512 of `h || r || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key.
     Truncate the HMAC output to the rightmost 32 bytes (256 bits) to obtain `t2`. This is equivalent to reducing
     the HMAC output modulo 2^{256}.
 5.  Compare `t` with `t2`, using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
     If the two are not equal, return a decryption error.
-6.  Derive an encryption key, `Ek`, through HKDF-SHA512 with a NULL salt and an info string set to
-    `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 256 bits.
+6. Derive an encryption key, `Ek`, and nonce, `n`, through HKDF-SHA512 with a NULL salt and an info string set to
+   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 384 bits. The most significant
+   256 bits will be the encryption key, `Ek`, while the remaining 128 bits will be the nonce, `n`.
 7.  Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the Actor ID, `p`.
 8.  Recalculate [the commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm) to obtain  `Q2`.
 9.  Compare `Q` with `Q2` using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
