@@ -4,7 +4,7 @@ This document defines the FediE2EE-PKD (Fediverse End-to-End Encryption Public K
 ActivityPub-enabled directory server software, a protocol for communicating with the directory server, and integration
 with a transparent, append-only data structure (e.g., based on Merkle trees).
 
-* Current version: v0.0.1
+* Current version: v0.1.0
 * Authors: [Soatok Dreamseeker](https://github.com/soatok)
 
 ## Introduction
@@ -13,7 +13,7 @@ with a transparent, append-only data structure (e.g., based on Merkle trees).
 
 One of the challenges for building any cryptographic protocol in federated or peer-to-peer protocols is establishing
 some sort of identity for the other parties. This is as true of systems for signing Git commits as it is for 
-end-to-end encryption. 
+end-to-end encryption.
 
 This challenge is not unique to federated systems and is usually solved by some sort of Public Key Infrastructure (PKI).
 
@@ -639,6 +639,15 @@ validating an `RevokeAuxData` message are as follows:
 ### Gossip Protocol
 
 ### SigSum Integration
+
+## Auxiliary Data Extensions
+
+Auxiliary Data Extensions should be registered in [this GitHub repository](https://github.com/fedi-e2ee/fedi-pkd-extensions).
+
+Each extension should provide a list of input validation steps, which will vary based on the use-case. 
+
+The input validation steps specified by the extension will be performed by the Public Key Directory when parsing an
+`AddAuxData` message.
 
 ## Cryptography Protocols
 
