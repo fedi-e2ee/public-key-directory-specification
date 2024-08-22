@@ -257,10 +257,13 @@ de-risking our use case.
 
 ### Timestamps
 
-All timestamps must adhere to the rules defined in [RFC 9557](https://www.rfc-editor.org/rfc/rfc9557.html#name-examples),
-with one exception: A timezone suffix (e.g. `+02:00` or `[!Europe/London]`) **MUST** be supplied. 
+All timestamps must be a string representing a 64-bit UNIX Timestamp, encoded in base-10. For example, `"1724364843"`.
 
-This does not have to correspond to the user's physical location. Implementations **MAY** default to UTC.
+We choose strings here to allow implementations to parse it as a BigInt (or equivalent) in their respective programming
+language without the JSON parser automatically losing precision for large values (e.g., larger than 2^{53} in 
+JavaScript).
+
+Implementations **MUST NOT** truncate UNIX timestamps to 32 bits.
 
 ## Protocol Messages
 
