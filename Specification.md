@@ -712,7 +712,7 @@ unsigned 64-bit integer.
 
 **Output**:
 
-1. A compact binary string that represents an encrypted Actor ID.
+1. A compact binary string that represents an encrypted message attribute value (e.g. the Actor ID in `message.actor`).
 
 **Algorithm**:
 
@@ -764,7 +764,7 @@ unsigned 64-bit integer.
 6. Derive an encryption key, `Ek`, and nonce, `n`, through HKDF-SHA512 with a NULL salt and an info string set to
    `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 384 bits. The most significant
    256 bits will be the encryption key, `Ek`, while the remaining 128 bits will be the nonce, `n`.
-7.  Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the Actor ID, `p`.
+7.  Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the message attribute value, `p`.
 8.  Recalculate [the commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm) to obtain  `Q2`.
 9.  Compare `Q` with `Q2` using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
     If the two are not equal, return a decryption error.
