@@ -289,11 +289,13 @@ subsections of this document:
     Its contents may vary from action to action.
     */
   },
+  "recent-merkle-root": "", /* A recent Merkle root (if applicable) for a previous message. */ 
   /* A signature calculated over "@context", "action", and "message". */
   "signature": "",
   "symmetric-keys": {
     /* These are used to decrypt attributed in the "message" object. They are not signed.
-     * This feature also only exists for compliance purposes, not to accomplish security goals. */
+     * This feature also only exists for compliance purposes, not to accomplish security goals.
+     * These are disclosed to the server, but not echoed to clients. Instead, plaintext will be served back. */
   }
 }
 ```
@@ -684,12 +686,29 @@ The Argon2id salt is deliberately **NOT** collision-resistant, such that multipl
 The salt probability space (2^{48}) is large enough to not give an attacker any significant advantage with 
 precomputation, while still allowing multiple plaintexts to generate the same salt (birthday bound = 2^{24} attributes).
 
+We additionally include the Merkle root of a recent accepted Protocol Message when calculating this commitment. Which 
+root is selected **MUST** be stored alongside the ciphertext. By "recent", we strictly mean the following:
+
+1. Implementations **SHOULD** use the Merkle root of the most recent Protocol Message, if possible.
+2. If there are N accepted messages in the ledger, the selected Merkle root **MUST** be no more than log_2(N)^2 messages
+   old (rounded up to the nearest whole number).
+
+For example: When attempting to insert the 1,000,001th record, this means there are currently 1,000,000 accepted
+Protocol Messages stored in the Public Key Database. The 1,000,000th record is preferred (by rule 1 above).
+
+However, any message after 999,602 would be considered acceptable. Arithmetically, log_2(1,000,000)^2 squared is 397.26.
+We round up to a tolerance window of 398. 1,000,000 minus 398 is 999,602. So any record's Merkle root in that range is
+acceptable to use.
+
+For the first message in a PKD, the Merkle root can be set to a sequence of 32 `0x00` bytes.
+
 #### Message Attribute Plaintext Commitment Algorithm
 
 **Inputs**:
 
 1. Attribute name (e.g. `actor` from `message`), denoted `a`
 2. Plaintext (string, plaintext), denoted `p`
+3. The Merkle root of a recent accepted Protocol Message, `m`.
 
 **Output**:
 
@@ -699,7 +718,7 @@ precomputation, while still allowing multiple plaintexts to generate the same sa
 
 1. Set `k` to `0x04bda9c2f2702ba3d345521f553b5e6704604602574c15a58ed265436a541d70ff19c695534c064318975730774f442ede17bae55eb320f2081aa11989108466`,
    which is the SHA-512 hash of the ASCII string `"FediE2EE-v1-Compliance-Plaintext-Commitment"` (without quotes).
-2. Set `l` to `len(a) || a || len(p) || p`.
+2. Set `l` to `len(m) || m || len(a) || a || len(p) || p`.
 3. Calculate `HMAC-SHA-512(k, l)`. Truncate the output to the rightmost 48 bits (6 bytes). This is equivalent to
    reducing the result modulo 2^{48}. The output of this step will be denoted as `s`.
 4. Set `C` to the output of the Argon2id function with the following parameters:
@@ -719,8 +738,9 @@ unsigned 64-bit integer.
 **Inputs**:
 
 1. Attribute name (e.g. `actor` from `message`), denoted `a`
-2. Plaintext (string, plaintext)
-3. Input Key Material
+2. Plaintext (string, plaintext).
+3. Input Key Material.
+4. The Merkle root of a recent accepted Protocol Message, `m`.
 
 **Output**:
 
@@ -750,8 +770,9 @@ unsigned 64-bit integer.
 **Inputs**:
 
 1. Attribute name (e.g. `actor` from `message`), denoted `a`
-2. Ciphertext (string, ciphertext)
-3. Input Key Material
+2. Ciphertext (string, ciphertext).
+3. Input Key Material.
+4. The Merkle root of a recent accepted Protocol Message, `m`.
 
 **Output**:
 
@@ -759,12 +780,12 @@ unsigned 64-bit integer.
 
 **Algorithm**:
 
-1.  Decompose input 1 into `h`, `r`, `Q`, `t`, and `c`.
+1.  Decompose input 2 into `h`, `r`, `Q`, `t`, and `c`.
     * `h` is always 1 byte long
     * `r` is always 32 bytes long
     * `Q` is always 32 bytes long
     * `t` is always 32 bytes long
-    * `c` is always variable (equal to the length of the plaintext)
+    * `c` is always variable (equal to the length of the original plaintext)
 2.  Ensure `h` is equal to the expected version prefix (`0x01` currently). If it is not, return a decryption error.
 3.  Derive an authentication key, `Ak`, through HKDF-SHA512 with a NULL salt and an info string set to
     `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`, with an output length of 256 bits.
@@ -815,6 +836,24 @@ forgotten" request, the plaintext is effectively deleted.
 
 This allows operators to store these fields and honor such requests without having to violate the integrity of the
 underlying transparency log when a legal request comes in.
+
+#### Plaintext Commitment
+
+When the Public Key Directory has the symmetric key, it will respond to queries with both the ciphertext and the
+corresponding plaintext. In order to keep the PKD honest, the ciphertext includes a commitment to the plaintext. It
+should be computationally infeasible for a PKD to convincingly lie about the plaintext that produced a given ciphertext,
+even though the key is not being disclosed.
+
+To accomplish this, the commitment is a deterministic Argon2id KDF output where the password and salt are both based on
+the plaintext value, attribute name, and a recent Merkle root for a previously accepted Protocol Message. The salt
+consists of a 80-bit constant prefix combined with a 48-bit suffix derived from the HMAC of the inputs. The goal of this
+construction is to be completely deterministic based on public inputs (plaintext, attribute name, recent Merkle root),
+yet still difficult to perform offline dictionary attacks against (i.e., rainbow tables).
+
+The resulting plaintext commitment consists of a 208-bit Argon2id KDF output and the 48-bit salt suffix. This commitment
+is also covered by the authentication tag on the associated ciphertext, which is then committed to a new Merkle root.
+This gives no opportunity for the server to behave dishonestly about which plaintext corresponds to a committed
+ciphertext, outside complying with Right To Be Forgotten style legal demands.
 
 ### Revocation and Account Recovery
 
