@@ -14,10 +14,15 @@ class MessageEncryptor
     public function __construct(#[\SensitiveParameter] private string $ikm)
     {}
 
-    public static function plaintextCommitment(string $attributeName, string $value): string
+    public static function plaintextCommitment(string $attributeName, string $value, ?string $recentRoot = null): string
     {
+        if (is_null($recentRoot)) {
+            $recentRoot = str_repeat("\0", 3);
+        }
         $k = hash('sha512', self::PLAIN_COMMIT, true);
-        $l = self::len($attributeName) . $attributeName . self::len($value) . $value;
+        $l = self::len($recentRoot) . $recentRoot .
+             self::len($attributeName) . $attributeName .
+             self::len($value) . $value;
         $hmac = hash_hmac('sha512', $l, $k, true);
         $s = substr($hmac, -6, 6);
         $C = sodium_crypto_pwhash(
@@ -36,7 +41,8 @@ class MessageEncryptor
      */
     public function encrypt(
         string $attributeName,
-        string $plaintext
+        string $plaintext,
+        ?string $recentRoot = null
     ): string {
         $h = self::CURRENT_VERSION;
         $r = random_bytes(32);
@@ -44,7 +50,7 @@ class MessageEncryptor
         $encKey = substr($tmp, 0, 32);
         $n = substr($tmp, 32, 16);
         $macKey = hash_hkdf('sha512', $this->ikm, 32, self::INFO_AUTH . $h . $r . $attributeName);
-        $Q = self::plaintextCommitment($attributeName, $plaintext);
+        $Q = self::plaintextCommitment($attributeName, $plaintext, $recentRoot);
         $c = openssl_encrypt(
             $plaintext,
             'aes-256-ctr',
@@ -74,7 +80,8 @@ class MessageEncryptor
      */
     public function decrypt(
         string $attributeName,
-        string $ciphertext
+        string $ciphertext,
+        ?string $recentRoot = null
     ): string {
         $len = strlen($ciphertext);
         if ($len < 97) {
@@ -113,7 +120,7 @@ class MessageEncryptor
             OPENSSL_NO_PADDING | OPENSSL_RAW_DATA,
             $n
         );
-        $Q2 = self::plaintextCommitment($attributeName, $p);
+        $Q2 = self::plaintextCommitment($attributeName, $p, $recentRoot);
         if (!hash_equals($Q2, $Q)) {
             throw new Exception('Invalid plaintext commitment');
         }

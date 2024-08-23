@@ -27,4 +27,22 @@ class MessageEncryptorTest extends TestCase
         $this->assertTrue($failed, 'Decryption should have failed');
     }
 
+    public function testWithReentRoot()
+    {
+        $key = random_bytes(32);
+        $recentRoot = random_bytes(32);
+        $crypt = new MessageEncryptor($key);
+        $cipher = $crypt->encrypt('foo', 'bar', $recentRoot);
+        $plain = $crypt->decrypt('foo', $cipher, $recentRoot);
+        $this->assertSame('bar', $plain);
+
+        try {
+            $crypt->decrypt('foo', $cipher);
+            $failed = false;
+        } catch (\Exception) {
+            $failed = true;
+        }
+        $this->assertTrue($failed, 'Decryption should have failed without recent root');
+    }
+
 }
