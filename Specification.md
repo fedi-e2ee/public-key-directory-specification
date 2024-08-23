@@ -689,9 +689,13 @@ precomputation, while still allowing multiple plaintexts to generate the same sa
 We additionally include the Merkle root of a recent accepted Protocol Message when calculating this commitment. Which 
 root is selected **MUST** be stored alongside the ciphertext. By "recent", we strictly mean the following:
 
-1. Implementations **SHOULD** use the Merkle root of the most recent Protocol Message, if possible.
-2. If there are N accepted messages in the ledger, the selected Merkle root **MUST** be no more than log_2(N)^2 messages
-   old (rounded up to the nearest whole number).
+1. Clients are **RECOMMENDED** to use the Merkle root of the most recent Protocol Message.
+2. If there are N accepted messages in the ledger, the selected Merkle root **SHOULD** be no more than log_2(N)^2
+   messages old (rounded up to the nearest whole number). Public Key Directories **MUST NOT** reject messages newer than
+   this threshold on basis of staleness.
+3. To tolerate large transaction volumes in a short window of time, the chosen Merkle root **MUST** be at least in the 
+   most recent N/2 messages (for N currently accepted Protocol Messages). Public Key Directories **MAY** reject these
+   messages due to staleness, especially if the Directory isn't experiencing significant throughput.
 
 For example: When attempting to insert the 1,000,001th record, this means there are currently 1,000,000 accepted
 Protocol Messages stored in the Public Key Database. The 1,000,000th record is preferred (by rule 1 above).
