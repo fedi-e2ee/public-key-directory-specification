@@ -696,7 +696,7 @@ root is selected **MUST** be stored alongside the ciphertext. By "recent", we st
 For example: When attempting to insert the 1,000,001th record, this means there are currently 1,000,000 accepted
 Protocol Messages stored in the Public Key Database. The 1,000,000th record is preferred (by rule 1 above).
 
-However, any message after 999,602 would be considered acceptable. Arithmetically, log_2(1,000,000)^2 squared is 397.26.
+However, any message after 999,602 would be considered acceptable. Arithmetically, log_2(1,000,000) squared is 397.26.
 We round up to a tolerance window of 398. 1,000,000 minus 398 is 999,602. So any record's Merkle root in that range is
 acceptable to use.
 
