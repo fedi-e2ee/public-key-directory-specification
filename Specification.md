@@ -701,10 +701,10 @@ For example: When attempting to insert the 1,000,001th record, this means there 
 Protocol Messages stored in the Public Key Database. The 1,000,000th record is preferred (by rule 1 above).
 
 However, any message after 999,602 would be considered acceptable. Arithmetically, log_2(1,000,000) squared is 397.26.
-We round up to a tolerance window of 398. 1,000,000 minus 398 is 999,602. So any record's Merkle root in that range is
-acceptable to use.
+We round up to a tolerance window of 398. 1,000,000 minus 398 is 999,602. So any record's Merkle root corresponding to
+a message index in that range is acceptable to use.
 
-For the first message in a PKD, the Merkle root can be set to a sequence of 32 `0x00` bytes.
+For the first message in a PKD, the Merkle root **MUST** be set to a sequence of 32 `0x00` bytes.
 
 #### Message Attribute Plaintext Commitment Algorithm
 
