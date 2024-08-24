@@ -776,7 +776,7 @@ unsigned 64-bit integer.
 1. Attribute name (e.g. `actor` from `message`), denoted `a`
 2. Ciphertext (string, ciphertext).
 3. Input Key Material.
-4. The Merkle root of a recent accepted Protocol Message, `m`.
+4. The Merkle root from `recent-merkle-root` in the message , `m`.
 
 **Output**:
 
