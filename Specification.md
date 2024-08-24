@@ -500,7 +500,7 @@ validating an `BurnDown` message are as follows:
 
 1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
    return an error status.
-2. If this actor has ever issued a `Fireproof` message, abort.
+2. If this actor is fireproof, abort.
 3. If `symmetric-keys.operator` is provided, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
    decryption fails, return an error status.
 4. If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 6. If there is no
@@ -513,10 +513,7 @@ validating an `BurnDown` message are as follows:
 ### Fireproof
 
 Where `BurnDown` resets the state for a given Actor to allow account recovery, `Fireproof` opts out of
-this recovery mechanism entirely.
-
-The only way to un-fireproof an Actor is to use a Revocation token on their only Public Key. See
-[the relevant Security Considerations section](#revocation-and-account-recovery).
+this recovery mechanism entirely. See [the relevant Security Considerations section](#revocation-and-account-recovery).
 
 This message **MAY** be sent out-of-band to the Public Key Directory without the Fediverse server's involvement.
 
@@ -524,9 +521,11 @@ This message **MAY** be sent out-of-band to the Public Key Directory without the
 signature from the same Actor). It does not prevent users from having no valid public keys (i.e., if someone issues a
 `RevokeKeyThirdParty` against their only trusted public key.)
 
+If the user is already in Fireproof status, this message is rejected.
+
 #### Fireproof Attributes
 
-* `action` -- **string (Action Type)** (required): Must be set to `BurnDown`.
+* `action` -- **string (Action Type)** (required): Must be set to `Fireproof`.
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
       This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
@@ -539,6 +538,41 @@ signature from the same Actor). It does not prevent users from having no valid p
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `Fireproof` message are as follows:
+
+1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
+   return an error status.
+2. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public
+   key for this Actor with a matching `key-id`, return an error status.
+3. If a `key-id` was not provided, perform step 4 for each valid and trusted public key for this Actor until one
+   succeeds. If none of them do, return an error status.
+4. Validate the message signature for the given public key.
+5. If the signature is valid in step 4, process the message.
+
+### UndoFireproof
+
+This reverts the Fireproof status for a given Actor, re-enabling account recovery by instance administrators.
+
+`UndoFireproof` is intended to allow ActivityPub users a way to opt back into account recovery. By issuing one to the
+Public Key Directory server, a user accepts the risk of a malicious instance administrator issuing a `BurnDown` on their
+behalf.
+
+If the user is not in `Fireproof` status, this message is rejected.
+
+#### UndoFireproof Attributes
+
+* `action` -- **string (Action Type)** (required): Must be set to `UndoFireproof`.
+* `message` -- **map**
+    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
+      This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
+    * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
+* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `symmetric-keys` -- **map**
+    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
+
+#### UndoFireproof Validation Steps
+
+After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
+validating an `UndoFireproof` message are as follows:
 
 1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
    return an error status.
@@ -896,8 +930,9 @@ A malicious instance operator could use this to replace a user's public key with
 Therefore, we strongly recommend that independent third parties scrutinize any use of `BurnDown`.
 
 If users wish to opt out of being able to ever issue a `BurnDown`, they can issue a `Fireproof` at any time to turn this
-feature off. There is no way to reverse this opt-out. This is a deliberate design decision to enable power users to
-choose security over convenience, even if it risks losing access to their account if all their secret keys are lost.
+feature off. The only way to reverse this opt-out is to issue an `UndoFireproof` message, signed by one of the user's
+secret keys. This is a deliberate design decision to enable power users to choose security over convenience, without
+being forever locked out of convenience if their personal threat model changes.
 
 #### Position Statement From the Authors
 
