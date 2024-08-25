@@ -104,7 +104,7 @@ Each digital signature will be calculated over the following information:
 1. The value of the top-level `@context` attribute.
 2. The value of the top-level `action` attribute.
 3. The JSON serialization of the top-level `message` attribute.
-   Object keys **MUST** be sorted in ASCII byte order, and there **MUST** be no duplicate keys. 
+   Object keys **MUST** be sorted in ASCII byte order, and there **MUST** be no duplicate keys.
 
 To ensure domain separation, we will use [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition) function, with a tweak: We will insert the top-level
 key (`@context`, `action`, `message`) before each piece.
@@ -228,11 +228,12 @@ sensitive attributes (e.g., Actor ID):
 During insert, clients will provide both an encrypted representation of the Actor ID in `message.actor`, and disclose
 the accompanying key in the `symmetric-keys` attribute (outside of message, and not covered by the signature).
 
-When requesting data from the ledger, the Message will be returned as-is (i.e., ciphertext), along with the decrypted 
+When requesting data from the ledger, the Message will be returned as-is (i.e., ciphertext), along with the decrypted
 Message (provided the key has not been shredded yet).
 
 To ensure the link between the encrypted message and plaintext message is provable, clients will also generate and 
-publish a commitment of the plaintext. This prevents a server from serving a ciphertext and plaintext
+publish a commitment of the plaintext. This prevents a server from serving the wrong plaintext alongside a given
+ciphertext and fooling clients into believing it.
 
 The key is not included in the SigSum data, but stored alongside the record.
 
@@ -384,12 +385,13 @@ validating an `RevokeKey` message are as follows:
 1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an 
    error status.
 2. Using `symmetric-keys.public-key`, decrypt `message.public-key`. If the decryption fails, return an error status.
-3. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public 
+3. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public 
    key for this Actor with a matching `key-id`, return an error status.
-4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
+5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-5. Validate the message signature for the given public key.
-6. If the signature is valid in step 5, process the message.
+6. Validate the message signature for the given public key.
+7. If the signature is valid in step 6, process the message.
 
 ### RevokeKeyThirdParty
 
@@ -458,12 +460,14 @@ validating an `MoveIdentity` message are as follows:
    return an error status.
 2. Using `symmetric-keys.new-actor`, decrypt `message.new-actor` to obtain the New Actor ID. If the decryption fails,
    return an error status.
-3. If the `key-id` is provided, select this public key for the Old Actor and proceed to step 5. If there is no public
+3. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.old-actor`,
+   abort.
+4. If the `key-id` is provided, select this public key for the Old Actor and proceed to step 6. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
+5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-5. Validate the message signature for the given public key.
-6. If the signature is valid in step 5, process the message.
+6. Validate the message signature for the given public key.
+7. If the signature is valid in step 6, process the message.
 
 ### BurnDown
 
@@ -499,15 +503,16 @@ validating an `BurnDown` message are as follows:
 
 1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
    error status.
-2. If this actor is fireproof, abort.
-3. Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
+2. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+3. If this actor is fireproof, abort.
+4. Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
    decryption fails, return an error status.
-4. If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 6. If there is no
+5. If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 7. If there is no
    public key for this Actor with a matching `key-id`, return an error status.
-5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor (Operator) until
+6. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor (Operator) until
    one succeeds. If none of them do, return an error status.
-6. Validate the message signature for the given public key.
-7. If the signature is valid in step 6, process the message.
+7. Validate the message signature for the given public key.
+8. If the signature is valid in step 7, process the message.
 
 ### Fireproof
 
@@ -540,12 +545,13 @@ validating an `Fireproof` message are as follows:
 
 1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
    error status.
-2. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public
+2. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+3. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-3. If a `key-id` was not provided, perform step 4 for each valid and trusted public key for this Actor until one
+4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-4. Validate the message signature for the given public key.
-5. If the signature is valid in step 4, process the message.
+5. Validate the message signature for the given public key.
+6. If the signature is valid in step 5, process the message.
 
 ### UndoFireproof
 
@@ -575,12 +581,13 @@ validating an `UndoFireproof` message are as follows:
 
 1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
    error status.
-2. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public
+2. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+3. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-3. If a `key-id` was not provided, perform step 4 for each valid and trusted public key for this Actor until one
+4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-4. Validate the message signature for the given public key.
-5. If the signature is valid in step 4, process the message.
+5. Validate the message signature for the given public key.
+6. If the signature is valid in step 5, process the message.
 
 ### AddAuxData
 
@@ -615,12 +622,13 @@ validating an `AddAuxData` message are as follows:
 2. Using `symmetric-keys.aux-data`, decrypt `message.aux-data`. If the decryption fails, return an error status.
 3. If `message.aux-type` does not match any of the identifiers for supported Auxiliary Data extensions for this Public 
    Key Directory, abort.
-4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 6. If there is no public
+4. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+5. If the `key-id` is provided, select this public key for the given Actor and proceed to step 7. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
+6. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-6. Validate the message signature for the given public key.
-7. If the signature is valid in step 6, validate the contents of `message.aux-data` in accordance to the rules defined
+7. Validate the message signature for the given public key.
+8. If the signature is valid in step 7, validate the contents of `message.aux-data` in accordance to the rules defined
    in the extension for the given `message.aux-type`. Otherwise, return an error status.
 
 ### RevokeAuxData
@@ -651,19 +659,20 @@ Note that either `message.auth-data` **OR** `message.aux-id` is required in orde
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `RevokeAuxData` message are as follows:
 
-1. Using `symmetric-keys.actor, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
-   return an error status.
-2. If `symmetric-keys.aux-data` is provided, decrypt `message.aux-data`. If the decryption fails, return an error
-   status. If a plaintext `message.aux-data` is provided without a symmetric key, abort.
-3. If `message.aux-id` is provided, proceed to step 5.
-4. Otherwise, if `message.aux-data` is provided, recalculate the expected `aux-id`, then proceed to step 5.
-5. If there is no existing Auxiliary Data with a matching `aux-id` (whether provided or calculated), abort.
-6. If the `key-id` is provided, select this public key for the given Actor and proceed to step 8. If there is no public
-   key for this Actor with a matching `key-id`, return an error status.
-7. If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor until one
-   succeeds. If none of them do, return an error status.
-8. Validate the message signature for the given public key.
-9. If the signature is valid in step 8, proceed with the revocation of the Auxiliary Data for this Actor.
+1.  Using `symmetric-keys.actor, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
+    return an error status.
+2.  If `symmetric-keys.aux-data` is provided, decrypt `message.aux-data`. If the decryption fails, return an error
+    status. If a plaintext `message.aux-data` is provided without a symmetric key, abort.
+3.  If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+4.  If `message.aux-id` is provided, proceed to step 7.
+5.  Otherwise, if `message.aux-data` is provided, recalculate the expected `aux-id`, then proceed to step 7.
+6.  If there is no existing Auxiliary Data with a matching `aux-id` (whether provided or calculated), abort.
+7.  If the `key-id` is provided, select this public key for the given Actor and proceed to step 8. If there is no public
+    key for this Actor with a matching `key-id`, return an error status.
+8.  If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor until one
+    succeeds. If none of them do, return an error status.
+9.  Validate the message signature for the given public key.
+10. If the signature is valid in step 9, proceed with the revocation of the Auxiliary Data for this Actor.
 
 ## The Federated Public Key Directory
 
@@ -848,6 +857,28 @@ Note: `len(x)` is defined as the big-endian encoding of the number of octets in 
 unsigned 64-bit integer.
 
 ## Security Considerations
+
+### Rules For Cryptography Implementors
+
+All implementations of cryptographic primitives (i.e., AES) must be resistant to side-channel attacks and use the
+strictest possible validation criteria.
+
+For randomness and entropy, the Operating System's Cryptographic Random Number Generator must be used. On Linux systems,
+the `getrandom2)` syscall or `/dev/urandom` device is acceptable. Userspace random number generators (e.g., OpenSSL's
+`RAND_bytes()`) **MUST NOT** be used.
+
+For AES, this means only supporting hardware acceleration or constant-time, bitsliced software implementations.
+
+For Ed25519, this means rejecting low-order public keys or non-canonical signatures.
+
+For Argon2id, this means that at least one of the rounds must use data-independent memory addresses. It's acceptable if
+one or more rounds uses data-dependent memory addresses to improve GPU attack resistance.
+
+When base64url-encoding a non-secret value, there is no expectation of constant-time behavior. However, if the data
+being encoded or decoded is a secret (e.g., plaintext or cryptography key), the codec **MUST** be implemented in
+constnat-time.
+
+When comparing cryptographic outputs, a constant-time comparison **MUST** always be used.
 
 ### Cryptographic Agility
 
