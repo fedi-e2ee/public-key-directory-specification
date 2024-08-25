@@ -44,8 +44,8 @@ To that end, we hope to build a PKI for the Fediverse primarily focused on trans
 
 The primary use case is to support End-to-End Encryption for ActivityPub direct messages between users.
 
-However, we also want to support developers seeking supplemental use cases (e.g., exchanging [age](https://github.com/FiloSottile/age) public keys for 
-encrypted file sharing).
+However, we also want to support developers seeking supplemental use cases (e.g., exchanging [age](https://github.com/FiloSottile/age)
+public keys for encrypted file sharing).
 
 ### This Document
 
@@ -106,8 +106,8 @@ Each digital signature will be calculated over the following information:
 3. The JSON serialization of the top-level `message` attribute.
    Object keys **MUST** be sorted in ASCII byte order, and there **MUST** be no duplicate keys.
 
-To ensure domain separation, we will use [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition) function, with a tweak: We will insert the top-level
-key (`@context`, `action`, `message`) before each piece.
+To ensure domain separation, we will use [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)
+function, with a tweak: We will insert the top-level key (`@context`, `action`, `message`) before each piece.
 
 For example, a Python function might look like this:
 
@@ -306,6 +306,16 @@ Some protocol messages **SHOULD** also include a top level `"key-id"` attribute,
 one of many public keys to validate the signature. If no `key-id` is provided, each valid public key **MAY** be tried.
 
 The following subsections each describe a different Protocol Message type.
+
+* [`AddKey`](#addkey): Add a new public key for a given Actor
+* [`RevokeKey`](#revokekey): Revoke a public key
+* [`RvokeKeyThirdParty`](#revokekeythirdparty): A mechanism for independent third parties to revoke compromised keys
+* [`MoveIdentity`](#moveidentity): Move all existing public keys and auxiliary data to a new Actor ID.
+* [`BurnDown`](#burndown): A mechanism for account recovery.
+* [`Fireproof`](#fireproof): Opt out of `BurnDown`.
+* [`UndoFireproof`](#undofireproof): Opt back into `BurnDown`.
+* [`AddAuxData`](#addauxdata): Add auxiliary data (e.g. public keys for other protocols).
+* [`RevokeAuxData`](#revokeauxdata): Revoke auxiliary data.
 
 ### AddKey
 
@@ -864,7 +874,7 @@ All implementations of cryptographic primitives (i.e., AES) must be resistant to
 strictest possible validation criteria.
 
 For randomness and entropy, the Operating System's Cryptographic Random Number Generator must be used. On Linux systems,
-the `getrandom2)` syscall or `/dev/urandom` device is acceptable. Userspace random number generators (e.g., OpenSSL's
+the `getrandom(2)` syscall or `/dev/urandom` device is acceptable. Userspace random number generators (e.g., OpenSSL's
 `RAND_bytes()`) **MUST NOT** be used.
 
 For AES, this means only supporting hardware acceleration or constant-time, bitsliced software implementations.
