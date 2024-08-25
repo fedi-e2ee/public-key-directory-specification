@@ -740,7 +740,7 @@ a message index in that range is acceptable to use by rule 2.
 However, if there is an enormous spike in traffic, Public Key Directories **MAY** tolerate as far back as 500,000,
 provided no two Protocol Messages from the same actor reuse the same "recent" Merkle root.
 
-For the first message in a PKD, the Merkle root **MUST** be set to a sequence of 32 `0x00` bytes.
+For the first message in a PKD, the "recent" Merkle root **MUST** be set to a sequence of 32 `0x00` bytes.
 
 #### Message Attribute Plaintext Commitment Algorithm
 
