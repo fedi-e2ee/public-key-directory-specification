@@ -864,7 +864,7 @@ All implementations of cryptographic primitives (i.e., AES) must be resistant to
 strictest possible validation criteria.
 
 For randomness and entropy, the Operating System's Cryptographic Random Number Generator must be used. On Linux systems,
-the `getrandom2)` syscall or `/dev/urandom` device is acceptable. Userspace random number generators (e.g., OpenSSL's
+the `getrandom(2)` syscall or `/dev/urandom` device is acceptable. Userspace random number generators (e.g., OpenSSL's
 `RAND_bytes()`) **MUST NOT** be used.
 
 For AES, this means only supporting hardware acceleration or constant-time, bitsliced software implementations.
