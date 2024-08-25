@@ -83,7 +83,7 @@ The key words "**MUST**", "**MUST NOT**", "**REQUIRED**", "**SHALL**", "**SHALL 
 ### Identity Binding
 
 This project will map ActivityPub Actor IDs to a set of one or more Public Keys. Optionally, some number of
-Auxiliary Data records may also be supported, in order for other protocols to build atop the Public Key Directory(PKD).
+Auxiliary Data records may also be supported, in order for other protocols to build atop the Public Key Directory (PKD).
 
 The task of resolving aliases to Actor IDs is left to the client software.
 
@@ -126,7 +126,7 @@ def signPayload(secret_key, payload):
 
 ### Key Identifiers
 
-Every time an `AddKey` message is accepted by the Public Key Directory, it will generate a 256-bit random unique 
+Every time an `AddKey` message is accepted by the Public Key Directory, the PKD will generate a 256-bit random unique 
 `key-id` for that public key. This value is not secret or sensitive in any way, and is only used to point to an existing
 public key to reduce the amount of rejected signatures software must publish.
 
@@ -325,25 +325,22 @@ Signatures.
 
 * `action` -- **string (Action Type)** (required): Must be set to `AddKey`.
 * `message` -- **map**
-  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-    This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
+  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
-  * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
-    This may be encrypted (if `symmetric-keys.public-key` is set at the time of creation).
+  * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding). Encrypted.
 * `key-id` -- **string (Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
 * `symmetric-keys` -- **map**
-  * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
-  * `public-key` -- **string (Cryptography key)** (optional): The key used to encrypt `message.public-key`.
+  * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
+  * `public-key` -- **string (Cryptography key)** (required): The key used to encrypt `message.public-key`.
 
 #### AddKey Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `AddKey` message are as follows:
 
-1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
-   return an error status.
-2. If `symmetric-keys.public-key` is provided, decrypt `message.public-key`. If the decryption fails,
-   return an error status.
+1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+   error status.
+2. Using `symmetric-keys.public-key`, decrypt `message.public-key`. If the decryption fails, return an error status.
 3. If there are no other public keys for the provided Actor, use the given public key (it is self-signed) and go to 
    step 6. If the signature is invalid, return an error status.
 4. Otherwise, if the `key-id` is provided, select this public key for the given Actor. If there is no public key for
@@ -368,29 +365,28 @@ See [BurnDown](#burndown) for clearing all keys and starting over (unless [Firep
 
 * `action` -- **string (Action Type)** (required): Must be set to `RevokeKey`.
 * `message` -- **map**
-  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-    This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
+  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
-  * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding).
-    This may be encrypted (if `symmetric-keys.public-key` is set at the time of creation).
+  * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding). Encrypted.
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
 * `symmetric-keys` -- **map**
-    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
-    * `public-key` -- **string (Cryptography key)** (optional): The key used to encrypt `message.public-key`.
+    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
+    * `public-key` -- **string (Cryptography key)** (required): The key used to encrypt `message.public-key`.
 
 #### RevokeKey Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `RevokeKey` message are as follows:
 
-1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, 
-   return an error status.
-2. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public 
+1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an 
+   error status.
+2. Using `symmetric-keys.public-key`, decrypt `message.public-key`. If the decryption fails, return an error status.
+3. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public 
    key for this Actor with a matching `key-id`, return an error status.
-3. If a `key-id` was not provided, perform step 4 for each valid and trusted public key for this Actor until one
+4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-4. Validate the message signature for the given public key.
-5. If the signature is valid in step 4, process the message.
+5. Validate the message signature for the given public key.
+6. If the signature is valid in step 5, process the message.
 
 ### RevokeKeyThirdParty
 
@@ -441,25 +437,23 @@ This message **MUST** be rejected if there are existing public keys for the targ
 
 * `action` -- **string (Action Type)** (required): Must be set to `MoveIdentity`.
 * `message` -- **map**
-    * `old-actor` -- **string (Actor ID)** (required): Who is being moved.
-      This may be encrypted (if `symmetric-keys.old-actor` is set at the time of creation).
-    * `new-actor` -- **string (Actor ID)** (required): Their new Actor ID.
-      This may be encrypted (if `symmetric-keys.new-actor` is set at the time of creation).
+    * `old-actor` -- **string (Actor ID)** (required): Who is being moved. Encrypted.
+    * `new-actor` -- **string (Actor ID)** (required): Their new Actor ID. Encrypted.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `symmetric-keys` -- **map**
-    * `old-actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.old-actor`.
-    * `new-actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.new-actor`.
+    * `old-actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.old-actor`.
+    * `new-actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.new-actor`.
 
 #### MoveIdentity Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `MoveIdentity` message are as follows:
 
-1. If `symmetric-keys.old-actor` is provided, decrypt `message.old-actor` to obtain the Old Actor ID. If the decryption
-   fails, return an error status.
-2. If `symmetric-keys.new-actor` is provided, decrypt `message.new-actor` to obtain the New Actor ID. If the decryption
-   fails, return an error status.
+1. Using `symmetric-keys.old-actor`, decrypt `message.old-actor` to obtain the Old Actor ID. If the decryption fails,
+   return an error status.
+2. Using `symmetric-keys.new-actor`, decrypt `message.new-actor` to obtain the New Actor ID. If the decryption fails,
+   return an error status.
 3. If the `key-id` is provided, select this public key for the Old Actor and proceed to step 5. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
 4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
@@ -469,8 +463,8 @@ validating an `MoveIdentity` message are as follows:
 
 ### BurnDown
 
-A `BurnDown` message acts as a soft delete for all public keys and auxiliary data for a given Actor, unless they have
-previously issued a `Fireproof` message to disable this account recovery mechanism.
+A `BurnDown` message acts as a soft delete for all public keys and auxiliary data for a given Actor, unless they are
+under the effect of [Fireproof](#fireproof).
 
 Unlike most Fediverse messages, a `BurnDown` is issued by an operator account on the Fediverse instance that hosts the
 Actor in question. Servers are responsible for ensuring only trusted administrators are permitted to issue `BurnDown`
@@ -483,25 +477,25 @@ This allows a user to issue a self-signed `AddKey` and start over.
 * `action` -- **string (Action Type)** (required): Must be set to `BurnDown`.
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user that is being
-      This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
+      burned down. Encrypted.
     * `operator` -- **string (Actor ID)** (required): The instance operator that is issuing the `BurnDown` on behalf
-      of the user. This may be encrypted (if `symmetric-keys.operator` is set at the time of creation).
+      of the user. Encrypted.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `symmetric-keys` -- **map**
-    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
-    * `operator` -- **string (Cryptography key)** (optional): The key used to encrypt `message.operator`.
-    * `public-key` -- **string (Cryptography key)** (optional): The key used to encrypt `message.public-key`.
+    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
+    * `operator` -- **string (Cryptography key)** (required): The key used to encrypt `message.operator`.
+    * `public-key` -- **string (Cryptography key)** (required): The key used to encrypt `message.public-key`.
 
 #### BurnDown Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `BurnDown` message are as follows:
 
-1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
-   return an error status.
+1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+   error status.
 2. If this actor is fireproof, abort.
-3. If `symmetric-keys.operator` is provided, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
+3. Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
    decryption fails, return an error status.
 4. If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 6. If there is no
    public key for this Actor with a matching `key-id`, return an error status.
@@ -512,8 +506,8 @@ validating an `BurnDown` message are as follows:
 
 ### Fireproof
 
-Where `BurnDown` resets the state for a given Actor to allow account recovery, `Fireproof` opts out of
-this recovery mechanism entirely. See [the relevant Security Considerations section](#revocation-and-account-recovery).
+Where `BurnDown` resets the state for a given Actor to allow account recovery, `Fireproof` opts out of this recovery 
+mechanism entirely. See [the relevant Security Considerations section](#revocation-and-account-recovery).
 
 This message **MAY** be sent out-of-band to the Public Key Directory without the Fediverse server's involvement.
 
@@ -527,20 +521,19 @@ If the user is already in Fireproof status, this message is rejected.
 
 * `action` -- **string (Action Type)** (required): Must be set to `Fireproof`.
 * `message` -- **map**
-    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-      This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
+    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `symmetric-keys` -- **map**
-    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
+    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
 
 #### Fireproof Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `Fireproof` message are as follows:
 
-1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
-   return an error status.
+1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+   error status.
 2. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
 3. If a `key-id` was not provided, perform step 4 for each valid and trusted public key for this Actor until one
@@ -562,20 +555,19 @@ If the user is not in `Fireproof` status, this message is rejected.
 
 * `action` -- **string (Action Type)** (required): Must be set to `UndoFireproof`.
 * `message` -- **map**
-    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-      This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
+    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `symmetric-keys` -- **map**
-    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
+    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
 
 #### UndoFireproof Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `UndoFireproof` message are as follows:
 
-1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
-   return an error status.
+1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+   error status.
 2. If the `key-id` is provided, select this public key for the given Actor and proceed to step 4. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
 3. If a `key-id` was not provided, perform step 4 for each valid and trusted public key for this Actor until one
@@ -594,28 +586,25 @@ relevant extension, and the data provided conforms to whatever validation criter
 
 * `action` -- **string (Action Type)** (required): Must be set to `AddAuxData`.
 * `message` -- **map**
-  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
-    This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
+  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
-  * `aux-data` -- **string** (required): The auxiliary data.
-    This may be encrypted (if `symmetric-keys.aux-data` is set at the time of creation).
+  * `aux-data` -- **string** (required): The auxiliary data. Encrypted.
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
     the server will validate that the aux-id is valid for the given type and data. 
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the Aux Data.
 * `symmetric-keys` -- **map**
-    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
-    * `aux-data` -- **string (Cryptography key)** (optional): The key used to encrypt `message.aux-data`.
+    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
+    * `aux-data` -- **string (Cryptography key)** (required): The key used to encrypt `message.aux-data`.
 
 #### AddAuxData Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `AddAuxData` message are as follows:
 
-1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
-   return an error status.
-2. If `symmetric-keys.aux-data` is provided, decrypt `message.aux-data`. If the decryption fails, return an error
-   status.
+1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an 
+   error status.
+2. Using `symmetric-keys.aux-data`, decrypt `message.aux-data`. If the decryption fails, return an error status.
 3. If `message.aux-type` does not match any of the identifiers for supported Auxiliary Data extensions for this Public 
    Key Directory, abort.
 4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 6. If there is no public
@@ -637,14 +626,13 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user.
     This may be encrypted (if `symmetric-keys.actor` is set at the time of creation).
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
-  * `aux-data` -- **string** (optional): The auxiliary data.
-    This may be encrypted (if `symmetric-keys.aux-data` is set at the time of creation).
+  * `aux-data` -- **string** (optional): The auxiliary data. Encrypted.
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
     the server will validate that the aux-id is valid for the given type and data.
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
 * `symmetric-keys` -- **map**
-    * `actor` -- **string (Cryptography key)** (optional): The key used to encrypt `message.actor`.
+    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
     * `aux-data` -- **string (Cryptography key)** (optional): The key used to encrypt `message.aux-data`.
 
 Note that either `message.auth-data` **OR** `message.aux-id` is required in order for revocation to succeed.
@@ -654,10 +642,10 @@ Note that either `message.auth-data` **OR** `message.aux-id` is required in orde
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `RevokeAuxData` message are as follows:
 
-1. If `symmetric-keys.actor` is provided, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
+1. Using `symmetric-keys.actor, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
    return an error status.
 2. If `symmetric-keys.aux-data` is provided, decrypt `message.aux-data`. If the decryption fails, return an error
-   status.
+   status. If a plaintext `message.aux-data` is provided without a symmetric key, abort.
 3. If `message.aux-id` is provided, proceed to step 5.
 4. Otherwise, if `message.aux-data` is provided, recalculate the expected `aux-id`, then proceed to step 5.
 5. If there is no existing Auxiliary Data with a matching `aux-id` (whether provided or calculated), abort.
@@ -849,9 +837,9 @@ unsigned 64-bit integer.
 ### Cryptographic Agility
 
 The cryptographic components specified by the initial version of this specification are
-[Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) (which includes SHA-512 internally), SHA-256, and AES-256.
-SHA-256 is used by SigSum, as well as for key derivation and message authentication (via HKDF an HMAC respectively)
-for Actor ID encryption. The actual Actor IDs will be encrypted with AES-256 in Counter Mode.
+[Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) (which includes SHA-512 internally), SHA-256, Argon2id, and 
+AES-256. SHA-256 is used by SigSum, as well as for key derivation and message authentication (via HKDF an HMAC 
+respectively) for Actor ID encryption. The actual Actor IDs will be encrypted with AES-256 in Counter Mode.
 
 Future versions of this specification should make an effort to minimize the amount of complexity for implementors.
 To that end, cryptographic agility will only be satisfied by the introduction of new protocol versions, rather than
@@ -902,7 +890,7 @@ keys. Thus, their instance being able to issue a [`BurnDown`](#burndown) is esse
 account recovery.
 
 Other users may expect a higher degree of security, and may wish to opt out of this `BurnDown` capability from their
-Fediverse instance. Once they have opted out, there is no way to undo opting out. It's a one-way door to prevent misuse.
+Fediverse instance. Once they have opted out, the only way to undo opting out is by issuing an `UndoFireproof`.
 
 [`RevokeKeyThirdParty`](#revokekeythirdparty) is an emergency feature that allows anyone to pull the plug on a 
 compromised identity key. Every time one is issued, the community should pay close attention to the Actor affected by it.
