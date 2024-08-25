@@ -329,6 +329,7 @@ Signatures.
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding). Encrypted.
 * `key-id` -- **string (Key Identifier)** (optional): See [Key Identifiers](#key-identifiers)
+* `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
   * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
   * `public-key` -- **string (Cryptography key)** (required): The key used to encrypt `message.public-key`.
@@ -369,6 +370,7 @@ See [BurnDown](#burndown) for clearing all keys and starting over (unless [Firep
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
   * `public-key` -- **string (Public Key)** (required): The [encoded public key](#public-key-encoding). Encrypted.
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
+* `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
     * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
     * `public-key` -- **string (Cryptography key)** (required): The key used to encrypt `message.public-key`.
@@ -440,7 +442,8 @@ This message **MUST** be rejected if there are existing public keys for the targ
     * `old-actor` -- **string (Actor ID)** (required): Who is being moved. Encrypted.
     * `new-actor` -- **string (Actor ID)** (required): Their new Actor ID. Encrypted.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
-* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
+* `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
     * `old-actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.old-actor`.
     * `new-actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.new-actor`.
@@ -481,7 +484,8 @@ This allows a user to issue a self-signed `AddKey` and start over.
     * `operator` -- **string (Actor ID)** (required): The instance operator that is issuing the `BurnDown` on behalf
       of the user. Encrypted.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
-* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
+* `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
     * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
     * `operator` -- **string (Cryptography key)** (required): The key used to encrypt `message.operator`.
@@ -523,7 +527,8 @@ If the user is already in Fireproof status, this message is rejected.
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
-* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
+* `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
     * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
 
@@ -557,7 +562,8 @@ If the user is not in `Fireproof` status, this message is rejected.
 * `message` -- **map**
     * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
-* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
+* `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
     * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
 
@@ -592,7 +598,8 @@ relevant extension, and the data provided conforms to whatever validation criter
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
     the server will validate that the aux-id is valid for the given type and data. 
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
-* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the Aux Data.
+* `key-id` -- **string (Key Identifier)** (optional): The key that is signing the Aux Data.
+* `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
     * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
     * `aux-data` -- **string (Cryptography key)** (required): The key used to encrypt `message.aux-data`.
@@ -630,7 +637,8 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
   * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
     the server will validate that the aux-id is valid for the given type and data.
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
-* `key-id` -- **string(Key Identifier)** (optional): The key that is signing the revocation.
+* `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
+* `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
     * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
     * `aux-data` -- **string (Cryptography key)** (optional): The key used to encrypt `message.aux-data`.
@@ -707,6 +715,8 @@ We use Argon2id to make brute-force attacks impractical.
 The Argon2id salt is deliberately **NOT** collision-resistant, such that multiple plaintexts can produce the same salt.
 The salt probability space (2^{48}) is large enough to not give an attacker any significant advantage with 
 precomputation, while still allowing multiple plaintexts to generate the same salt (birthday bound = 2^{24} attributes).
+
+#### Recent Merkle Root Included in Plaintext Commitments
 
 We additionally include the Merkle root of a recent accepted Protocol Message when calculating this commitment. Which 
 root is selected **MUST** be stored alongside the ciphertext. By "recent", we strictly mean the following:
