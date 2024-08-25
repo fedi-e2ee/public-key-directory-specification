@@ -727,14 +727,18 @@ root is selected **MUST** be stored alongside the ciphertext. By "recent", we st
    this threshold on basis of staleness.
 3. To tolerate large transaction volumes in a short window of time, the chosen Merkle root **MUST** be at least in the 
    most recent N/2 messages (for N currently accepted Protocol Messages). Public Key Directories **MAY** reject these
-   messages due to staleness, especially if the Directory isn't experiencing significant throughput.
+   messages due to staleness, especially if the Directory isn't experiencing significant throughput, or if an Actor
+   submits multiple Protocol Messages tied to a Merkle root too old to satisfy rule 2.
 
 For example: When attempting to insert the 1,000,001th record, this means there are currently 1,000,000 accepted
 Protocol Messages stored in the Public Key Database. The 1,000,000th record is preferred (by rule 1 above).
 
 However, any message after 999,602 would be considered acceptable. Arithmetically, log_2(1,000,000) squared is 397.26.
 We round up to a tolerance window of 398. 1,000,000 minus 398 is 999,602. So any record's Merkle root corresponding to
-a message index in that range is acceptable to use.
+a message index in that range is acceptable to use by rule 2.
+
+However, if there is an enormous spike in traffic, Public Key Directories **MAY** tolerate as far back as 500,000,
+provided no two Protocol Messages from the same actor reuse the same "recent" Merkle root.
 
 For the first message in a PKD, the Merkle root **MUST** be set to a sequence of 32 `0x00` bytes.
 
