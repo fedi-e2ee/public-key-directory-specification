@@ -289,8 +289,9 @@ subsections of this document:
     Its contents may vary from action to action.
     */
   },
-  "recent-merkle-root": "", /* A recent Merkle root (if applicable) for a previous message. */ 
-  /* A signature calculated over "@context", "action", and "message". */
+  /* A recent Merkle root (if applicable) for a previous message: */
+  "recent-merkle-root": "", 
+  /* A signature calculated over "@context", "action", and "message": */
   "signature": "",
   "symmetric-keys": {
     /* These are used to decrypt attributed in the "message" object. They are not signed.
