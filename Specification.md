@@ -266,6 +266,32 @@ JavaScript).
 
 Implementations **MUST NOT** truncate UNIX timestamps to 32 bits.
 
+## Threat Model
+
+In order to understand the security goals of this system, it is important to assess our assumptions, assets, actors, and
+the risks; both the risks that this system is designed to mitigate and the ones it cannot.
+
+### Assumptions
+
+1. The operating system's random number generator is secure.
+2. The hardware that our software is running on has not been tampered with to render its operation insecure.
+3. The elliptic curve discrete logarithm problem is computationally hard.
+4. The SHA-2 family of hash functions (SHA-256, SHA-384, SHA-512) are secure.
+5. HMAC, used with a SHA-2 family hash function, offers PRF security congruent to the size of the hash function.
+6. AES is a secure block cipher (which can be modeled as a secure permutation) that offers a security level congruent to 
+   the length of its key.
+7. EdDSA, as defined over the Edwards25519 curve, provides secure existential forgery under chosen message attack
+   (SUF-CMA) security, at a security level in excess of 120 bits.
+8. Argon2id is a secure, memory-hard password-based key derivation function.
+9. HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
+   security (which is a stronger notion than PRF security that makes no assumptions about the distribution of IKM bits).
+
+### Assets
+
+### Actors
+
+### Risks
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
