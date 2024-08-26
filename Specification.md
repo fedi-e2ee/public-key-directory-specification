@@ -288,9 +288,37 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 
 ### Assets
 
+1. JSON REST API, available over HTTPS.
+2. ActivityPub integration.
+3. SigSum integration.
+4. Shreddable symmetric-key storage.
+5. Local relational database.
+6. Mapping of Actor IDs to associated data.
+   * Public Keys
+   * Auxiliary Data
+7. ActivityPub instance software. (**Out of scope.**)
+8. Client-side software. (**Out of scope.**)
+
 ### Actors
 
+1. **Honest users** that wish to communicate. We will use four examples when discussing threats. 
+   * **Alice**
+   * **Bob**
+   * **Carol**
+   * **Dave**
+2. **Attackers** are motivated individuals that seek to damage or impair the normal operation of the system.
+   * **Harry** is a cyber-stalker that seeks to harass one or more of the honest users.
+   * **Karen** is a Troy that pretends to be a Eugene and goes directly to the legal system to cause operator distress.
+   * **Mallory** wishes to replace one of the honest users' public keys with her own.
+   * **Richard** is an instance administrator that wishes to eavesdrop on his users' private communications.
+   * **Troy** is an Internet troll that wants to wreak havoc for the lulz.
+3. **Other Participants** do not fall into either of the previous attackers.
+   * **Eugene** used to be an honest user, but now seeks to have the system forget he ever existed. When Eugene is
+     secretly actually a Troy that escalates to the legal system early, we consider them Karen instead.
+
 ### Risks
+
+
 
 ## Protocol Messages
 
