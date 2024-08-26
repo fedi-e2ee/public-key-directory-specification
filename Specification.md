@@ -301,11 +301,15 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 
 ### Actors
 
+In this section, Actors does not refer specifically to ActivityPub Actors. Rather, they are placeholders for 
+participants in our system. This includes legitimate users and various types of attackers. These actors' names are
+defined in alphabetical order within each classification.
+
 1. **Honest users** that wish to communicate. We will use four examples when discussing threats. 
-   * **Alice**
-   * **Bob**
-   * **Carol**
-   * **Dave**
+   * **Alice** is a Fediverse user and instance administrator.
+   * **Bob** is a Fediverse user hosted by Alice's instance.
+   * **Carol** is a self-hosted Fediverse user who runs her own instance.
+   * **Dave** is a Fediverse user on Richard's instance. (Richard is defined below.)
 2. **Attackers** are motivated individuals that seek to damage or impair the normal operation of the system.
    * **Harry** is a cyber-stalker that seeks to harass one or more of the honest users.
    * **Karen** is a Troy (defined below) that pretends to be a Eugene and goes directly to the legal system to cause
@@ -315,7 +319,7 @@ the risks; both the risks that this system is designed to mitigate and the ones 
    * **Troy** is an Internet troll that wants to wreak havoc for the lulz.
 3. **Other Participants** do not fall into either of the previous attackers.
    * **Eugene** used to be an honest user, but now seeks to have the system forget he ever existed. When Eugene is
-     secretly actually a Troy that escalates to the legal system early, we consider them Karen instead.
+     secretly actually a Troy that escalates to the legal system early, we consider them Karen instead. 
 
 ### Risks
 
