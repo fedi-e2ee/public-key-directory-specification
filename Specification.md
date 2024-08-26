@@ -192,7 +192,7 @@ It can be calculated as follows, using the `preAuthEncode` function from PASETO 
 ```python
 def getAuxDataId(aux_type, data):
     return hmac_sha256(
-        b'FediPKD1-Auxiliary-Data-IDKeyGen' # this key is a constant for v1 of this protocol specification
+        b'FediPKD1-Auxiliary-Data-IDKeyGen', # this key is a constant for v1 of this protocol specification
         PAE([
             b'aux_type',
             aux_type,
@@ -886,7 +886,7 @@ one or more rounds uses data-dependent memory addresses to improve GPU attack re
 
 When base64url-encoding a non-secret value, there is no expectation of constant-time behavior. However, if the data
 being encoded or decoded is a secret (e.g., plaintext or cryptography key), the codec **MUST** be implemented in
-constnat-time.
+constant-time.
 
 When comparing cryptographic outputs, a constant-time comparison **MUST** always be used.
 
