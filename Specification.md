@@ -308,7 +308,8 @@ the risks; both the risks that this system is designed to mitigate and the ones 
    * **Dave**
 2. **Attackers** are motivated individuals that seek to damage or impair the normal operation of the system.
    * **Harry** is a cyber-stalker that seeks to harass one or more of the honest users.
-   * **Karen** is a Troy that pretends to be a Eugene and goes directly to the legal system to cause operator distress.
+   * **Karen** is a Troy (defined below) that pretends to be a Eugene and goes directly to the legal system to cause
+     operator distress.
    * **Mallory** wishes to replace one of the honest users' public keys with her own.
    * **Richard** is an instance administrator that wishes to eavesdrop on his users' private communications.
    * **Troy** is an Internet troll that wants to wreak havoc for the lulz.
