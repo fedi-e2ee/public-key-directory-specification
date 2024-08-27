@@ -458,6 +458,10 @@ To address this risk, any software building E2EE on top of the Public Key Direct
 trust status of any participants that receive a successful BurnDown. At minimum, this means requiring any higher-level
 validation be performed again (e.g., safety number comparison) as if chatting with a stranger.
 
+Obviously, if Grace is unable to enlist Yvonne, and cannot convince the Public Key Directory operator that the _Right To 
+Be Forgotten_ request is legitimate, then Grace's cover-up will not succeed. However, requiring legal acumen to prevent
+misbehavior is a poor mechanism, so we consider this risk "Open" in this case.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
