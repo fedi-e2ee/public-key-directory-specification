@@ -317,13 +317,113 @@ defined in alphabetical order within each classification.
    * **Mallory** wishes to replace one of the honest users' public keys with her own.
    * **Richard** is an instance administrator that wishes to eavesdrop on his users' private communications.
    * **Troy** is an Internet troll that wants to wreak havoc for the lulz.
+   * **Yvonne** has privileged access to a Public Key Directory server.
 3. **Other Participants** do not fall into either of the previous attackers.
    * **Eugene** used to be an honest user, but now seeks to have the system forget he ever existed. When Eugene is
      secretly actually a Troy that escalates to the legal system early, we consider them Karen instead. 
 
 ### Risks
 
+This section seeks to outline specific risks and whether they are prevented, mitigated, addressable, or open.
 
+#### Attackers seek to change history.
+
+**Status**: Prevented by design.
+
+Mallory seeks to replace one of the honest users' public keys with one she controls so that she can impersonate them
+when talking to their friends.
+
+She is thwarted from updating old records by the append-only nature of Merkle trees.
+
+#### Attackers seek to selectively censor historical records.
+
+**Status**: Addressable (can be mitigated; requires diligence).
+
+There are two variants of this risk.
+
+1. Eugene legitimately wishes to have his username and historical public keys wiped from public memory, and asserts his
+   rights as a citizenship of a European Union Member State.
+2. Harry or Troy seek to disable a legitimate user's ability to use end-to-end encryption by wiping their public keys
+   from the ledger, thereby forcing them to communicate in plaintext until re-enrolled.
+
+Eugene is not an attacker. Several design decisions were made to ensure Eugene's request to be forgotten is actually
+possible to enforce in our system.
+
+Maliciously attempting to censor historical records on behalf of another user is an attack that cannot be mitigated by
+design. The operators of Public Key Database instances are responsible for ensuring _Right To Be Forgotten_ requests are
+legitimate to prevent this sort of misbehavior.
+
+#### Attackers seek to replace public key mappings without altering the ledger.
+
+**Status**: Prevented by design.
+
+Yvonne, who has privileged access to the Public Key Directory server, wants to replace the plaintext public key that a 
+particular encrypted public key maps to. She wants to do this without altering history.
+
+In one variant of the attack, she simply updates the plaintext value served by the server. In another, she tries to
+replace the key used to decrypt the ciphertext with another key.
+
+In both instances, she is defeated by the [plaintext commitment](#plaintext-commitment), and the fact that the attribute
+encryption protocol is key-committing.
+
+#### Attackers seek to leverage plaintext commitment to recover encrypted records whose keys were wiped.
+
+**Status**: Mitigated by design; requires enormous resources to attempt to attack.
+
+At some point in the past, Eugene requested his data be removed from the ledger, and his request was honored by 
+[erasing the key](#encrypting-message-attributes-to-enable-crypto-shredding-).
+
+Later, Troy decides to attempt to recover the plaintext to undermine the privacy that many Eugenes enjoy by using the 
+plaintext commitment to brute force the corresponding plaintext values. Troy's goal is to troll the Public Key Directory
+by convincing regulators that the _Right To Be Forgotten_ request has not been faithfully fulfilled.
+
+This attack is extremely economically expensive to pull off. Each plaintext commitment is defined as a combination of
+[a "recent" Merkle root](#recent-merkle-root-included-in-plaintext-commitments), the attribute name, and the plaintext
+attribute value. This is then hashed with Argon2id, a password hashing function.
+
+For example, in order to guess 1 million possible plaintext values per second, Troy would need the computational 
+resources to fill 16 terabytes of memory per second. Due to the use of the Merkle root in determining a salt, as well as
+the plaintext, this attack doesn't parallelize well for many Eugenes.
+
+#### Instance administrator enrolls a public key on behalf of an un-enrolled user.
+
+**Status**: Open (but somewhat addressable).
+
+Richard wants to prevent Dave from using end-to-end encryption. To do this, he signs an `AddKey` protocol message on his
+behalf before he has an opportunity to enroll his own public key.
+
+This attack always succeeds. This risk must be acceptable.
+
+Dave has remediation options available to him. There is an immutable public record indicating that Richard misbehaved.
+Dave can move to another Fediverse host that isn't malicious. Dave can seek legal or social redress for Richard's 
+misbehavior, equipped with evidence that Richard cannot censor.
+
+#### Instance administrator attempts to enroll a new public key for a previously enrolled user.
+
+**Status**: Prevented by design.
+
+If a user has an existing public key enrolled in the protocol, the instance administrator cannot issue a self-signed
+`AddKey` message. These messages must be signed by a currently-trusted public key.
+
+There is an exception to this rule: [BurnDown](#burndown), which is a break-glass feature for honest instance 
+administrators to use to help users start over if they lose all their secret keys. BurnDown can be prevented by the
+[Fireproof](#fireproof) protocol message. This is discussed in great detail in the 
+[Security Considerations](#revocation-and-account-recovery).
+
+#### Instance administrator attempts to reset the public keys for a previously enrolled user.
+
+**Status**: Addressable.
+
+Richard issues a malicious `BurnDown` for Dave. This only succeeds if Dave's account is not [Fireproof](#fireproof).
+
+#### Race condition between successful BurnDown and subsequent AddKey.
+
+**Status**: Open.
+
+After a successful `BurnDown`, the user's set of public keys is empty, which means the system will tolerate a
+self-signed `AddKey` protocol message from the user's instance.
+
+This is an acceptable risk, as it's congruent to [un-enrolled users](#instance-administrator-enrolls-a-public-key-on-behalf-of-an-un-enrolled-user).
 
 ## Protocol Messages
 
