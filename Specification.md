@@ -266,6 +266,202 @@ JavaScript).
 
 Implementations **MUST NOT** truncate UNIX timestamps to 32 bits.
 
+## Threat Model
+
+In order to understand the security goals of this system, it is important to assess our assumptions, assets, actors, and
+the risks; both the risks that this system is designed to mitigate and the ones it cannot.
+
+### Assumptions
+
+1. The operating system's random number generator is secure.
+2. The hardware that our software is running on has not been tampered with to render its operation insecure.
+3. The elliptic curve discrete logarithm problem is computationally hard.
+4. The SHA-2 family of hash functions (SHA-256, SHA-384, SHA-512) are secure.
+5. HMAC, used with a SHA-2 family hash function, offers PRF security congruent to the size of the hash function.
+6. AES is a secure block cipher (which can be modeled as a secure permutation) that offers a security level congruent to 
+   the length of its key.
+7. EdDSA, as defined over the Edwards25519 curve, provides secure existential forgery under chosen message attack
+   (SUF-CMA) security, at a security level in excess of 120 bits.
+8. Argon2id is a secure, memory-hard password-based key derivation function.
+9. HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
+   security (which is a stronger notion than PRF security that makes no assumptions about the distribution of IKM bits).
+
+### Assets
+
+1. JSON REST API, available over HTTPS.
+2. ActivityPub integration.
+3. SigSum integration.
+4. Shreddable symmetric-key storage.
+5. Local relational database.
+6. Mapping of Actor IDs to associated data.
+   * Public Keys
+   * Auxiliary Data
+7. ActivityPub instance software. (**Out of scope.**)
+8. Client-side software. (**Out of scope.**)
+
+### Actors
+
+In this section, Actors does not refer specifically to ActivityPub Actors. Rather, they are placeholders for 
+participants in our system. This includes legitimate users and various types of attackers. These actors' names are
+defined in alphabetical order within each classification.
+
+1. **Honest users** that wish to communicate. We will use four examples when discussing threats. 
+   * **Alice** is a Fediverse user and instance administrator.
+   * **Bob** is a Fediverse user hosted by Alice's instance.
+   * **Carol** is a self-hosted Fediverse user who runs her own instance.
+   * **Dave** is a Fediverse user on Richard's instance. (Richard is defined below.)
+2. **Attackers** are motivated individuals that seek to damage or impair the normal operation of the system.
+   * **Grace** is a government representative for a hostile nation-state that does not want citizens to have privacy.
+   * **Harry** is a cyber-stalker that seeks to harass one or more of the honest users.
+   * **Karen** is a Troy (defined below) that pretends to be a Eugene and goes directly to the legal system to cause
+     operator distress.
+   * **Mallory** wishes to replace one of the honest users' public keys with her own.
+   * **Richard** is an instance administrator that wishes to eavesdrop on his users' private communications.
+   * **Troy** is an Internet troll that wants to wreak havoc for the lulz.
+   * **Yvonne** has privileged access to a Public Key Directory server.
+3. **Other Participants** do not fall into either of the previous attackers.
+   * **Eugene** used to be an honest user, but now seeks to have the system forget he ever existed. When Eugene is
+     secretly actually a Troy that escalates to the legal system early, we consider them Karen instead. 
+
+### Risks
+
+This section seeks to outline specific risks and whether they are prevented, mitigated, addressable, or open.
+
+#### Attackers seek to change history.
+
+**Status**: Prevented by design.
+
+Mallory seeks to replace one of the honest users' public keys with one she controls so that she can impersonate them
+when talking to their friends.
+
+She is thwarted from updating old records by the append-only nature of Merkle trees.
+
+#### Attackers seek to selectively censor historical records.
+
+**Status**: Addressable (can be mitigated; requires diligence).
+
+There are two variants of this risk.
+
+1. Eugene legitimately wishes to have his username and historical public keys wiped from public memory, and asserts his
+   rights as a citizenship of a European Union Member State.
+2. Harry or Troy seek to disable a legitimate user's ability to use end-to-end encryption by wiping their public keys
+   from the ledger, thereby forcing them to communicate in plaintext until re-enrolled.
+
+Eugene is not an attacker. Several design decisions were made to ensure Eugene's request to be forgotten is actually
+possible to enforce in our system.
+
+Maliciously attempting to censor historical records on behalf of another user is an attack that cannot be mitigated by
+design. The operators of Public Key Database instances are responsible for ensuring _Right To Be Forgotten_ requests are
+legitimate to prevent this sort of misbehavior.
+
+#### Attackers seek to replace public key mappings without altering the ledger.
+
+**Status**: Prevented by design.
+
+Yvonne, who has privileged access to the Public Key Directory server, wants to replace the plaintext public key that a 
+particular encrypted public key maps to. She wants to do this without altering history.
+
+In one variant of the attack, she simply updates the plaintext value served by the server. In another, she tries to
+replace the key used to decrypt the ciphertext with another key.
+
+In both instances, she is defeated by the [plaintext commitment](#plaintext-commitment), and the fact that the attribute
+encryption protocol is key-committing.
+
+#### Attackers seek to leverage plaintext commitment to recover encrypted records whose keys were wiped.
+
+**Status**: Mitigated by design; requires enormous resources to attempt to attack.
+
+At some point in the past, Eugene requested his data be removed from the ledger, and his request was honored by 
+[erasing the key](#encrypting-message-attributes-to-enable-crypto-shredding-).
+
+Later, Troy decides to attempt to recover the plaintext to undermine the privacy that many Eugenes enjoy by using the 
+plaintext commitment to brute force the corresponding plaintext values. Troy's goal is to troll the Public Key Directory
+by convincing regulators that the _Right To Be Forgotten_ request has not been faithfully fulfilled.
+
+This attack is extremely economically expensive to pull off. Each plaintext commitment is defined as a combination of
+[a "recent" Merkle root](#recent-merkle-root-included-in-plaintext-commitments), the attribute name, and the plaintext
+attribute value. This is then hashed with Argon2id, a password hashing function.
+
+For example, in order to guess 1 million possible plaintext values per second, Troy would need the computational 
+resources to fill 16 terabytes of memory per second. Due to the use of the Merkle root in determining a salt, as well as
+the plaintext, this attack doesn't parallelize well for many Eugenes.
+
+#### Instance administrator enrolls a public key on behalf of an un-enrolled user.
+
+**Status**: Open (but somewhat addressable).
+
+Richard wants to prevent Dave from using end-to-end encryption. To do this, he signs an `AddKey` protocol message on his
+behalf before he has an opportunity to enroll his own public key.
+
+This attack always succeeds. This risk must be acceptable.
+
+Dave has remediation options available to him. There is an immutable public record indicating that Richard misbehaved.
+Dave can move to another Fediverse host that isn't malicious. Dave can seek legal or social redress for Richard's 
+misbehavior, equipped with evidence that Richard cannot censor.
+
+#### Instance administrator attempts to enroll a new public key for a previously enrolled user.
+
+**Status**: Prevented by design.
+
+If a user has an existing public key enrolled in the protocol, the instance administrator cannot issue a self-signed
+`AddKey` message. These messages must be signed by a currently-trusted public key.
+
+There is an exception to this rule: [BurnDown](#burndown), which is a break-glass feature for honest instance 
+administrators to use to help users start over if they lose all their secret keys. BurnDown can be prevented by the
+[Fireproof](#fireproof) protocol message. This is discussed in great detail in the 
+[Security Considerations](#revocation-and-account-recovery).
+
+#### Instance administrator attempts to reset the public keys for a previously enrolled user.
+
+**Status**: Addressable.
+
+Richard issues a malicious `BurnDown` for Dave. This only succeeds if Dave's account is not [Fireproof](#fireproof).
+
+#### Race condition between successful BurnDown and subsequent AddKey.
+
+**Status**: Open.
+
+After a successful `BurnDown`, the user's set of public keys is empty, which means the system will tolerate a
+self-signed `AddKey` protocol message from the user's instance.
+
+This is an acceptable risk, as it's congruent to [un-enrolled users](#instance-administrator-enrolls-a-public-key-on-behalf-of-an-un-enrolled-user).
+
+#### Hostile nation state demands their public key be added to an existing actor under a gag order.
+
+**Status**: Mitigated. One variant is prevented by design, the other is addressable.
+
+Grace uses the power of the state to demand Alice insert a chosen public key into Bob's account, so that they can
+intrude on Bob's end-to-end encrypted communications, with some law enforcement justification, accompanied by a strict
+gag order to not reveal the government's order. 
+
+Since Bob is currently enrolled in the protocol, Alice cannot comply with this order.
+
+If Bob is not Fireproof, there is a possibility for Alice to issue a BurnDown and then issue an AddKey for Bob on behalf
+of Grace. However, this will create immutable evidence of this intrusion, which is incompatible with gag orders.
+
+#### Hostile nation state seeks to abuse _Right To Be Forgotten_ mechanisms to cover up an unlawful intrusion.
+
+**Status**: Open / Addressable.
+
+Grace instructs Mallory to perform an active attack against a user, then submits a _Right To Be Forgotten_ request to
+the Public Key Directory to destroy evidence of their human rights violation. For example, Grace instructs Alice to
+launch a [BurnDown then AddKey](#race-condition-between-successful-burndown-and-subsequent-addkey) against Bob, then
+uses social engineering to gain access to Bob's friends to spy on their activity.
+
+If Grace has also enlisted Yvonne to perform the cover-up, this attack will succeed (as currently written).
+
+However, it is not without risk: [BurnDowns](#burndown) are meant to be noisy, rare Protocol Messages that should
+trigger immediate skepticism for all parties involved. Although they have some legitimate use (i.e., if a user loses
+access to all their secret keys and devices), they should set off alarm bells for anyone using the Public Key Directory.
+
+To address this risk, any software building E2EE on top of the Public Key Directory **MUST** immediately demote the
+trust status of any participants that receive a successful BurnDown. At minimum, this means requiring any higher-level
+validation be performed again (e.g., safety number comparison) as if chatting with a stranger.
+
+Obviously, if Grace is unable to enlist Yvonne, and cannot convince the Public Key Directory operator that the _Right To 
+Be Forgotten_ request is legitimate, then Grace's cover-up will not succeed. However, requiring legal acumen to prevent
+misbehavior is a poor mechanism, so we consider this risk "Open" in this case.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
