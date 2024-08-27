@@ -311,6 +311,7 @@ defined in alphabetical order within each classification.
    * **Carol** is a self-hosted Fediverse user who runs her own instance.
    * **Dave** is a Fediverse user on Richard's instance. (Richard is defined below.)
 2. **Attackers** are motivated individuals that seek to damage or impair the normal operation of the system.
+   * **Grace** is a government representative for a hostile nation-state that does not want citizens to have privacy.
    * **Harry** is a cyber-stalker that seeks to harass one or more of the honest users.
    * **Karen** is a Troy (defined below) that pretends to be a Eugene and goes directly to the legal system to cause
      operator distress.
@@ -424,6 +425,19 @@ After a successful `BurnDown`, the user's set of public keys is empty, which mea
 self-signed `AddKey` protocol message from the user's instance.
 
 This is an acceptable risk, as it's congruent to [un-enrolled users](#instance-administrator-enrolls-a-public-key-on-behalf-of-an-un-enrolled-user).
+
+#### Hostile nation state demands their public key be added to an existing actor under a gag order.
+
+**Status**: Mitigated. One variant is prevented by design, the other is addressable.
+
+Grace uses the power of the state to demand Alice insert a chosen public key into Bob's account, so that they can
+intrude on Bob's end-to-end encrypted communications, with some law enforcement justification, accompanied by a strict
+gag order to not reveal the government's order. 
+
+Since Bob is currently enrolled in the protocol, Alice cannot comply with this order.
+
+If Bob is not Fireproof, there is a possibility for Alice to issue a BurnDown and then issue an AddKey for Bob on behalf
+of Grace. However, this will create immutable evidence of this intrusion, which is incompatible with gag orders.
 
 ## Protocol Messages
 
