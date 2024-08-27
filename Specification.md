@@ -439,6 +439,25 @@ Since Bob is currently enrolled in the protocol, Alice cannot comply with this o
 If Bob is not Fireproof, there is a possibility for Alice to issue a BurnDown and then issue an AddKey for Bob on behalf
 of Grace. However, this will create immutable evidence of this intrusion, which is incompatible with gag orders.
 
+#### Hostile nation state seeks to abuse _Right To Be Forgotten_ mechanisms to cover up an unlawful intrusion.
+
+**Status**: Open / Addressable.
+
+Grace instructs Mallory to perform an active attack against a user, then submits a _Right To Be Forgotten_ request to
+the Public Key Directory to destroy evidence of their human rights violation. For example, Grace instructs Alice to
+launch a [BurnDown then AddKey](#race-condition-between-successful-burndown-and-subsequent-addkey) against Bob, then
+uses social engineering to gain access to Bob's friends to spy on their activity.
+
+If Grace has also enlisted Yvonne to perform the cover-up, this attack will succeed (as currently written).
+
+However, it is not without risk: [BurnDowns](#burndown) are meant to be noisy, rare Protocol Messages that should
+trigger immediate skepticism for all parties involved. Although they have some legitimate use (i.e., if a user loses
+access to all their secret keys and devices), they should set off alarm bells for anyone using the Public Key Directory.
+
+To address this risk, any software building E2EE on top of the Public Key Directory **MUST** immediately demote the
+trust status of any participants that receive a successful BurnDown. At minimum, this means requiring any higher-level
+validation be performed again (e.g., safety number comparison) as if chatting with a stranger.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
