@@ -122,9 +122,11 @@ Each digital signature will be calculated over the following information:
 2. The value of the top-level `action` attribute.
 3. The JSON serialization of the top-level `message` attribute.
    Object keys **MUST** be sorted in ASCII byte order, and there **MUST** be no duplicate keys.
+4. The value of the top-level `recent-merkle-root` attribute.
 
 To ensure domain separation, we will use [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)
-function, with a tweak: We will insert the top-level key (`@context`, `action`, `message`) before each piece.
+function, with a tweak: We will insert the top-level key (`@context`, `action`, `message`, `recent-merkle-root`) before
+each piece.
 
 For example, a Python function might look like this:
 
@@ -132,11 +134,13 @@ For example, a Python function might look like this:
 def signPayload(secret_key, payload):
     payloadToSign = preAuthEncode([
         b'@context',
-        payload.context,
+        payload['@context'],
         b'action',
-        payload.action,
+        payload['action'],
         b'message',
-        json_stringify(sort_by_key(payload.message))
+        json_stringify(sort_by_key(payload['message'])),
+        b'recent-merkle-root',
+        payload['recent-merkle-root'],
     ])
     return crypto_sign(secret_key, payloadToSign)
 ```
