@@ -87,6 +87,20 @@ Auxiliary Data records may also be supported, in order for other protocols to bu
 
 The task of resolving aliases to Actor IDs is left to the client software.
 
+### Message Blocks
+
+This project is built atop an append-only transparency log. Each Protocol Message will be processed and appended to the
+ledger. The Public Key Directory software will maintain a current state of which public keys and auxiliary data are
+currently valid for a given Actor. 
+
+Any other machine **MUST** be able to reproduce the same state as the Public Key Directory by replaying the entire 
+message history from the first block to the current one. Any deviation from this behavior is considered an attempted
+attack on the system.
+
+This means that history is immutable, with one exception: [the ability for the protocol to forget users](#message-attribute-shreddability).
+This is achieved by committing encrypted fields to the Merkle tree, and storing an encryption key on the Public Key
+Directory until the encryption key's erasure is legally requested.
+
 ### Public Key Encoding
 
 Each public key will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
@@ -216,7 +230,7 @@ on-the-fly by the Public Key Directory administrators. This is an unacceptable r
 As a best-effort, good faith design decision, we will introduce the technical capability to "shred" Actor IDs (which may
 contain usernames, and usernames are definitely PII in scope of the *Right to be Forgotten*) and other fields.
 
-Consequently, we will add a layer of indirection to the underlying Message storage and SigSum integration, for handling
+Consequently, we will add a layer of indirection to the underlying Message storage and Sigsum integration, for handling
 sensitive attributes (e.g., Actor ID):
 
 1. Every Message will have a unique 256-bit random key. This can be generated client-side or provided by the Public Key
@@ -235,9 +249,9 @@ To ensure the link between the encrypted message and plaintext message is provab
 publish a commitment of the plaintext. This prevents a server from serving the wrong plaintext alongside a given
 ciphertext and fooling clients into believing it.
 
-The key is not included in the SigSum data, but stored alongside the record.
+The key is not included in the Sigsum data, but stored alongside the record.
 
-The decrypted message is also not included in the SigSum data.
+The decrypted message is also not included in the Sigsum data.
 
 To satisfy a "right to be forgotten" request, the key for the relevant blocks will be erased. The ciphertext will 
 persist forever, but without the correct key, the contents will be indistinguishable from randomness. Thus, the system
@@ -290,7 +304,7 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 
 1. JSON REST API, available over HTTPS.
 2. ActivityPub integration.
-3. SigSum integration.
+3. Sigsum integration.
 4. Shreddable symmetric-key storage.
 5. Local relational database.
 6. Mapping of Actor IDs to associated data.
@@ -488,7 +502,7 @@ subsections of this document:
   },
   /* A recent Merkle root (if applicable) for a previous message: */
   "recent-merkle-root": "", 
-  /* A signature calculated over "@context", "action", and "message": */
+  /* A signature calculated over "@context", "action", "recent-merkle-root", and "message": */
   "signature": "",
   "symmetric-keys": {
     /* These are used to decrypt attributed in the "message" object. They are not signed.
@@ -886,7 +900,53 @@ validating an `RevokeAuxData` message are as follows:
 
 ### Gossip Protocol
 
-### SigSum Integration
+### Sigsum Integration
+
+[Sigsum](https://www.sigsum.org) is the transparency system that underpins the Public Key Directory design. Requests to
+SigSum contain the following:
+
+1. A message to be stored.
+2. A public key that signs the data.
+3. A signature over the message (1), using the public key (2).
+
+After verifying the signature (3), Sigsum stores the SHA256 hash of (1), the SHA256 hash of (2), and the signature (3) 
+as-is.
+
+The Public Key Directory Server will maintain its own Ed25519 keypair, which is used to sign new messages into Sigsum.
+Each bundle submitted to Sigsum as a Sigsum message will consist of the following subset of the Protocol Message:
+
+```json5
+{
+  /* The version number used in @context may change in the future: */
+  "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+  /* The action, such as AddKey or RevokeKey, goes here: */
+  "action": "",
+  /* A recent Merkle root (if applicable) for a previous message: */
+  "recent-merkle-root": "",
+  "message": {
+    /* 
+    The actual message contents required for the specific action goes here.
+    Its contents may vary from action to action.
+    */
+  }, 
+  /* A signature calculated over "@context", "action", "recent-merkle-root", and "message": */
+  "signature": ""
+}
+```
+
+Note that `key-id` and `symmetric-keys` are deliberately excluded from being committed to Sigsum.
+
+The `@context` header (which is signed by the end user) is included for domain separation against other uses of the
+user's secret key.
+
+#### Witness Co-Signing
+
+Sigsum doesn't use a gossip protocol. Instead, it relies on proactive witness co-signatures into other ledgers. See
+[section 3.5 of the Sigsum paper for more details](https://git.glasklar.is/nisse/cats-2023/-/blob/main/sigsum-design-cats-2023.pdf).
+
+It's not sufficient for Public Key Directory entries to merely validate that a record exists in a Merkle tree. At least
+one witness **MUST** also validate that the current state is deterministically reproducible from the history of the 
+transparency log.
 
 ## Auxiliary Data Extensions
 
@@ -1090,7 +1150,7 @@ When comparing cryptographic outputs, a constant-time comparison **MUST** always
 
 The cryptographic components specified by the initial version of this specification are
 [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) (which includes SHA-512 internally), SHA-256, Argon2id, and 
-AES-256. SHA-256 is used by SigSum, as well as for key derivation and message authentication (via HKDF an HMAC 
+AES-256. SHA-256 is used by Sigsum, as well as for key derivation and message authentication (via HKDF an HMAC 
 respectively) for Actor ID encryption. The actual Actor IDs will be encrypted with AES-256 in Counter Mode.
 
 Future versions of this specification should make an effort to minimize the amount of complexity for implementors.
