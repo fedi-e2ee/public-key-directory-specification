@@ -533,6 +533,7 @@ The following subsections each describe a different Protocol Message type.
 * [`UndoFireproof`](#undofireproof): Opt back into `BurnDown`.
 * [`AddAuxData`](#addauxdata): Add auxiliary data (e.g. public keys for other protocols).
 * [`RevokeAuxData`](#revokeauxdata): Revoke auxiliary data.
+* [`Checkpoint`](#checkpoint): Allows one PKD to commit their Merkle root to a peer PKD instance.
 
 ### AddKey
 
@@ -901,6 +902,52 @@ validating an `RevokeAuxData` message are as follows:
 9.  Validate the message signature for the given public key.
 10. If the signature is valid in step 9, proceed with the revocation of the Auxiliary Data for this Actor.
 
+### Checkpoint
+
+Unlike other Protocol Message types, this one will strictly be performed from one Public Key Directory to another. See
+[the Witness co-signing section](#witness-co-signing) for context.
+
+This message contains three critical pieces of context, to be committed into the recipient's Sigsum ledger:
+
+1. The current Merkle root of the sender (`from-root`).
+2. The most recent *validated* Merkle root of the recipient (`to-validated-root`).
+3. The current public key of the sender (`from-public-key`).
+
+By "validated", we mean that the sender has reconstructed the current state of mappings between Actors and public keys,
+as well as Actors to auxiliary data, of the recipient's history.
+
+The third item (`from-public-key`) also provides a mechanism for Public Key Directory instances to announce new public
+keys to their peers, in the event that a rotation is necessary.
+
+Checkpoint messages are purely informational, and only serve to cross-commit Merkle roots onto each other's histories,
+so that a specific Merkle root can be verified to exist within a point in time with respect to other ledgers' Merkle
+roots.
+
+#### Checkpoint Attributes
+
+* `action` -- **string (Action Type)** (required): Must be set to `Checkpoint`.
+* `message` -- **map**
+   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
+   * `from-directory` -- **string (URL)** (required): Must be set to the public URL of the PKD sending this Message.
+   * `from-root` -- **string (Hash)** (required): The Merkle root of the PKD that is signing this request.
+   * `from-public-key` -- **string (Public Key)** (required): The current public key for the PKD sending the request.
+   * `to-directory` -- **string (URL)** (required): Must be set to the public URL of the recipient PKD for this Message.
+   * `to-validated-root` -- **string (Hash)** (required): The latest validated Merkle root of the recipient server.
+
+#### Checkpoint Validation Steps
+
+1. Verify that `action` is set to `Checkpoint`.
+2. Verify that `message.from-directory` exists strictly within an allow-list of accepted directories. If not, reject.
+3. Verify that `message.to-directory` matches the current Public Key Directory's canonical URL. If not, reject.
+4. Verify that `message.time` is within a reasonably recent time window (e.g. `86400` seconds, or 24 hours). If not,
+   reject.
+5. Verify that `message.to-validated-root` is [recent](#recent-merkle-root-included-in-plaintext-commitments). If not,
+   reject.
+6. Asynchronously fetch the current public key from the sender's PKD, compare with `message.from-public-key`. If they
+   are not identical at the time of insertion, abort.
+7. Validate the message signature for the given public key in `from-public-key`.
+8. Store the Checkpoint message in the underlying ledger.
+
 ## The Federated Public Key Directory
 
 ### JSON REST API
@@ -954,6 +1001,9 @@ Sigsum doesn't use a gossip protocol. Instead, it relies on proactive witness co
 It's not sufficient for Public Key Directory entries to merely validate that a record exists in a Merkle tree. At least
 one witness **MUST** also validate that the current state is deterministically reproducible from the history of the 
 transparency log.
+
+To provide a mechanism for this requirement, PKDs are encouraged to send [`Checkpoint`](#checkpoint) Protocol Messages
+to their peers in addition to regular Sigsum witness co-signatures.
 
 ## Auxiliary Data Extensions
 
