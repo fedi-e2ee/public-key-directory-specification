@@ -1103,8 +1103,9 @@ For the first message in a PKD, the "recent" Merkle root **MUST** be set to a se
    * `output length` = `26` (26 bytes, or 208 bits)
 5. Output `C || s`, which will be called `Q` elsewhere, which will have a total length of 32 bytes (256 bits).
 
-Note: `len(x)` is defined as the big-endian encoding of the number of octets in the byte string `x`, treated as an
-unsigned 64-bit integer.
+Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
+unsigned 64-bit integer. This is congruent to `LE64()` as used in 
+[PAE from PASETO]((https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)).
 
 #### Message Attribute Encryption Algorithm
 
@@ -1135,8 +1136,9 @@ unsigned 64-bit integer.
    the HMAC output modulo 2^{256}.
 8. Return `h || r || Q || t || c`.
 
-Note: `len(x)` is defined as the big-endian encoding of the number of octets in the byte string `x`, treated as an
-unsigned 64-bit integer.
+Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
+unsigned 64-bit integer. This is congruent to `LE64()` as used in
+[PAE from PASETO]((https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)).
 
 #### Message Attribute Decryption Algorithm
 
@@ -1176,8 +1178,9 @@ unsigned 64-bit integer.
     If the two are not equal, return a decryption error.
 10. Return `p`.
 
-Note: `len(x)` is defined as the big-endian encoding of the number of octets in the byte string `x`, treated as an
-unsigned 64-bit integer.
+Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
+unsigned 64-bit integer. This is congruent to `LE64()` as used in
+[PAE from PASETO]((https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)).
 
 ## Security Considerations
 
