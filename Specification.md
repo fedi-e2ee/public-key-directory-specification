@@ -519,7 +519,7 @@ But that does lead into another risk:
 
 #### Attacker sends spoofed messages from a compromised Fediverse server.
 
-**Status**: Open.
+**Status**: Open (but Prevented by Design if Fireproof).
 
 This is a variant of [the previous threat](#attacker-sends-spoofed-messages-on-behalf-of-another-server), but Mallory
 has managed to compromise the server in some way; either through a direct software (or hardware) compromise, or a DNS 
@@ -528,6 +528,10 @@ hijack and issuing a new TLS certificate for her fake Fediverse server.
 As the specification is currently written, this attack would succeed. However, Mallory would be obligated to create
 immutable evidence of her intrusion that she cannot wipe without Yvonne's assistance. See also,
 [abusing _Right to Be Forgotten_ mechanisms to cover-up intrusions](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion).
+
+Mallory cannot, however, issue a `BurnDown` or `AddKey` for a [Fireproof](#fireproof) user. In this sense, the risk to
+the user is mitigated **so long as they use Fireproof**, since they must be signed by the user's secret key, which the
+Fediverse server **MUST NOT** possess.
 
 > **Note**: We're currently considering ways to mitigate this threat by design, but as it's written, we want to call it
 > out as an open threat. One option is to have servers publish their HTTP Signature public keys via a distinct Protocol
