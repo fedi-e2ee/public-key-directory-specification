@@ -530,12 +530,13 @@ immutable evidence of her intrusion that she cannot wipe without Yvonne's assist
 [abusing _Right to Be Forgotten_ mechanisms to cover-up intrusions](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion).
 
 Mallory cannot, however, issue a `BurnDown` or `AddKey` for a [Fireproof](#fireproof) user. In this sense, the risk to
-the user is mitigated **so long as they use Fireproof**, since they must be signed by the user's secret key, which the
-Fediverse server **MUST NOT** possess.
+the user is mitigated **so long as they use Fireproof**: You cannot `AddKey` a user with at least one trusted public
+key, and you cannot `BurnDown` a fireproof user.
 
-> **Note**: We're currently considering ways to mitigate this threat by design, but as it's written, we want to call it
-> out as an open threat. One option is to have servers publish their HTTP Signature public keys via a distinct Protocol
-> Message, but that might get operationally weird.
+All other Protocol Messages must be signed by the user's secret key, which the Fediverse server **MUST NOT** possess.
+
+There may be future mechanisms we can use to prevent compromised servers or DNS hijacks from successfully sending 
+Protocol Messages to the Public Key Directory, but for now we're leaving this risk Open.
 
 ## Protocol Messages
 
