@@ -87,6 +87,23 @@ Auxiliary Data records may also be supported, in order for other protocols to bu
 
 The task of resolving aliases to Actor IDs is left to the client software.
 
+### Message Blocks
+
+This project is built atop an append-only transparency log. Each Protocol Message will be processed and appended to the
+ledger. The Public Key Directory software will maintain a current state of which public keys and auxiliary data are
+currently valid for a given Actor. 
+
+Any other machine **MUST** be able to reproduce the same state as the Public Key Directory by replaying the entire 
+message history from the first block to the current one. Any deviation from this behavior is considered an attempted
+attack on the system.
+
+This means that history is immutable, with one exception: [the ability for the protocol to forget users](#message-attribute-shreddability).
+This is achieved by committing encrypted fields to the Merkle tree, and storing an encryption key on the Public Key
+Directory until the encryption key's erasure is legally requested.
+
+Each Protocol Message **MUST** be unique. Public Key Directory servers **MUST** reject any replayed Protocol Message,
+even if it's otherwise valid.
+
 ### Public Key Encoding
 
 Each public key will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
@@ -105,9 +122,11 @@ Each digital signature will be calculated over the following information:
 2. The value of the top-level `action` attribute.
 3. The JSON serialization of the top-level `message` attribute.
    Object keys **MUST** be sorted in ASCII byte order, and there **MUST** be no duplicate keys.
+4. The value of the top-level `recent-merkle-root` attribute.
 
 To ensure domain separation, we will use [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)
-function, with a tweak: We will insert the top-level key (`@context`, `action`, `message`) before each piece.
+function, with a tweak: We will insert the top-level key (`@context`, `action`, `message`, `recent-merkle-root`) before
+each piece.
 
 For example, a Python function might look like this:
 
@@ -115,11 +134,13 @@ For example, a Python function might look like this:
 def signPayload(secret_key, payload):
     payloadToSign = preAuthEncode([
         b'@context',
-        payload.context,
+        payload['@context'],
         b'action',
-        payload.action,
+        payload['action'],
         b'message',
-        json_stringify(sort_by_key(payload.message))
+        json_stringify(sort_by_key(payload['message'])),
+        b'recent-merkle-root',
+        payload['recent-merkle-root'],
     ])
     return crypto_sign(secret_key, payloadToSign)
 ```
@@ -216,7 +237,7 @@ on-the-fly by the Public Key Directory administrators. This is an unacceptable r
 As a best-effort, good faith design decision, we will introduce the technical capability to "shred" Actor IDs (which may
 contain usernames, and usernames are definitely PII in scope of the *Right to be Forgotten*) and other fields.
 
-Consequently, we will add a layer of indirection to the underlying Message storage and SigSum integration, for handling
+Consequently, we will add a layer of indirection to the underlying Message storage and Sigsum integration, for handling
 sensitive attributes (e.g., Actor ID):
 
 1. Every Message will have a unique 256-bit random key. This can be generated client-side or provided by the Public Key
@@ -235,9 +256,9 @@ To ensure the link between the encrypted message and plaintext message is provab
 publish a commitment of the plaintext. This prevents a server from serving the wrong plaintext alongside a given
 ciphertext and fooling clients into believing it.
 
-The key is not included in the SigSum data, but stored alongside the record.
+The key is not included in the Sigsum data, but stored alongside the record.
 
-The decrypted message is also not included in the SigSum data.
+The decrypted message is also not included in the Sigsum data.
 
 To satisfy a "right to be forgotten" request, the key for the relevant blocks will be erased. The ciphertext will 
 persist forever, but without the correct key, the contents will be indistinguishable from randomness. Thus, the system
@@ -290,7 +311,7 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 
 1. JSON REST API, available over HTTPS.
 2. ActivityPub integration.
-3. SigSum integration.
+3. Sigsum integration.
 4. Shreddable symmetric-key storage.
 5. Local relational database.
 6. Mapping of Actor IDs to associated data.
@@ -488,7 +509,7 @@ subsections of this document:
   },
   /* A recent Merkle root (if applicable) for a previous message: */
   "recent-merkle-root": "", 
-  /* A signature calculated over "@context", "action", and "message": */
+  /* A signature calculated over "@context", "action", "recent-merkle-root", and "message": */
   "signature": "",
   "symmetric-keys": {
     /* These are used to decrypt attributed in the "message" object. They are not signed.
@@ -512,6 +533,7 @@ The following subsections each describe a different Protocol Message type.
 * [`UndoFireproof`](#undofireproof): Opt back into `BurnDown`.
 * [`AddAuxData`](#addauxdata): Add auxiliary data (e.g. public keys for other protocols).
 * [`RevokeAuxData`](#revokeauxdata): Revoke auxiliary data.
+* [`Checkpoint`](#checkpoint): Allows one PKD to commit their Merkle root to a peer PKD instance.
 
 ### AddKey
 
@@ -880,13 +902,108 @@ validating an `RevokeAuxData` message are as follows:
 9.  Validate the message signature for the given public key.
 10. If the signature is valid in step 9, proceed with the revocation of the Auxiliary Data for this Actor.
 
+### Checkpoint
+
+Unlike other Protocol Message types, this one will strictly be performed from one Public Key Directory to another. See
+[the Witness co-signing section](#witness-co-signing) for context.
+
+`Checkpoint` messages contain three critical pieces of context, to be committed into the recipient's Sigsum ledger:
+
+1. The current Merkle root of the sender (`from-root`).
+2. The most recent *validated* Merkle root of the recipient (`to-validated-root`).
+3. The current public key of the sender (`from-public-key`).
+
+By "validated", we mean that the sender has reconstructed the current state of mappings between Actors and public keys,
+as well as Actors to auxiliary data, of the recipient's history.
+
+The third item (`from-public-key`) also provides a mechanism for Public Key Directory instances to announce new public
+keys to their peers, in the event that a rotation is necessary.
+
+Checkpoint messages are purely informational, and only serve to cross-commit Merkle roots onto each other's histories,
+so that a specific Merkle root can be verified to exist within a point in time with respect to other ledgers' Merkle
+roots.
+
+#### Checkpoint Attributes
+
+* `action` -- **string (Action Type)** (required): Must be set to `Checkpoint`.
+* `message` -- **map**
+   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
+   * `from-directory` -- **string (URL)** (required): Must be set to the public URL of the PKD sending this Message.
+   * `from-root` -- **string (Hash)** (required): The Merkle root of the PKD that is signing this request.
+   * `from-public-key` -- **string (Public Key)** (required): The current public key for the PKD sending the request.
+   * `to-directory` -- **string (URL)** (required): Must be set to the public URL of the recipient PKD for this Message.
+   * `to-validated-root` -- **string (Hash)** (required): The latest validated Merkle root of the recipient server.
+
+#### Checkpoint Validation Steps
+
+1. Verify that `action` is set to `Checkpoint`.
+2. Verify that `message.from-directory` exists strictly within an allow-list of accepted directories. If not, reject.
+3. Verify that `message.to-directory` matches the current Public Key Directory's canonical URL. If not, reject.
+4. Verify that `message.time` is within a reasonably recent time window (e.g. `86400` seconds, or 24 hours). If not,
+   reject.
+5. Verify that `message.to-validated-root` is [recent](#recent-merkle-root-included-in-plaintext-commitments). If not,
+   reject.
+6. Asynchronously fetch the current public key from the sender's PKD, compare with `message.from-public-key`. If they
+   are not identical at the time of insertion, abort.
+7. Validate the message signature for the given public key in `from-public-key`.
+8. Store the Checkpoint message in the underlying ledger.
+
 ## The Federated Public Key Directory
 
 ### JSON REST API
 
 ### Gossip Protocol
 
-### SigSum Integration
+### Sigsum Integration
+
+[Sigsum](https://www.sigsum.org) is the transparency system that underpins the Public Key Directory design. Requests to
+SigSum contain the following:
+
+1. A message to be stored.
+2. A public key that signs the data.
+3. A signature over the message (1), using the public key (2).
+
+After verifying the signature (3), Sigsum stores the SHA256 hash of (1), the SHA256 hash of (2), and the signature (3) 
+as-is.
+
+The Public Key Directory Server will maintain its own Ed25519 keypair, which is used to sign new messages into Sigsum.
+Each bundle submitted to Sigsum as a Sigsum message will consist of the following subset of the Protocol Message:
+
+```json5
+{
+  /* The version number used in @context may change in the future: */
+  "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+  /* The action, such as AddKey or RevokeKey, goes here: */
+  "action": "",
+  /* A recent Merkle root (if applicable) for a previous message: */
+  "recent-merkle-root": "",
+  "message": {
+    /* 
+    The actual message contents required for the specific action goes here.
+    Its contents may vary from action to action.
+    */
+  }, 
+  /* A signature calculated over "@context", "action", "recent-merkle-root", and "message": */
+  "signature": ""
+}
+```
+
+Note that `key-id` and `symmetric-keys` are deliberately excluded from being committed to Sigsum.
+
+The `@context` header (which is signed by the end user) is included for domain separation against other uses of the
+user's secret key.
+
+#### Witness Co-Signing
+
+Sigsum doesn't use a gossip protocol. Instead, it relies on proactive witness co-signatures into other ledgers. See
+[section 3.5 of the Sigsum paper for more details](https://git.glasklar.is/nisse/cats-2023/-/blob/main/sigsum-design-cats-2023.pdf).
+
+It's not sufficient for Public Key Directory entries to merely validate that a record exists in a Merkle tree. At least
+one witness **MUST** also validate that the current state is deterministically reproducible from the history of the 
+transparency log.
+
+To provide a mechanism for this requirement, PKDs are encouraged to send [`Checkpoint`](#checkpoint) Protocol Messages
+to their peers in addition to regular Sigsum witness co-signatures.
 
 ## Auxiliary Data Extensions
 
@@ -1090,7 +1207,7 @@ When comparing cryptographic outputs, a constant-time comparison **MUST** always
 
 The cryptographic components specified by the initial version of this specification are
 [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) (which includes SHA-512 internally), SHA-256, Argon2id, and 
-AES-256. SHA-256 is used by SigSum, as well as for key derivation and message authentication (via HKDF an HMAC 
+AES-256. SHA-256 is used by Sigsum, as well as for key derivation and message authentication (via HKDF an HMAC 
 respectively) for Actor ID encryption. The actual Actor IDs will be encrypted with AES-256 in Counter Mode.
 
 Future versions of this specification should make an effort to minimize the amount of complexity for implementors.
