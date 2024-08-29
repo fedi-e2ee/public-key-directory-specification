@@ -527,7 +527,7 @@ hijack and issuing a new TLS certificate for her fake Fediverse server.
 
 As the specification is currently written, this attack would succeed. However, Mallory would be obligated to create
 immutable evidence of her intrusion that she cannot wipe without Yvonne's assistance. See also,
-[this threat](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion).
+[abusing _Right to Be Forgotten_ mechanisms to cover-up intrusions](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion).
 
 > **Note**: We're currently considering ways to mitigate this threat by design, but as it's written, we want to call it
 > out as an open threat. One option is to have servers publish their HTTP Signature public keys via a distinct Protocol
