@@ -538,6 +538,23 @@ All other Protocol Messages must be signed by the user's secret key, which the F
 There may be future mechanisms we can use to prevent compromised servers or DNS hijacks from successfully sending 
 Protocol Messages to the Public Key Directory, but for now we're leaving this risk Open.
 
+#### Cosmic ray causes a bit-flip on stored data or the result of a computation.
+
+**Status**: Open.
+
+There is no specific threat actor here (although Mallory may apply). Instead, this is caused by nature.
+[This has happened to Certificate Transparency logs before](https://web.archive.org/web/20231101000000*/https://groups.google.com/a/chromium.org/g/ct-policy/c/S17_j-WJ6dI).
+
+Random errors can occur in many places:
+
+* A computation being performed
+* Data stored in RAM
+* Data stored on disk
+
+To mitigate this risk, participants in this network (users and Fediverse Servers) **SHOULD** send Protocol Messages to 
+multiple Public Key Directory servers and, in turn, poll multiple servers. Clients **SHOULD** additionally be configured
+to require a quorum before trusting its responses.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
