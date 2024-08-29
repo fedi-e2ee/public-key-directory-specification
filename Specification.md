@@ -522,8 +522,8 @@ But that does lead into another risk:
 **Status**: Open.
 
 This is a variant of [the previous threat](#attacker-sends-spoofed-messages-on-behalf-of-another-server), but Mallory
-has managed to compromise the server in some way; either through a direct hardware compromise, or a DNS hijack and 
-issuing a new TLS certificate for her fake Fediverse server.
+has managed to compromise the server in some way; either through a direct software (or hardware) compromise, or a DNS 
+hijack and issuing a new TLS certificate for her fake Fediverse server.
 
 As the specification is currently written, this attack would succeed. However, Mallory would be obligated to create
 immutable evidence of her intrusion that she cannot wipe without Yvonne's assistance. See also,
