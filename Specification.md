@@ -483,6 +483,78 @@ Obviously, if Grace is unable to enlist Yvonne, and cannot convince the Public K
 Be Forgotten_ request is legitimate, then Grace's cover-up will not succeed. However, requiring legal acumen to prevent
 misbehavior is a poor mechanism, so we consider this risk "Open" in this case.
 
+#### Instance administrator loses all their signing keys.
+
+**Status**: Mitigated.
+
+Carol, who self-hosts her Fediverse account, loses all of her signing keys, and wants to issue a BurnDown.
+
+This actually isn't a risk, but rather, an operational issue that might come up eventually. We do, however, consider it
+an Availability concern, which still needs to be addressed by any Threat Model.
+
+The Public Key Directory doesn't know (or care) who's an administrator or not. 
+
+**Authorization is the responsibility of your Fediverse server, not the Public Key Directory.** Although we designate 
+"operator" in the BurnDown message, that's just to distinguish who signed the request versus which Actor the request is 
+for.
+
+When this happens, Carol can `AddKey` a new account, push a `BurnDown` for her original account, then push an `AddKey`
+for her new account, using the new account as the "operator" role in her Protocol Messages. Then, if she wishes, issue a
+`BurnDown` for her temporary account.
+
+The availability risk to self-hosters that lost all their keys is only present if their previous account is Fireproof.
+
+#### Attacker sends spoofed messages on behalf of another server.
+
+**Status**: Prevented.
+
+Mallory wants to send a `BurnDown` then `AddKey` to the Public Key Directory to impersonate Bob. To do this, she 
+pretends to be Alice's Fediverse instance and signs messages, using HTTP Signatures, with a bogus asymmetric keypair.
+
+Without further privileges, this attack fails. The Public Key Directory server will asynchronously fetch the Public Key
+to validate an HTTP Signature rather than trusting attacker-controlled data. Unless you can compromise the host instance
+in order to replace the server's public key, you cannot spoof these messages.
+
+But that does lead into another risk:
+
+#### Attacker sends spoofed messages from a compromised Fediverse server.
+
+**Status**: Open (but Prevented by Design if Fireproof).
+
+This is a variant of [the previous threat](#attacker-sends-spoofed-messages-on-behalf-of-another-server), but Mallory
+has managed to compromise the server in some way; either through a direct software (or hardware) compromise, or a DNS 
+hijack and issuing a new TLS certificate for her fake Fediverse server.
+
+As the specification is currently written, this attack would succeed. However, Mallory would be obligated to create
+immutable evidence of her intrusion that she cannot wipe without Yvonne's assistance. See also,
+[abusing _Right to Be Forgotten_ mechanisms to cover-up intrusions](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion).
+
+Mallory cannot, however, issue a `BurnDown` or `AddKey` for a [Fireproof](#fireproof) user. In this sense, the risk to
+the user is mitigated **so long as they use Fireproof**: You cannot `AddKey` a user with at least one trusted public
+key, and you cannot `BurnDown` a fireproof user.
+
+All other Protocol Messages must be signed by the user's secret key, which the Fediverse server **MUST NOT** possess.
+
+There may be future mechanisms we can use to prevent compromised servers or DNS hijacks from successfully sending 
+Protocol Messages to the Public Key Directory, but for now we're leaving this risk Open.
+
+#### Cosmic ray causes a bit-flip on stored data or the result of a computation.
+
+**Status**: Open.
+
+There is no specific threat actor here (although Mallory may apply). Instead, this is caused by nature.
+[This has happened to Certificate Transparency logs before](https://web.archive.org/web/20231101000000*/https://groups.google.com/a/chromium.org/g/ct-policy/c/S17_j-WJ6dI).
+
+Random errors can occur in many places:
+
+* A computation being performed
+* Data stored in RAM
+* Data stored on disk
+
+To mitigate this risk, participants in this network (users and Fediverse Servers) **SHOULD** send Protocol Messages to 
+multiple Public Key Directory servers and, in turn, poll multiple servers. Clients **SHOULD** additionally be configured
+to require a quorum before trusting its responses.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
