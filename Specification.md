@@ -907,7 +907,7 @@ validating an `RevokeAuxData` message are as follows:
 Unlike other Protocol Message types, this one will strictly be performed from one Public Key Directory to another. See
 [the Witness co-signing section](#witness-co-signing) for context.
 
-This message contains three critical pieces of context, to be committed into the recipient's Sigsum ledger:
+`Checkpoint` messages contain three critical pieces of context, to be committed into the recipient's Sigsum ledger:
 
 1. The current Merkle root of the sender (`from-root`).
 2. The most recent *validated* Merkle root of the recipient (`to-validated-root`).
