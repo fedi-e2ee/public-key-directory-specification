@@ -1097,9 +1097,12 @@ ProtocolMessages.
 
 The first step should be checking the source of the request against a rate-limiting protocol with exponential back-off.
 
-Rejected or invalid Protocol Messages will increase the counter for that server and for the IP address that sent the 
-request. Each value of the counter doubles the amount of time that must pass between subsequent requests, beginning with
-a configurable parameter (default = 100 milliseconds) for the first failure.
+Rejected or invalid Protocol Messages will increase the counter for that client or Fediverse server and for the IP 
+address that sent the request. Each value of the counter doubles the amount of time that must pass between subsequent
+requests, beginning with a configurable parameter (default = 100 milliseconds) for the first failure.
+
+Public Key Directories **MAY** specify a maximum time between requests from misbehaving instances. It is not required to
+have a maximum penalty time.
 
 If the request has an entry in the Bad Request table based on server identity or IP address, the timestamp of the last
 request + the current penalty is compared to the current time. If insufficient time has elapsed, the request is dropped,
