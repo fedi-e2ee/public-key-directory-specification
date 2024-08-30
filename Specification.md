@@ -294,18 +294,21 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 
 ### Assumptions
 
-1. The operating system's random number generator is secure.
-2. The hardware that our software is running on has not been tampered with to render its operation insecure.
-3. The elliptic curve discrete logarithm problem is computationally hard.
-4. The SHA-2 family of hash functions (SHA-256, SHA-384, SHA-512) are secure.
-5. HMAC, used with a SHA-2 family hash function, offers PRF security congruent to the size of the hash function.
-6. AES is a secure block cipher (which can be modeled as a secure permutation) that offers a security level congruent to 
-   the length of its key.
-7. EdDSA, as defined over the Edwards25519 curve, provides secure existential forgery under chosen message attack
-   (SUF-CMA) security, at a security level in excess of 120 bits.
-8. Argon2id is a secure, memory-hard password-based key derivation function.
-9. HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
-   security (which is a stronger notion than PRF security that makes no assumptions about the distribution of IKM bits).
+1.  The operating system's random number generator is secure.
+2.  The hardware that our software is running on has not been tampered with to render its operation insecure.
+3.  The elliptic curve discrete logarithm problem is computationally hard.
+4.  The SHA-2 family of hash functions (SHA-256, SHA-384, SHA-512) are secure.
+5.  HMAC, used with a SHA-2 family hash function, offers PRF security congruent to the size of the hash function.
+6.  AES is a secure block cipher (which can be modeled as a secure permutation) that offers a security level congruent
+    to the length of its key.
+7.  EdDSA, as defined over the Edwards25519 curve, provides secure existential forgery under chosen message attack
+    (SUF-CMA) security, at a security level in excess of 120 bits.
+8.  Argon2id is a secure, memory-hard password-based key derivation function.
+9.  HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
+    security (which is a stronger notion than PRF security that makes no assumptions about the distribution of IKM bits).
+10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated as DHKEM with ECDH over Curve25519
+    (X25519, [RFC 7748](https://datatracker.ietf.org/doc/rfc7748/)), HKDF-SHA256, and ChaCha20Poly1305--provides 
+    IND-CCA2 security against adversaries not in possession of the X25519 secret key.
 
 ### Assets
 
