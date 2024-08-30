@@ -567,7 +567,7 @@ Dave can configure his client software to [always use Protocol Message Encryptio
 This ensures that Richard cannot inspect and selectively censor Dave's Protocol Messages. He must choose an 
 all-or-nothing approach to which Protocol Messages are passed onto the Public Key Directory.
 
-For this reason, users **SHOULD** encrypt their protocol message encryption. 
+For this reason, users **SHOULD** encrypt all of their their Protocol Messages, not just `Fireproof` messages. 
 It is further **RECOMMENDED** for client software to make this encryption the default behavior.
 
 ## Protocol Messages
