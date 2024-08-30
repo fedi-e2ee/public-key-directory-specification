@@ -555,6 +555,21 @@ To mitigate this risk, participants in this network (users and Fediverse Servers
 multiple Public Key Directory servers and, in turn, poll multiple servers. Clients **SHOULD** additionally be configured
 to require a quorum before trusting its responses.
 
+#### Malicious instance administrator attempts to censor Fireproof messages to retain control.
+
+**Status**: Mitigated by design.
+
+Richard wants to ensure Dave's account is never [Fireproof](#fireproof), because he wants the ability to issue a 
+BurnDown on Dave's behalf at a moment's notice. To that end, his server software is modified to silently drop any 
+Protocol Messages sent from any user if the action is set to Fireproof.
+
+Dave can configure his client software to [always use Protocol Message Encryption](#encryption-of-protocol-messages).
+This ensures that Richard cannot inspect and selectively censor Dave's Protocol Messages. He must choose an 
+all-or-nothing approach to which Protocol Messages are passed onto the Public Key Directory.
+
+For this reason, users **SHOULD** encrypt their protocol message encryption. 
+It is further **RECOMMENDED** for client software to make this encryption the default behavior.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
@@ -1041,6 +1056,9 @@ client-side for no more than 24 hours. Public Key Directories are not required t
 When encryption is chosen, the Protocol Message **MUST** be serialized as a JSON string and then encrypted according to
 the specific HPKE cipher suite advertised by the Public Key Directory, using the given public key.
 
+Users **MAY** pad the plaintext before encryption with additional whitespace to their desired length, but **SHOULD** 
+keep their plaintext JSON blobs smaller than 16 MiB (16,777,216 bytes).
+
 When encrypting, the AAD parameter of the HPKE encryption **MUST** be set to the value of the `@context` field.
 
 The result of the ciphertext will be encoded with unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5).
@@ -1064,7 +1082,8 @@ Ensure the AAD parameter is set to the value of the `@context` field.
 
 Decryption failures count as rejections and incur a [rate-limiting penalty](#rate-limiting-bad-requests).
 
-The result of a successful decryption **MUST** be a string that corresponds to a JSON-encoded Protocol Message. 
+The result of a successful decryption **MUST** be a string that corresponds to a JSON-encoded Protocol Message. This
+JSON blob **MAY** have additional whitespace appended to it.
 
 ### Protocol Message Processing
 
