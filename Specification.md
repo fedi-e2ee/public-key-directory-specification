@@ -1497,7 +1497,8 @@ Other users may expect a higher degree of security, and may wish to opt out of t
 Fediverse instance. Once they have opted out, the only way to undo opting out is by issuing an `UndoFireproof`.
 
 [`RevokeKeyThirdParty`](#revokekeythirdparty) is an emergency feature that allows anyone to pull the plug on a 
-compromised identity key. Every time one is issued, the community should pay close attention to the Actor affected by it.
+compromised identity key. Every time one is issued, the community should pay close attention to the Actor affected by 
+it.
 
 If a third party issues a `RevokeKeyThirdParty` with a valid revocation token for a fireproof user's only valid public 
 key, the system **MUST** prioritize handling the key compromise as a higher priority. This means that `Fireproof` is 
