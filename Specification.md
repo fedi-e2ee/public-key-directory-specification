@@ -1036,6 +1036,8 @@ client-side for no more than 24 hours. Public Key Directories are not required t
 
 #### Protocol Message Encryption
 
+`BurnDown` messages **MUST NOT** be encrypted.
+
 When encryption is chosen, the Protocol Message **MUST** be serialized as a JSON string and then encrypted according to
 the specific HPKE cipher suite advertised by the Public Key Directory, using the given public key.
 
@@ -1112,6 +1114,10 @@ does not require signatures.
 Encrypted Protocol messages **MUST** be decrypted after the signature verification is complete. Decryption of Protocol
 Messages is described [in a previous section](#protocol-message-decryption). Encryption is performed client-side by the
 user.
+
+If encryption was used, and the decrypted Protocol Message is a `BurnDown`, the Public Key Directory **MUST** discard 
+it. BurnDown messages **MUST** be sent unencrypted. The instance is responsible for ensuring that only administrators 
+**MAY** send a`BurnDown` to a Public Key Directory.
 
 Some Protocol Messages require an HTTP Signature, even when sent in plaintext. A missing signature in these instances is
 treated as invalid, and incurs a rate-limiting penalty.
@@ -1547,3 +1553,7 @@ comprehending their actions.
 
 The public key **MUST** be fetched directly from each Public Key Directory. Client software **MUST NOT** trust any
 public key provided by the Fediverse Server.
+
+[`BurnDown`](#burndown) messages **MUST NOT** be encrypted this way. The reason for this is that the Public Key
+Directory has no idea who is an administrator and who isn't. Therefore, the instance administration team **MUST** be the
+only entities capable of issuing a BurnDown.
