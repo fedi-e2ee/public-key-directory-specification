@@ -294,18 +294,21 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 
 ### Assumptions
 
-1. The operating system's random number generator is secure.
-2. The hardware that our software is running on has not been tampered with to render its operation insecure.
-3. The elliptic curve discrete logarithm problem is computationally hard.
-4. The SHA-2 family of hash functions (SHA-256, SHA-384, SHA-512) are secure.
-5. HMAC, used with a SHA-2 family hash function, offers PRF security congruent to the size of the hash function.
-6. AES is a secure block cipher (which can be modeled as a secure permutation) that offers a security level congruent to 
-   the length of its key.
-7. EdDSA, as defined over the Edwards25519 curve, provides secure existential forgery under chosen message attack
-   (SUF-CMA) security, at a security level in excess of 120 bits.
-8. Argon2id is a secure, memory-hard password-based key derivation function.
-9. HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
-   security (which is a stronger notion than PRF security that makes no assumptions about the distribution of IKM bits).
+1.  The operating system's random number generator is secure.
+2.  The hardware that our software is running on has not been tampered with to render its operation insecure.
+3.  The elliptic curve discrete logarithm problem is computationally hard.
+4.  The SHA-2 family of hash functions (SHA-256, SHA-384, SHA-512) are secure.
+5.  HMAC, used with a SHA-2 family hash function, offers PRF security congruent to the size of the hash function.
+6.  AES is a secure block cipher (which can be modeled as a secure permutation) that offers a security level congruent
+    to the length of its key.
+7.  EdDSA, as defined over the Edwards25519 curve, provides secure existential forgery under chosen message attack
+    (SUF-CMA) security, at a security level in excess of 120 bits.
+8.  Argon2id is a secure, memory-hard password-based key derivation function.
+9.  HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
+    security (which is a stronger notion than PRF security that makes no assumptions about the distribution of IKM bits).
+10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated as DHKEM with ECDH over Curve25519
+    (X25519, [RFC 7748](https://datatracker.ietf.org/doc/rfc7748/)), HKDF-SHA256, and ChaCha20Poly1305--provides 
+    IND-CCA2 security against adversaries not in possession of the X25519 secret key.
 
 ### Assets
 
@@ -554,6 +557,21 @@ Random errors can occur in many places:
 To mitigate this risk, participants in this network (users and Fediverse Servers) **SHOULD** send Protocol Messages to 
 multiple Public Key Directory servers and, in turn, poll multiple servers. Clients **SHOULD** additionally be configured
 to require a quorum before trusting its responses.
+
+#### Malicious instance administrator attempts to censor Fireproof messages to retain control.
+
+**Status**: Mitigated by design.
+
+Richard wants to ensure Dave's account is never [Fireproof](#fireproof), because he wants the ability to issue a 
+BurnDown on Dave's behalf at a moment's notice. To that end, his server software is modified to silently drop any 
+Protocol Messages sent from any user if the action is set to Fireproof.
+
+Dave can configure his client software to [always use Protocol Message Encryption](#encryption-of-protocol-messages).
+This ensures that Richard cannot inspect and selectively censor Dave's Protocol Messages. He must choose an 
+all-or-nothing approach to which Protocol Messages are passed onto the Public Key Directory.
+
+For this reason, users **SHOULD** encrypt all of their Protocol Messages, not just `Fireproof` messages. 
+It is further **RECOMMENDED** for client software to make this encryption the default behavior.
 
 ## Protocol Messages
 
@@ -1022,6 +1040,139 @@ roots.
 
 ## The Federated Public Key Directory
 
+### Encryption of Protocol Messages
+
+Protocol Messages **MAY** be sent in plaintext at the HTTP layer, or encrypted using [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/).
+
+When encryption is chosen, the client software **MUST** use a specific public key provided by the Public Key Directory
+server for this purpose. 
+
+The Public Key Directory's public key **MAY** rotate frequently, and **SHOULD** be fetched from the server and cached 
+client-side for no more than 24 hours. Public Key Directories are not required to rotate this public key.
+
+(TODO: Specify JSON REST API endpoint for fetching the HPKE public key and cipher suite).
+
+#### Protocol Message Encryption
+
+`BurnDown` messages **MUST NOT** be encrypted.
+
+When encryption is chosen, the Protocol Message **MUST** be serialized as a JSON string and then encrypted according to
+the specific HPKE cipher suite advertised by the Public Key Directory, using the given public key.
+
+Users **MAY** pad the plaintext before encryption with additional whitespace to their desired length, but **SHOULD** 
+keep their plaintext JSON blobs smaller than 16 MiB (16,777,216 bytes).
+
+When encrypting, the AAD parameter of the HPKE encryption **MUST** be set to the value of the `@context` field.
+
+The result of the ciphertext will be encoded with unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5).
+
+The message emitted to the Public Key Directory will consist of the following elements:
+
+```json5
+{
+  /* This is always included. */
+  "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+  /* The value of encrypted-message MUST be an unpadded base64url-encoded string. */
+  "encrypted-message": "..."
+}
+```
+
+#### Protocol Message Decryption
+
+If `encrypted-message` was provided by the HTTP request, after verifying the HTTP Signature, decode this value from
+encoded with unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) then attempt to decrypt it.
+Ensure the AAD parameter is set to the value of the `@context` field. 
+
+Decryption failures count as rejections and incur a [rate-limiting penalty](#rate-limiting-bad-requests).
+
+The result of a successful decryption **MUST** be a string that corresponds to a JSON-encoded Protocol Message. This
+JSON blob **MAY** have additional whitespace appended to it.
+
+### Protocol Message Processing
+
+Most [Protocol Messages](#protocol-messages) will be received through ActivityPub. (Exception: [`RevokeKeyThirdParty`](#revokekeythirdparty)
+can be sent via HTTP request to the JSON REST API.)
+
+Each type of Protocol Message has its own specific validation steps. This section defines the workflow for handling all
+ProtocolMessages.
+
+#### Rate-Limiting Bad Requests
+
+The first step should be checking the source of the request against a rate-limiting protocol with exponential back-off.
+
+Rejected or invalid Protocol Messages will increase the counter for that client or Fediverse server and for the IP 
+address that sent the request. Each value of the counter doubles the amount of time that must pass between subsequent
+requests, beginning with a configurable parameter (default = 100 milliseconds) for the first failure.
+
+Public Key Directories **MAY** specify a maximum time between requests from misbehaving instances. It is not required to
+have a maximum penalty time.
+
+If the request has an entry in the Bad Request table based on server identity or IP address, the timestamp of the last
+request + the current penalty is compared to the current time. If insufficient time has elapsed, the request is dropped,
+and the server responds with an HTTP 429 error.
+
+After a period of time equal to twice the penalty has passed, the counter will be decremented by 1, until it reaches 0.
+At this point, the item is removed from the Bad Request table.
+
+Attempting to send requests that trigger rate limit rejection **MAY** incur additional penalties, depending on server
+configuration, but it isn't required. Public Key Directories **MAY** also permanently block Fediverse Servers that 
+routinely misbehave at their operator's discretion. 
+
+#### Protocol Message Parsing
+
+The Public Key Directory expects a JSON blob in the HTTP request body. This should correspond to the structure of a
+[Protocol Message](#protocol-messages).
+
+The blob **MAY** be encrypted from the client software. See [Protocol Message Encryption](#protocol-message-encryption).
+If so, the JSON blob will be a top-level message containing only `@context` and `encrypted-message`.
+
+Protocol Messages encrypted with HPKE in this way **MUST** always include an HTTP Signature header, and it **MUST** be 
+valid.
+
+Plaintext HTTP Requests containing these Protocol Messages **MAY** be signed with an HTTP Signature. If it is, first
+[verify the HTTP Signature](https://swicg.github.io/activitypub-http-signature/#how-to-verify-a-signature) on the
+message, according to the ActivityPub specification.
+
+Any invalid HTTP Signatures count as a rejection and incur a rate-limiting penalty, even if the Protocol Message type
+does not require signatures.
+
+Encrypted Protocol messages **MUST** be decrypted after the signature verification is complete. Decryption of Protocol
+Messages is described [in a previous section](#protocol-message-decryption). Encryption is performed client-side by the
+user.
+
+If encryption was used, and the decrypted Protocol Message is a `BurnDown`, the Public Key Directory **MUST** discard 
+it. BurnDown messages **MUST** be sent unencrypted. The instance is responsible for ensuring that only administrators 
+**MAY** send a`BurnDown` to a Public Key Directory.
+
+Some Protocol Messages require an HTTP Signature, even when sent in plaintext. A missing signature in these instances is
+treated as invalid, and incurs a rate-limiting penalty.
+
+The JSON blob should then be deserialized into an Object and handled appropriately (see next subsection).
+
+#### Handling Protocol Messages
+
+Every Protocol Message received by a Public Key Directory **MUST** be unique. Additionally, the timestamp for most
+message types (except `RevokeKeyThirdParty`) **MUST** be present and within a reasonable window. Public Key Directories
+**MAY** configure a preferred time window for timestamps, but it **MUST** be no greater than 30 days (2592000 seconds).
+
+After parsing the Protocol Message, verify that the `@context` matches the expected value for a Public Key Directory
+Protocol Message. If it is absent or mismatched, discard the message. Servers **MAY** count this as an invalid message 
+that incurs a rate limit penalty, but it is not required.
+
+Once we have established the `@context` matches, the `action` should be examined. If the action is one of the following,
+a valid HTTP Signature **MUST** have been sent with the message: `AddKey`, `BurnDown`.
+
+If the `action` is not one of the expected values (see [Protocol Messages](#protocol-messages)), discard the message.
+This may indicate a newer specification.
+
+Next, pass the deserialized JSON to a handler (function, class, etc.) for that specific action type. This behavior
+**MUST** implement the validation steps relevant to the appropriate Protocol Message.
+
+After the message validation is complete, [commit the Protocol Message to Sigsum](#sigsum-integration). If the 
+Sigsum integration fails, return an HTTP 500 response to the client and abort.
+
+Finally, make the appropriate changes to the local database (based on what action is to be performed).
+
 ### JSON REST API
 
 ### Gossip Protocol
@@ -1095,6 +1246,21 @@ separate specification exists for Ed25519. That is not a criticism of the algori
 
 The authors of this specification strongly recommend asking an applied cryptography expert develop these cryptographic
 components.
+
+### Protocol Message Encryption
+
+The entirety of a Protocol Message **MAY** be encrypted, client-side, using [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/).
+
+The encryption process is described in [Encryption of Protocol Messages](#protocol-message-encryption).
+
+The decryption process is described in [Decryption of Protocol Messages](#protocol-message-decryption).
+
+The Public Key Directory chooses the cipher suite used for HPKE. Any currently acceptable HPKE algorithm **MAY** be used
+if the client and server both support it.
+
+For the current version of the protocol, clients and servers **MUST** support the
+[DHKEM(X25519, HKDF-SHA256) with HKDF-SHA256 and ChaCha20Poly1305](https://www.rfc-editor.org/rfc/rfc9180.html#name-dhkemx25519-hkdf-sha256-hkdf)
+cipher suite.
 
 ### Encrypting Message Attributes to Enable Crypto-Shredding 
 
@@ -1337,7 +1503,8 @@ Other users may expect a higher degree of security, and may wish to opt out of t
 Fediverse instance. Once they have opted out, the only way to undo opting out is by issuing an `UndoFireproof`.
 
 [`RevokeKeyThirdParty`](#revokekeythirdparty) is an emergency feature that allows anyone to pull the plug on a 
-compromised identity key. Every time one is issued, the community should pay close attention to the Actor affected by it.
+compromised identity key. Every time one is issued, the community should pay close attention to the Actor affected by 
+it.
 
 If a third party issues a `RevokeKeyThirdParty` with a valid revocation token for a fireproof user's only valid public 
 key, the system **MUST** prioritize handling the key compromise as a higher priority. This means that `Fireproof` is 
@@ -1388,3 +1555,31 @@ conclusions based on these issuances alone.
 Finally, the entire point of using Transparency Logs is to force attackers to publish their activity, which enables
 defenders and activists to be immediately aware of the potentially malicious actions. You cannot attack the network
 to impersonate a flammable Actor without risking detection.
+
+### Availability
+
+Client software **SHOULD** route Protocol Messages to more than one Public Key Directory, in case of catastrophic
+outages or data corruption, as outlined in [the threat model](#cosmic-ray-causes-a-bit-flip-on-stored-data-or-the-result-of-a-computation).
+
+Each Public Key Directory **SHOULD** use a different symmetric key for attribute encryption. Fediverse Servers **MAY** 
+accept batches of different Protocol Messages (one for each Public Key Directory), and then fan them out asynchronously.
+Clients **SHOULD** also use a [recent Merkle root](#recent-merkle-root-included-in-plaintext-commitments) from the 
+Sigsum instance tied to that particular Public Key Directory.
+
+When requesting the public keys or auxiliary data for a specific ActivityPub actor, clients **SHOULD** query multiple
+Public Key Directories. The **RECOMMENDED** behavior is to require a specific entry exists in multiple PKDs to meet some
+client-side-configurable Quorum, and reject public keys that have not yet been broadcast to, and accepted by, sufficient
+Public Key Directory servers.
+
+### Reasoning for Encryption of Protocol Messages from Clients
+
+If clients seek to hide the contents of any Protocol Message they are sending to the Public Key Directory from the 
+Fediverse Server that hosts their account, this provides a mechanism to prevent an honest but curious admin from 
+comprehending their actions.
+
+The public key **MUST** be fetched directly from each Public Key Directory. Client software **MUST NOT** trust any
+public key provided by the Fediverse Server.
+
+[`BurnDown`](#burndown) messages **MUST NOT** be encrypted this way. The reason for this is that the Public Key
+Directory has no idea who is an administrator and who isn't. Therefore, the instance administration team **MUST** be the
+only entities capable of issuing a BurnDown.
