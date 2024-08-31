@@ -111,6 +111,14 @@ string prefixed by the cryptography protocol name followed by a colon.
 
 For example: `ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM`
 
+### Merkle Root Encoding
+
+Each Merkle Root will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
+string.
+The Merkle Root is public 
+
+For example: `7TwKAbkiKCCQuCpDBV2GbkkkIDfMg2AmG7TMHqXBDJU`
+
 ### Protocol Signatures
 
 Every [Protocol Message](#protocol-messages) will contain a digital signature. Unless otherwise specified, these
@@ -1019,10 +1027,10 @@ roots.
 * `message` -- **map**
    * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
    * `from-directory` -- **string (URL)** (required): Must be set to the public URL of the PKD sending this Message.
-   * `from-root` -- **string (Hash)** (required): The Merkle root of the PKD that is signing this request.
+   * `from-root` -- **string (Merkle Root)** (required): The Merkle root of the PKD that is signing this request.
    * `from-public-key` -- **string (Public Key)** (required): The current public key for the PKD sending the request.
    * `to-directory` -- **string (URL)** (required): Must be set to the public URL of the recipient PKD for this Message.
-   * `to-validated-root` -- **string (Hash)** (required): The latest validated Merkle root of the recipient server.
+   * `to-validated-root` -- **string (Merkle Root)** (required): The latest validated Merkle root of the recipient server.
 
 #### Checkpoint Validation Steps
 
