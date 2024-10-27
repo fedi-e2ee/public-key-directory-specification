@@ -596,6 +596,23 @@ Malicious, selective rejection of protocol messages cannot be addressed by const
 Public Key Directory operators from Fediverse instance administrators should be maintained. As this is a social 
 mechanism, not a technological one, we consider this risk to remain open.
 
+#### Attacker uses a decoy Public Key Directory that publishes a dishonest history.
+
+**Status**: Open. <!-- TODO: This will be addressed in a future Pull Request, but is not fixed yet! -->
+
+There exist multiple Public Key Directories, one controlled by an attacker, and their history disagrees. How does a user
+(or, as the case may be, the tools on behalf of the user) decide which directory is canonical?
+
+This is related to [malicious Public Key Directories](#malicious-instance-administrator-also-controls-the-public-key-directory).
+
+If every Fediverse instance also has an integrated PKD, rather than relying on a third party (which is what we recommend
+in the [Architecture](Architecture.md) document), this risk is more likely to manifest in the real world.
+
+Having few independent Public Key Directories, rather than 1:1 for instances, makes this risk addressable. However, that
+is a social mechanism, not a technological one.
+
+<!-- TODO: Explain how the technological mechanism, once specified, addresses this. -->
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
