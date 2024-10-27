@@ -1217,6 +1217,66 @@ Finally, make the appropriate changes to the local database (based on what actio
 
 ### Gossip Protocol
 
+#### Gossip Protocol Background
+
+Gossip Protocols ensure consistency in distributed systems with limited interactions. We define two mechanisms for the
+Public Key Directory: One active, one passive.
+
+#### Active Gossip (Checkpoints)
+
+The [Checkpoint](#checkpoint) Protocol Message type defined above (which allows one PKD to commit its current history
+onto another PKD's log) is one type of Gossip. With Checkpoints, the sender informs the recipient of their current
+Merkle root, and it is logged in the secondary ledger.
+
+If both Public Key Directory instances are independently operated, this allows third parties to verify the authenticity
+of the PKD that sent the Checkpoint.
+
+This inter-PKD mechanism is a **push** from the Sender to the Recipient. It requires an explicit action on the Sender to
+perform. This also requires the Recipient grant the Sender permission to publish a Checkpoint message.
+
+For completeness, we specify a permissionless, **pull**-based Gossip mechanism for replicating history from one PKD to 
+another. Care is taken to maximize the availability of data without preventing 
+[_Right To Be Forgotten_ takedowns](#message-attribute-shreddability).
+
+#### Passive Gossip (Mirroring)
+
+Third-party software and other Public Key Directory instances can be configured to stream new Protocol Messages from the
+target PKD instance to store locally.
+
+The encrypted attributes will always be copied onto mirrors.
+
+Mirrors **MAY** cache the corresponding plaintext fields from the source directory, provided 
+they adhere to the [cache invalidation](#mirror-plaintext-cache-invalidation) specification.
+
+Replica instances **SHOULD** provide [witness co-signatures](#witness-co-signing) to the Sigsum transparency log that
+the source PKD is built atop.
+
+##### Trusted Mirrors
+
+If the source Public Key Directory trusts the mirror's operators, the source **MAY** republish the symmetric key used
+to encrypt that Protocol Message's attributes, encrypted using HPKE with the mirror's latest public key (i.e., from
+their most recent Checkpoint). 
+
+These HPKE-encrypted blobs will be cached and appended to the `rewrapped-keys` field for any record that has not been 
+wiped.
+
+Key rewrapping is not recommended by default, as it would allow the replica to decrypt the record even if the source PKD
+received a legal take-down notice. Instead, it should only be used for mirrors you trust to respect
+
+Trusted Mirrors may serve as a form of fail-over in case the source instance is inaccessible, as a mechanism to reduce
+the efficacy of Denial of Service attacks.
+
+#### Mirror Plaintext Cache Invalidation
+
+The replicated ciphertext **MAY** be persisted indefinitely, but regardless of the trust status of a given Mirror, if
+the mirror has access to the plaintext (whether by caching a copy or by `rewrapped-keys`), the Mirror **MUST** 
+occasionally (i.e., at least once every 24 hours) attempt to verify that the source server has not deliberately wiped 
+their copy of the symmetric key. If the source has, the mirror **MUST** do the same.
+
+If the source is unavailable, the mirror may defer retries for up to 7 days. After this grace period, they should treat 
+the relevant rewrapped keys and cached plaintexts as invalid and remove them. If the source comes back online, the 
+mirror **MAY** re-cache the symmetric keys and/or plaintext.
+
 ### Sigsum Integration
 
 [Sigsum](https://www.sigsum.org) is the transparency system that underpins the Public Key Directory design. Requests to
