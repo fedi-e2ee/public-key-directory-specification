@@ -581,6 +581,21 @@ all-or-nothing approach to which Protocol Messages are passed onto the Public Ke
 For this reason, users **SHOULD** encrypt all of their Protocol Messages, not just `Fireproof` messages. 
 It is further **RECOMMENDED** for client software to make this encryption the default behavior.
 
+#### Malicious instance administrator also controls the Public Key Directory.
+
+**Status**: Open.
+
+Richard not only hosts Dave's account, but also controls the Public Key Directory used by the local constellation of
+Fediverse servers. Richard plans to use his privileged access to selectively reject Fireproof messages, lie about the
+history of the transparency log, etc.
+
+To address dishonest logs, users can rely on witness co-signatures (part of the Sigsum protocol) to ensure that history
+is unchanged between different perspectives. This aspect is addressable.
+
+Malicious, selective rejection of protocol messages cannot be addressed by construction. Instead, the independence of
+Public Key Directory operators from Fediverse instance administrators should be maintained. As this is a social 
+mechanism, not a technological one, we consider this risk to remain open.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
