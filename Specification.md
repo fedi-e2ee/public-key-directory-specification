@@ -1218,6 +1218,11 @@ Finally, make the appropriate changes to the local database (based on what actio
 This section documents the JSON REST API available over HTTPS. Response bodies will be JSON (if the status code is 200).
 If applicable, HTTP request bodies are also expected to be JSON.
 
+Every HTTP response will include a signature over the HTTP response body, which will be sent as an additional HTTP
+header, adhering to [RFC 9421 with EdDSA over edwards25519](https://www.rfc-editor.org/rfc/rfc9421.html#name-eddsa-using-curve-edwards25).
+Public Key Directory software **MUST NOT** support the HMAC, RSA, ECDSA, or JWS signature algorithms from RFC 9421.
+Only EdDSA and newer algorithms (e.g., post-quantum signatures in the future) may be used.
+
 #### GET api/actor/:actor_id
 
 Purpose: List aggregate data about a given actor.
@@ -1229,14 +1234,18 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type   | Remarks                                             |
 |----------------|--------|-----------------------------------------------------|
+| `@context`     | string | Domain separation                                   |
 | `actor-id`     | string | Matches the request parameter, sanitized            |
 | `count-aux`    | number | The number of auxiliary data records for this Actor |
 | `count-keys`   | number | The number of active public keys for this Actor     |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/info`.
 
 **Example Response**:
 
 ```json5
 {
+  "@context": "fedi-e2ee:v1/api/actor/info",
   "actor-id": "https://example.com/alice",
   "count-aux": 5,
   "count-keys": 3
@@ -1254,8 +1263,11 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type     | Remarks                                  |
 |----------------|----------|------------------------------------------|
+| `@context`     | string   | Domain separation                        |
 | `actor-id`     | string   | Matches the request parameter, sanitized |
 | `public-keys`  | object[] | Array of objects (see next table)        |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get-keys`.
 
 Each entry in the `public-keys` array will contain the following fields:
 
@@ -1272,6 +1284,7 @@ Only non-revoked public keys will be included in this list.
 
 ```json5
 {
+  "@context": "fedi-e2ee:v1/api/actor/get-keys",
   "actor-id": "https://example.com/alice",
   "public-keys": [
     {
@@ -1299,7 +1312,7 @@ Only non-revoked public keys will be included in this list.
 #### GET api/actor/:actor_id/key/:key_id
 
 Purpose: Retrieve information about a specific public key.
-
+    
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
@@ -1307,6 +1320,7 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type           | Remarks                                       |
 |----------------|----------------|-----------------------------------------------|
+| `@context`     | string         | Domain separation                             |
 | `actor-id`     | string         | Matches the request parameter, sanitized      |
 | `created`      | string         | [Timestamp](#timestamps)                      |
 | `key-id`       | string         | See [Key IDs](#key-identifiers)               |
@@ -1315,10 +1329,13 @@ An HTTP 200 OK request will contain the following response fields:
 | `revoked`      | string \| null | [Timestamp](#timestamps) (or null)            |
 | `revoke-root`  | string \| null | Merkle tree root hash for RevokeKey (or null) |
 
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/key-info`.
+
 **Example Response**:
 
 ```json5
 {
+  "@context": "fedi-e2ee:v1/api/actor/key-info",
   "actor-id": "https://example.com/alice",
   "created": "1722176511",
   "key-id": "foo",
@@ -1340,8 +1357,11 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type     | Remarks                                  |
 |----------------|----------|------------------------------------------|
+| `@context`     | string   | Domain separation                        |
 | `actor-id`     | string   | Matches the request parameter, sanitized |
 | `auxiliary`    | object[] | Array of objects (see next table)        |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/aux-info`.
 
 Each entry in the `auxiliary` array will contain the following fields:
 
@@ -1355,6 +1375,7 @@ Each entry in the `auxiliary` array will contain the following fields:
 
 ```json5
 {
+  "@context": "fedi-e2ee:v1/api/actor/aux-info",
   "actor-id": "https://example.com/alice",
   "auxiliary": [
     {
@@ -1397,6 +1418,7 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type           | Remarks                                           |
 |----------------|----------------|---------------------------------------------------|
+| `@context`     | string         | Domain separation                                 |
 | `actor-id`     | string         | Matches the request parameter, sanitized          |
 | `aux-data`     | string         | Auxiliary Data Contents                           |
 | `aux-id`       | string         | [Auxiliary Data ID](#auxiliary-data-identifiers)  |
@@ -1406,10 +1428,13 @@ An HTTP 200 OK request will contain the following response fields:
 | `revoked`      | string \| null | [Timestamp](#timestamps) (or null)                |
 | `revoke-root`  | string \| null | Merkle tree root hash for RevokeAuxData (or null) |
 
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get-aux`.
+
 **Example Response**:
 
 ```json5
 {
+  "@context": "fedi-e2ee:v1/api/actor/get-aux",
   "actor-id": "https://example.com/alice",
   "aux-data": "age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p",
   "aux-id": "XUUDSZSwIWsanCX9Dr4WH5g9p1_pTaK6hZymeISJI0A",
@@ -1429,14 +1454,18 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type   | Remarks                                     |
 |----------------|--------|---------------------------------------------|
+| `@context`     | string | Domain separation                           |
 | `current-time` | string | [Timestamp](#timestamps)                    |
 | `created`      | string | [Timestamp](#timestamps)                    |
 | `merkle-root`  | string | Merkle tree root hash for the latest record |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history`.
 
 **Example Response**:
 
 ```json5
 {
+  "@context": "fedi-e2ee:v1/api/history",
   "current-time": "1730905988",
   "created": "1601016659",
   "merkle-root": "XINzPw6Z8ygzDQSZVpGtUmjVIqGVkkzWat_tkuWit3M"
@@ -1451,8 +1480,11 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type     | Remarks                           |
 |----------------|----------|-----------------------------------|
+| `@context`     | string   | Domain separation                 |
 | `current-time` | string   | [Timestamp](#timestamps)          |
 | `records`      | object[] | Array of objects (see next table) |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/since`.
 
 Each entry in the `records` array will contain the following fields:
 
@@ -1467,6 +1499,7 @@ Each entry in the `records` array will contain the following fields:
 
 ```json5
 {
+  "@context": "fedi-e2ee:v1/api/history/since",
   "created": "1730905988",
   "encrypted-message": "{\"@context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
   "message": {
@@ -1496,15 +1529,19 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field      | Type        | Remarks                                                                                                                            |
 |---------------------|-------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `@context`          | string      | Domain separation                                                                                                                  |
 | `created`           | string      | [Timestamp](#timestamps)                                                                                                           |
 | `encrypted-message` | string      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
 | `message`           | map \| null | Decrypted protocol message (or null)                                                                                               |
 | `merkle-root`       | string      | Merkle tree root hash for the latest record                                                                                        |
 
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/view`.
+
 **Example Response**:
 
 ```json5
 {
+  "@context": "fedi-e2ee:v1/api/history/view",
   "created": "1730905988",
   "encrypted-message": "{\"@context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
   "message": {
@@ -1531,18 +1568,20 @@ Purpose: Accepts [`RevokeKeyThirdParty`](#revokekeythirdparty) messages.
 
 The following HTTP request parameter **MUST** be included:
 
-| Request Parameter  | Type   | Remarks          |
-|--------------------|--------|------------------|
-| `revocation-token` | string | Revocation token |
+| Request Parameter  | Type   | Remarks           |
+|--------------------|--------|-------------------|
+| `@context`         | string | Domain separation |
+| `revocation-token` | string | Revocation token  |
 
 If the revocation token is valid, it will be processed and an HTTP 200 OK response will be returned.
 
 If the revocation token is invalid, an HTTP 2204 No Content response will be returned.
 
-Either way, the response body will only contain a typestamp.
+Either way, the response body will only contain a `@context` header and a timestamp.
 
 ```json5
 {
+  "@context": "fedi-e2ee:v1/api/revoke",
   "time": "1730909831",
 }
 ```
