@@ -1562,22 +1562,66 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/v
 
 In the above example, dummy values were used for Merkle roots.
 
+#### GET api/extensions
+
+Purpose: Lists the [Auxiliary Data Extensions](#auxiliary-data-extensions) supported by this server.
+
+The following HTTP request parameter **MUST** be included:
+
+| Request Parameter | Type     | Remarks                            |
+|-------------------|----------|------------------------------------|
+| `@context`        | string   | Domain separation                  |
+| `current-time`    | string   | [Timestamp](#timestamps)           |
+| `extensions`      | object[] | Array of objects (see next table)  |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/extensions`.
+
+Each entry in the `extensions` array will contain *at least* each of the following fields:
+
+| Response Field | Type     | Remarks                                 |
+|----------------|----------|-----------------------------------------|
+| `id`           | string   | Unique.                                 |
+| `version`      | string   | Version identifier. Extension-specific. |
+| `ref`          | string   | URL to extension specification.         |
+
+Extensions **MAY** include optional additional fields, if necessary, in the above table.
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/extensions",
+  "time": "1731080850",
+  "extensions": [
+    {
+      "id": "foo-v1",
+      "version": "1.0.0",
+      "ref": "https://example.com/v1"
+    }
+  ]
+}
+```
+
 #### POST api/revoke
 
 Purpose: Accepts [`RevokeKeyThirdParty`](#revokekeythirdparty) messages.
 
 The following HTTP request parameter **MUST** be included:
 
-| Request Parameter  | Type   | Remarks           |
-|--------------------|--------|-------------------|
-| `@context`         | string | Domain separation |
-| `revocation-token` | string | Revocation token  |
+| Request Parameter  | Type   | Remarks                  |
+|--------------------|--------|--------------------------|
+| `@context`         | string | Domain separation        |
+| `current-time`     | string | [Timestamp](#timestamps) |
+| `revocation-token` | string | Revocation token         |
 
 If the revocation token is valid, it will be processed and an HTTP 200 OK response will be returned.
 
 If the revocation token is invalid, an HTTP 2204 No Content response will be returned.
 
 Either way, the response body will only contain a `@context` header and a timestamp.
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/revoke`.
+
+**Example Response**:
 
 ```json5
 {
