@@ -1215,6 +1215,500 @@ Finally, make the appropriate changes to the local database (based on what actio
 
 ### JSON REST API
 
+This section documents the JSON REST API available over HTTPS. Response bodies will be JSON (if the status code is 200).
+If applicable, HTTP request bodies are also expected to be JSON.
+
+Every HTTP response will include a signature over the HTTP response body, which will be sent as an additional HTTP
+header, adhering to [RFC 9421 with EdDSA over edwards25519](https://www.rfc-editor.org/rfc/rfc9421.html#name-eddsa-using-curve-edwards25).
+Public Key Directory software **MUST NOT** support the HMAC, RSA, ECDSA, or JWS signature algorithms from RFC 9421.
+Only EdDSA and newer algorithms (e.g., post-quantum signatures in the future) may be used.
+
+#### GET api/actor/:actor_id
+
+Purpose: List aggregate data about a given actor.
+
+If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
+known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type   | Remarks                                             |
+|----------------|--------|-----------------------------------------------------|
+| `@context`     | string | Domain separation                                   |
+| `actor-id`     | string | Matches the request parameter, sanitized            |
+| `count-aux`    | number | The number of auxiliary data records for this Actor |
+| `count-keys`   | number | The number of active public keys for this Actor     |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/info`.
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/actor/info",
+  "actor-id": "https://example.com/alice",
+  "count-aux": 5,
+  "count-keys": 3
+}
+```
+
+#### GET api/actor/:actor_id/keys
+
+Purpose: List all currently-trusted public keys for a given actor.
+
+If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
+known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type     | Remarks                                  |
+|----------------|----------|------------------------------------------|
+| `@context`     | string   | Domain separation                        |
+| `actor-id`     | string   | Matches the request parameter, sanitized |
+| `public-keys`  | object[] | Array of objects (see next table)        |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get-keys`.
+
+Each entry in the `public-keys` array will contain the following fields:
+
+| Response Field | Type     | Remarks                          |
+|----------------|----------|----------------------------------|
+| `created`      | string   | [Timestamp](#timestamps)         |
+| `key-id`       | string   | See [Key IDs](#key-identifiers)  |
+| `merkle-root`  | string   | Merkle tree root hash for AddKey |
+| `public-key`   | string   | Public key                       |
+
+Only non-revoked public keys will be included in this list.
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/actor/get-keys",
+  "actor-id": "https://example.com/alice",
+  "public-keys": [
+    {
+      "created": "1722176511",
+      "key-id": "foo",
+      "merkle-root": "rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
+      "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM"
+    },
+    {
+      "created": "1722603182",
+      "key-id": "bar",
+      "merkle-root": "p0n-vBu3mEx6BxnFKe6DDknwKUR8U42i8y_0VmEReg4",
+      "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLN"
+    },
+    {
+      "created": "1730902833",
+      "key-id": "baz",
+      "merkle-root": "HlRR_f1fFrRGu7Mczkdi41po07iP9JYjCp1GBb2y_nk",
+      "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLO"
+    }
+  ]
+}
+```
+
+#### GET api/actor/:actor_id/key/:key_id
+
+Purpose: Retrieve information about a specific public key.
+    
+If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
+known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type           | Remarks                                       |
+|----------------|----------------|-----------------------------------------------|
+| `@context`     | string         | Domain separation                             |
+| `actor-id`     | string         | Matches the request parameter, sanitized      |
+| `created`      | string         | [Timestamp](#timestamps)                      |
+| `key-id`       | string         | See [Key IDs](#key-identifiers)               |
+| `merkle-root`  | string         | Merkle tree root hash for AddKey              |
+| `public-key`   | string         | Public key                                    |
+| `revoked`      | string \| null | [Timestamp](#timestamps) (or null)            |
+| `revoke-root`  | string \| null | Merkle tree root hash for RevokeKey (or null) |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/key-info`.
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/actor/key-info",
+  "actor-id": "https://example.com/alice",
+  "created": "1722176511",
+  "key-id": "foo",
+  "merkle-root": "rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
+  "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM",
+  "revoked": null,
+  "revoke-root": null
+}
+```
+
+#### GET api/actor/:actor_id/auxiliary
+
+Purpose: List all currently-trusted auxiliary data for a given actor.
+
+If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
+known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type     | Remarks                                  |
+|----------------|----------|------------------------------------------|
+| `@context`     | string   | Domain separation                        |
+| `actor-id`     | string   | Matches the request parameter, sanitized |
+| `auxiliary`    | object[] | Array of objects (see next table)        |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/aux-info`.
+
+Each entry in the `auxiliary` array will contain the following fields:
+
+| Response Field | Type   | Remarks                                          |
+|----------------|--------|--------------------------------------------------|
+| `aux-id`       | string | [Auxiliary Data ID](#auxiliary-data-identifiers) |
+| `aux-type`     | string | [Auxiliary Data Type](#auxiliary-data)           |
+| `created`      | string | [Timestamp](#timestamps)                         |
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/actor/aux-info",
+  "actor-id": "https://example.com/alice",
+  "auxiliary": [
+    {
+      "aux-id": "XUUDSZSwIWsanCX9Dr4WH5g9p1_pTaK6hZymeISJI0A",
+      "aux-type": "age-v1",
+      "created": "1730902834"
+    },
+    {
+      "aux-id": "qVca3ELZdRW2yGZj8kfbynFKPDrOCoKzFJlqwquzfDw",
+      "aux-type": "openssh",
+      "created": "1730902835"
+    },
+    {
+      "aux-id": "qKqisbMDuIUu3BARNxZC3eTlmkVdCCOhW96fwX66-tg",
+      "aux-type": "minisign",
+      "created": "1730902836"
+    },
+    {
+      "aux-id": "nSQbDDlBUmyGnY0TWoNT00vlxzNerRJP9vSwjqKDPU8",
+      "aux-type": "matrix-v3",
+      "created": "1730902837"
+    },
+    {
+      "aux-id": "wb9dIfesihn9g0gpyL_sMVdFuUYY3ZfQXnGCFy-F53Y",
+      "aux-type": "openpgp",
+      "created": "1730902838"
+    }
+  ]
+}
+```
+
+#### GET api/actor/:actor_id/auxiliary/:aux_data_id
+
+Purpose: Retrieve information about a specific auxiliary data.
+
+If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
+known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type           | Remarks                                           |
+|----------------|----------------|---------------------------------------------------|
+| `@context`     | string         | Domain separation                                 |
+| `actor-id`     | string         | Matches the request parameter, sanitized          |
+| `aux-data`     | string         | Auxiliary Data Contents                           |
+| `aux-id`       | string         | [Auxiliary Data ID](#auxiliary-data-identifiers)  |
+| `aux-type`     | string         | [Auxiliary Data Type](#auxiliary-data)            |
+| `created`      | string         | [Timestamp](#timestamps)                          |
+| `merkle-root`  | string         | Merkle tree root hash for AddAuxData              |
+| `revoked`      | string \| null | [Timestamp](#timestamps) (or null)                |
+| `revoke-root`  | string \| null | Merkle tree root hash for RevokeAuxData (or null) |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get-aux`.
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/actor/get-aux",
+  "actor-id": "https://example.com/alice",
+  "aux-data": "age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p",
+  "aux-id": "XUUDSZSwIWsanCX9Dr4WH5g9p1_pTaK6hZymeISJI0A",
+  "aux-type": "age-v1",
+  "created": "1730902834",
+  "merkle-root": "KOspo1eBvXE9ZPyyNmW1sqqFeLqLA5f1LBCYHct1n9c",
+  "revoked": null,
+  "revoke-root": null
+}
+```
+
+#### GET api/history
+
+Purpose: View the latest hash stored in the message history.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type   | Remarks                                     |
+|----------------|--------|---------------------------------------------|
+| `@context`     | string | Domain separation                           |
+| `current-time` | string | [Timestamp](#timestamps)                    |
+| `created`      | string | [Timestamp](#timestamps)                    |
+| `merkle-root`  | string | Merkle tree root hash for the latest record |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history`.
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/history",
+  "current-time": "1730905988",
+  "created": "1601016659",
+  "merkle-root": "XINzPw6Z8ygzDQSZVpGtUmjVIqGVkkzWat_tkuWit3M"
+}
+```
+
+#### GET api/history/since/:last_hash
+
+Purpose: List up to `PAGINATION_LIMIT` hashes starting after the provided hash, in sequence.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type     | Remarks                           |
+|----------------|----------|-----------------------------------|
+| `@context`     | string   | Domain separation                 |
+| `current-time` | string   | [Timestamp](#timestamps)          |
+| `records`      | object[] | Array of objects (see next table) |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/since`.
+
+Each entry in the `records` array will contain the following fields:
+
+| Response Field      | Type                        | Remarks                                                                                                                            |
+|---------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `created`           | string                      | [Timestamp](#timestamps)                                                                                                           |
+| `encrypted-message` | string                      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
+| `message`           | map \| null                 | Decrypted protocol message (or null)                                                                                               |
+| `merkle-root`       | string                      | Merkle tree root hash for the latest record                                                                                        |
+| `rewrapped-keys`    | map<string, object> \| null | Array of objects (re-wrapped symmetric keys for each field)                                                                        |
+
+The optional `rewrapped-keys` field maps a Trusted Replica's fully qualified domain name to an object.  
+This object contains the re-wrapped symmetric key for each encrypted field that the Trusted Replica is
+permitted to persist.
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/history/since",
+  "created": "1730905988",
+  "encrypted-message": "{\"@context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
+  "message": {
+    "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+    "action": "AddAuxData",
+    "message": {
+      "aux-type": "test",
+      "aux-id": "ntwVcdQXw0x2U8iBy78jFgv7zs2wipBRIYv9qz6KS0Y",
+      "aux-data": "this-is-just-test-data",
+      "time": "1730908981"
+    },
+    "recent-merkle-root": "ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
+    "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
+  },
+  "merkle-root": "Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
+  "rewrapped-keys": {
+    "example.foo.bar": {
+      "aux-type": "<hpke ciphertext goes here>",
+    }
+  }
+}
+```
+
+In the above example, dummy values were used for Merkle roots.
+
+#### GET api/history/view/:hash
+
+Purpose: View information about a specific protocol message. This will also return SigSum inclusion proofs and witness
+co-signatures.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field      | Type                        | Remarks                                                                                                                            |
+|---------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `@context`          | string                      | Domain separation                                                                                                                  |
+| `created`           | string                      | [Timestamp](#timestamps)                                                                                                           |
+| `encrypted-message` | string                      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
+| `message`           | map \| null                 | Decrypted protocol message (or null)                                                                                               |
+| `merkle-root`       | string                      | Merkle tree root hash for the latest record                                                                                        |
+| `rewrapped-keys`    | map<string, object> \| null | Array of objects (re-wrapped symmetric keys for each field)                                                                        |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/view`.
+
+The optional `rewrapped-keys` field maps a Trusted Replica's fully qualified domain name to an object.  
+This object contains the re-wrapped symmetric key for each encrypted field that the Trusted Replica is
+permitted to persist.
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/history/view",
+  "created": "1730905988",
+  "encrypted-message": "{\"@context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
+  "message": {
+    "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+    "action": "AddAuxData",
+    "message": {
+      "aux-type": "test",
+      "aux-id": "ntwVcdQXw0x2U8iBy78jFgv7zs2wipBRIYv9qz6KS0Y",
+      "aux-data": "this-is-just-test-data",
+      "time": "1730908981"
+    },
+    "recent-merkle-root": "ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
+    "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
+  },
+  "merkle-root": "Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
+  "rewrapped-keys": {
+    "example.foo.bar": {
+      "aux-type": "<hpke ciphertext goes here>",
+    }
+  }
+}
+```
+
+In the above example, dummy values were used for Merkle roots.
+
+#### GET api/extensions
+
+Purpose: Lists the [Auxiliary Data Extensions](#auxiliary-data-extensions) supported by this server.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type     | Remarks                            |
+|----------------|----------|------------------------------------|
+| `@context`     | string   | Domain separation                  |
+| `current-time` | string   | [Timestamp](#timestamps)           |
+| `extensions`   | object[] | Array of objects (see next table)  |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/extensions`.
+
+Each entry in the `extensions` array will contain *at least* each of the following fields:
+
+| Response Field | Type     | Remarks                                 |
+|----------------|----------|-----------------------------------------|
+| `id`           | string   | Unique.                                 |
+| `version`      | string   | Version identifier. Extension-specific. |
+| `ref`          | string   | URL to extension specification.         |
+
+Extensions **MAY** include optional additional fields, if necessary, in the above table.
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/extensions",
+  "time": "1731080850",
+  "extensions": [
+    {
+      "id": "foo-v1",
+      "version": "1.0.0",
+      "ref": "https://example.com/v1"
+    }
+  ]
+}
+```
+
+#### GET api/replicas
+
+Purpose: List the other Public Key Directory instances that are replicated onto this one.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type     | Remarks                            |
+|----------------|----------|------------------------------------|
+| `@context`     | string   | Domain separation                  |
+| `current-time` | string   | [Timestamp](#timestamps)           |
+| `replicas`     | object[] | Array of objects (see next table)  |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/replicas`.
+
+Each entry in the `replicas` array will contain *at least* each of the following fields:
+
+| Response Field | Type     | Remarks                                                            |
+|----------------|----------|--------------------------------------------------------------------|
+| `id`           | string   | Unique.                                                            |
+| `ref`          | string   | Canonical URL for the other Public Key Directory being replicated. |
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/repliacs",
+  "time": "1731080855",
+  "extensions": [
+    {
+      "id": "7k18At1PNkUmWokYbkpS5t29ZPWQASvg2dWXaFiOnac",
+      "ref": "https://example.org"
+    },
+    {
+      "id": "1jrlXOicceUMsxs1c5F1EbVPvy1CRWgH42k_UrMceQg",
+      "ref": "https://example.org"
+    }
+  ]
+}
+```
+
+#### GET api/replica/:replica_id/{...}
+
+Every replica URL will contain a direct replica of the original Public Key Directory's HTTP responses.
+
+For example, `api/replica/7k18At1PNkUmWokYbkpS5t29ZPWQASvg2dWXaFiOnac/actor/:actor_id` will contain the same contents
+as requesting `api/actor/:actor_id` from the original Public Key Directory.
+
+Thus, `api/replica/:replica_id/` will contain:
+
+ * [actor/:actor_id](#get-apiactoractorid)
+ * [actor/:actor_id/keys](#get-apiactoractoridkeys)
+ * [actor/:actor_id/key/:key_id](#get-apiactoractoridkeys)
+ * [actor/:actor_id/auxiliary](#get-apiactoractoridauxiliary)
+ * [actor/:actor_id/auxiliary/:aux_data_id](#get-apiactoractoridauxiliaryauxdataid)
+ * [history](#get-apihistory)
+ * [history/since/:last_hash](#get-apihistorysincelasthash)
+
+The `extensions`, `replica`, and `revoke` endpoints are not mirrored in a replica.
+
+#### POST api/revoke
+
+Purpose: Accepts [`RevokeKeyThirdParty`](#revokekeythirdparty) messages.
+
+The following HTTP request parameter **MUST** be included:
+
+| Request Parameter  | Type   | Remarks                  |
+|--------------------|--------|--------------------------|
+| `@context`         | string | Domain separation        |
+| `current-time`     | string | [Timestamp](#timestamps) |
+| `revocation-token` | string | Revocation token         |
+
+If the revocation token is valid, it will be processed and an HTTP 200 OK response will be returned.
+
+If the revocation token is invalid, an HTTP 2204 No Content response will be returned.
+
+Either way, the response body will only contain a `@context` header and a timestamp.
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/revoke`.
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/revoke",
+  "time": "1730909831",
+}
+```
+
 ### Gossip Protocol
 
 #### Gossip Protocol Background
@@ -1251,6 +1745,20 @@ they adhere to the [cache invalidation](#mirror-plaintext-cache-invalidation) sp
 Replica instances **SHOULD** provide [witness co-signatures](#witness-co-signing) to the Sigsum transparency log that
 the source PKD is built atop.
 
+##### Recursive Replication
+
+In addition to direct mirrors, Public Key Directory instances may choose to recursively replicate all of the replicas
+hosted by another server.
+
+```mermaid
+flowchart TD
+    A(example.com) -->|replicated|B{foo.net}
+    B --> |replicated|C{bar.org}
+```
+
+In the above flowchart, `bar.org` is replicating the history stored in `foo.net`. If they opt or a recursive 
+replication, they will also replicate `example.com` by copying from the copies of records hosted by `foo.net`.
+
 ##### Trusted Mirrors
 
 If the source Public Key Directory trusts the mirror's operators, the source **MAY** republish the symmetric key used
@@ -1261,7 +1769,8 @@ These HPKE-encrypted blobs will be cached and appended to the `rewrapped-keys` f
 wiped.
 
 Key rewrapping is not recommended by default, as it would allow the replica to decrypt the record even if the source PKD
-received a legal take-down notice. Instead, it should only be used for mirrors you trust to respect
+received a legal take-down notice. Instead, it should only be used for mirrors you trust to respect when the source
+has been wiped by a legal request, and purge their copy of the symmetric key in turn.
 
 Trusted Mirrors may serve as a form of fail-over in case the source instance is inaccessible, as a mechanism to reduce
 the efficacy of Denial of Service attacks.
