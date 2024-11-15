@@ -105,6 +105,9 @@ Directory until the encryption key's erasure is legally requested.
 Each Protocol Message **MUST** be unique. Public Key Directory servers **MUST** reject any replayed Protocol Message,
 even if it's otherwise valid.
 
+Implementations **SHOULD** provide a distinct error message for when a unique message has already been accepted and
+processed by the system in a very recent period of time. This **MUST** be distinct from an error condition. 
+
 ### Public Key Encoding
 
 Each public key will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
