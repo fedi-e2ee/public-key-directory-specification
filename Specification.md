@@ -1755,7 +1755,8 @@ These HPKE-encrypted blobs will be cached and appended to the `rewrapped-keys` f
 wiped.
 
 Key rewrapping is not recommended by default, as it would allow the replica to decrypt the record even if the source PKD
-received a legal take-down notice. Instead, it should only be used for mirrors you trust to respect
+received a legal take-down notice. Instead, it should only be used for mirrors you trust to respect when the source
+has been wiped by a legal request, and purge their copy of the symmetric key in turn.
 
 Trusted Mirrors may serve as a form of fail-over in case the source instance is inaccessible, as a mechanism to reduce
 the efficacy of Denial of Service attacks.
