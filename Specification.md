@@ -71,6 +71,7 @@ Backwards compatibility with existing systems (i.e., the PGP ecosystem) is a non
 
 Legal compliance frameworks (e.g., GDPR) are largely out of scope. We make some design considerations that aim to 
 alleviate specific technical issues that would otherwise *introduce* compliance obstacles, but go no further.
+We are not lawyers; this document does not contain legal advice.
 
 ### Notation and Conventions
 
