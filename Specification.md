@@ -127,7 +127,7 @@ For example: `7TwKAbkiKCCQuCpDBV2GbkkkIDfMg2AmG7TMHqXBDJU`
 Every [Protocol Message](#protocol-messages) will contain a digital signature. Unless otherwise specified, these
 signatures will always be calculated the same way:
 
-Each digital signature will be calculated over the following information:
+Each digital signature will be calculated over the following information (in this order):
 
 1. The value of the top-level `@context` attribute.
 2. The value of the top-level `action` attribute.
@@ -155,6 +155,14 @@ def signPayload(secret_key, payload):
     ])
     return crypto_sign(secret_key, payloadToSign)
 ```
+
+The `@context` strings are intended to provide domain separation. 
+
+Raw hashes and signatures without any domain separation in the direct scope of this specification are considered a 
+security vulnerability. 
+
+Raw hashes or signatures in the Merkle Tree, or in protocols built atop the Public Key Directory, are not considered
+security vulnerabilities in our specification.
 
 ### Key Identifiers
 
