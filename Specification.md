@@ -242,6 +242,12 @@ def getAuxDataId(aux_type, data):
     )
 ```
 
+#### Requirements for Auxiliary Data Extensions
+
+Being very strict about the format of the data accepted by a given extension is highly **RECOMMENDED**.
+
+See [the relevant threat model entry](#attacker-submits-contraband-as-auxiliary-data)_
+
 ### Message Attribute Shreddability
 
 While the security benefits of a public immutable append-only ledger are enormous, some jurisdictions may rule that an
@@ -623,6 +629,19 @@ Having few independent Public Key Directories, rather than 1:1 for instances, ma
 is a social mechanism, not a technological one.
 
 <!-- TODO: Explain how the technological mechanism, once specified, addresses this. -->
+
+#### Attacker submits contraband as auxiliary data.
+
+**Status**: Addressable.
+
+Consider a Public Key Directory which enables arbitrary, unformatted data to be published to the PKD by users. One day,
+Troy submits [CSAM](https://www.inhope.org/EN/articles/what-is-csam) to the ledger, then notifies law enforcement of
+this material being published on the Public Key Directory instance.
+
+To prevent this risk, extensions **SHOULD** be strict about the data they accept.
+
+Failing that, instance operators can use the [message content shredability](#message-attribute-shreddability) mechanism
+to wipe unwanted illegal material from their records by wiping the decryption key for that record.
 
 ## Protocol Messages
 
