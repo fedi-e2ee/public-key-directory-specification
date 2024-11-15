@@ -1586,13 +1586,13 @@ In the above example, dummy values were used for Merkle roots.
 
 Purpose: Lists the [Auxiliary Data Extensions](#auxiliary-data-extensions) supported by this server.
 
-The following HTTP request parameter **MUST** be included:
+An HTTP 200 OK request will contain the following response fields:
 
-| Request Parameter | Type     | Remarks                            |
-|-------------------|----------|------------------------------------|
-| `@context`        | string   | Domain separation                  |
-| `current-time`    | string   | [Timestamp](#timestamps)           |
-| `extensions`      | object[] | Array of objects (see next table)  |
+| Response Field | Type     | Remarks                            |
+|----------------|----------|------------------------------------|
+| `@context`     | string   | Domain separation                  |
+| `current-time` | string   | [Timestamp](#timestamps)           |
+| `extensions`   | object[] | Array of objects (see next table)  |
 
 The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/extensions`.
 
