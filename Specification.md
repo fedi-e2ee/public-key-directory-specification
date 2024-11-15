@@ -2225,3 +2225,17 @@ public key provided by the Fediverse Server.
 [`BurnDown`](#burndown) messages **MUST NOT** be encrypted this way. The reason for this is that the Public Key
 Directory has no idea who is an administrator and who isn't. Therefore, the instance administration team **MUST** be the
 only entities capable of issuing a BurnDown.
+
+### Quantifying the Trustworthiness of the Public Key Directory
+
+Public keys distributed through the Public Key Directory can be generally considered more trustworthy than *Trust On 
+First Use* (TOFU) but less trustworthy than manually-verified public keys communicated out-of-band.
+
+The exact point on the continuum between these extremes is indeterminate and may depend on various individuals'
+risk appetites. When building applications atop this protocol, keep this in mind.
+
+This system has no concept of Authorities in its design. Trust decisions must be made at the edge, and cannot be 
+totally outsourced to the Public Key Directory (at least, without relying on hypothetical third-party designs).
+
+Don't blindly assume that the public keys we vend are trusted to the maximum level without the users verifying some
+other mechanism (e.g. safety numbers).
