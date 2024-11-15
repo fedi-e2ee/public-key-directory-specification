@@ -119,7 +119,6 @@ For example: `ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM`
 
 Each Merkle Root will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
 string.
-The Merkle Root is public 
 
 For example: `7TwKAbkiKCCQuCpDBV2GbkkkIDfMg2AmG7TMHqXBDJU`
 
