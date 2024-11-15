@@ -1809,8 +1809,11 @@ the efficacy of Denial of Service attacks.
 
 The replicated ciphertext **MAY** be persisted indefinitely, but regardless of the trust status of a given Mirror, if
 the mirror has access to the plaintext (whether by caching a copy or by `rewrapped-keys`), the Mirror **MUST** 
-occasionally (i.e., at least once every 24 hours) attempt to verify that the source server has not deliberately wiped 
-their copy of the symmetric key. If the source has, the mirror **MUST** do the same.
+occasionally attempt to verify that the source server has not deliberately wiped their copy of the symmetric key. 
+If the source has, the mirror **MUST** do the same.
+
+When processing a request for a replicated record, checking the status of the upstream record is **RECOMMENDED** if it 
+has not been checked in the past 24 hours.
 
 If the source is unavailable, the mirror may defer retries for up to 7 days. After this grace period, they should treat 
 the relevant rewrapped keys and cached plaintexts as invalid and remove them. If the source comes back online, the 
