@@ -1745,6 +1745,20 @@ they adhere to the [cache invalidation](#mirror-plaintext-cache-invalidation) sp
 Replica instances **SHOULD** provide [witness co-signatures](#witness-co-signing) to the Sigsum transparency log that
 the source PKD is built atop.
 
+##### Recursive Replication
+
+In addition to direct mirrors, Public Key Directory instances may choose to recursively replicate all of the replicas
+hosted by another server.
+
+```mermaid
+flowchart TD
+    A(example.com) -->|replicated|B{foo.net}
+    B --> |replicated|C{bar.org}
+```
+
+In the above flowchart, `bar.org` is replicating the history stored in `foo.net`. If they opt or a recursive 
+replication, they will also replicate `example.com` by copying from the copies of records hosted by `foo.net`.
+
 ##### Trusted Mirrors
 
 If the source Public Key Directory trusts the mirror's operators, the source **MAY** republish the symmetric key used
