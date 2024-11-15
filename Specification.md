@@ -1488,12 +1488,17 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/s
 
 Each entry in the `records` array will contain the following fields:
 
-| Response Field      | Type        | Remarks                                                                                                                            |
-|---------------------|-------------|------------------------------------------------------------------------------------------------------------------------------------|
-| `created`           | string      | [Timestamp](#timestamps)                                                                                                           |
-| `encrypted-message` | string      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
-| `message`           | map \| null | Decrypted protocol message (or null)                                                                                               |
-| `merkle-root`       | string      | Merkle tree root hash for the latest record                                                                                        |
+| Response Field      | Type                        | Remarks                                                                                                                            |
+|---------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `created`           | string                      | [Timestamp](#timestamps)                                                                                                           |
+| `encrypted-message` | string                      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
+| `message`           | map \| null                 | Decrypted protocol message (or null)                                                                                               |
+| `merkle-root`       | string                      | Merkle tree root hash for the latest record                                                                                        |
+| `rewrapped-keys`    | map<string, object> \| null | Array of objects (re-wrapped symmetric keys for each field)                                                                        |
+
+The optional `rewrapped-keys` field maps a Trusted Replica's fully qualified domain name to an object.  
+This object contains the re-wrapped symmetric key for each encrypted field that the Trusted Replica is
+permitted to persist.
 
 **Example Response**:
 
@@ -1514,7 +1519,12 @@ Each entry in the `records` array will contain the following fields:
     "recent-merkle-root": "ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
     "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
   },
-  "merkle-root": "Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc"
+  "merkle-root": "Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
+  "rewrapped-keys": {
+    "example.foo.bar": {
+      "aux-type": "<hpke ciphertext goes here>",
+    }
+  }
 }
 ```
 
@@ -1527,15 +1537,20 @@ co-signatures.
 
 An HTTP 200 OK request will contain the following response fields:
 
-| Response Field      | Type        | Remarks                                                                                                                            |
-|---------------------|-------------|------------------------------------------------------------------------------------------------------------------------------------|
-| `@context`          | string      | Domain separation                                                                                                                  |
-| `created`           | string      | [Timestamp](#timestamps)                                                                                                           |
-| `encrypted-message` | string      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
-| `message`           | map \| null | Decrypted protocol message (or null)                                                                                               |
-| `merkle-root`       | string      | Merkle tree root hash for the latest record                                                                                        |
+| Response Field      | Type                        | Remarks                                                                                                                            |
+|---------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `@context`          | string                      | Domain separation                                                                                                                  |
+| `created`           | string                      | [Timestamp](#timestamps)                                                                                                           |
+| `encrypted-message` | string                      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
+| `message`           | map \| null                 | Decrypted protocol message (or null)                                                                                               |
+| `merkle-root`       | string                      | Merkle tree root hash for the latest record                                                                                        |
+| `rewrapped-keys`    | map<string, object> \| null | Array of objects (re-wrapped symmetric keys for each field)                                                                        |
 
 The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/view`.
+
+The optional `rewrapped-keys` field maps a Trusted Replica's fully qualified domain name to an object.  
+This object contains the re-wrapped symmetric key for each encrypted field that the Trusted Replica is
+permitted to persist.
 
 **Example Response**:
 
@@ -1556,7 +1571,12 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/v
     "recent-merkle-root": "ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
     "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
   },
-  "merkle-root": "Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc"
+  "merkle-root": "Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
+  "rewrapped-keys": {
+    "example.foo.bar": {
+      "aux-type": "<hpke ciphertext goes here>",
+    }
+  }
 }
 ```
 
