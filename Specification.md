@@ -71,6 +71,7 @@ Backwards compatibility with existing systems (i.e., the PGP ecosystem) is a non
 
 Legal compliance frameworks (e.g., GDPR) are largely out of scope. We make some design considerations that aim to 
 alleviate specific technical issues that would otherwise *introduce* compliance obstacles, but go no further.
+We are not lawyers; this document does not contain legal advice.
 
 ### Notation and Conventions
 
@@ -104,6 +105,9 @@ Directory until the encryption key's erasure is legally requested.
 Each Protocol Message **MUST** be unique. Public Key Directory servers **MUST** reject any replayed Protocol Message,
 even if it's otherwise valid.
 
+Implementations **SHOULD** provide a distinct error message for when a unique message has already been accepted and
+processed by the system in a very recent period of time. This **MUST** be distinct from an error condition. 
+
 ### Public Key Encoding
 
 Each public key will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
@@ -115,7 +119,6 @@ For example: `ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM`
 
 Each Merkle Root will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
 string.
-The Merkle Root is public 
 
 For example: `7TwKAbkiKCCQuCpDBV2GbkkkIDfMg2AmG7TMHqXBDJU`
 
@@ -124,7 +127,7 @@ For example: `7TwKAbkiKCCQuCpDBV2GbkkkIDfMg2AmG7TMHqXBDJU`
 Every [Protocol Message](#protocol-messages) will contain a digital signature. Unless otherwise specified, these
 signatures will always be calculated the same way:
 
-Each digital signature will be calculated over the following information:
+Each digital signature will be calculated over the following information (in this order):
 
 1. The value of the top-level `@context` attribute.
 2. The value of the top-level `action` attribute.
@@ -152,6 +155,14 @@ def signPayload(secret_key, payload):
     ])
     return crypto_sign(secret_key, payloadToSign)
 ```
+
+The `@context` strings are intended to provide domain separation. 
+
+Raw hashes and signatures without any domain separation in the direct scope of this specification are considered a 
+security vulnerability. 
+
+Raw hashes or signatures in the Merkle Tree, or in protocols built atop the Public Key Directory, are not considered
+security vulnerabilities in our specification.
 
 ### Key Identifiers
 
@@ -230,6 +241,12 @@ def getAuxDataId(aux_type, data):
         ])
     )
 ```
+
+#### Requirements for Auxiliary Data Extensions
+
+Being very strict about the format of the data accepted by a given extension is highly **RECOMMENDED**.
+
+See [the relevant threat model entry](#attacker-submits-contraband-as-auxiliary-data)_
 
 ### Message Attribute Shreddability
 
@@ -612,6 +629,19 @@ Having few independent Public Key Directories, rather than 1:1 for instances, ma
 is a social mechanism, not a technological one.
 
 <!-- TODO: Explain how the technological mechanism, once specified, addresses this. -->
+
+#### Attacker submits contraband as auxiliary data.
+
+**Status**: Addressable.
+
+Consider a Public Key Directory which enables arbitrary, unformatted data to be published to the PKD by users. One day,
+Troy submits [CSAM](https://www.inhope.org/EN/articles/what-is-csam) to the ledger, then notifies law enforcement of
+this material being published on the Public Key Directory instance.
+
+To prevent this risk, extensions **SHOULD** be strict about the data they accept.
+
+Failing that, instance operators can use the [message content shredability](#message-attribute-shreddability) mechanism
+to wipe unwanted illegal material from their records by wiping the decryption key for that record.
 
 ## Protocol Messages
 
@@ -1779,8 +1809,11 @@ the efficacy of Denial of Service attacks.
 
 The replicated ciphertext **MAY** be persisted indefinitely, but regardless of the trust status of a given Mirror, if
 the mirror has access to the plaintext (whether by caching a copy or by `rewrapped-keys`), the Mirror **MUST** 
-occasionally (i.e., at least once every 24 hours) attempt to verify that the source server has not deliberately wiped 
-their copy of the symmetric key. If the source has, the mirror **MUST** do the same.
+occasionally attempt to verify that the source server has not deliberately wiped their copy of the symmetric key. 
+If the source has, the mirror **MUST** do the same.
+
+When processing a request for a replicated record, checking the status of the upstream record is **RECOMMENDED** if it 
+has not been checked in the past 24 hours.
 
 If the source is unavailable, the mirror may defer retries for up to 7 days. After this grace period, they should treat 
 the relevant rewrapped keys and cached plaintexts as invalid and remove them. If the source comes back online, the 
@@ -2192,3 +2225,17 @@ public key provided by the Fediverse Server.
 [`BurnDown`](#burndown) messages **MUST NOT** be encrypted this way. The reason for this is that the Public Key
 Directory has no idea who is an administrator and who isn't. Therefore, the instance administration team **MUST** be the
 only entities capable of issuing a BurnDown.
+
+### Quantifying the Trustworthiness of the Public Key Directory
+
+Public keys distributed through the Public Key Directory can be generally considered more trustworthy than *Trust On 
+First Use* (TOFU) but less trustworthy than manually-verified public keys communicated out-of-band.
+
+The exact point on the continuum between these extremes is indeterminate and may depend on various individuals'
+risk appetites. When building applications atop this protocol, keep this in mind.
+
+This system has no concept of Authorities in its design. Trust decisions must be made at the edge, and cannot be 
+totally outsourced to the Public Key Directory (at least, without relying on hypothetical third-party designs).
+
+Don't blindly assume that the public keys we vend are trusted to the maximum level without the users verifying some
+other mechanism (e.g. safety numbers).
