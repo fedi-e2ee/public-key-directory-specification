@@ -1622,6 +1622,65 @@ Extensions **MAY** include optional additional fields, if necessary, in the abov
 }
 ```
 
+#### GET api/replicas
+
+Purpose: List the other Public Key Directory instances that are replicated onto this one.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type     | Remarks                            |
+|----------------|----------|------------------------------------|
+| `@context`     | string   | Domain separation                  |
+| `current-time` | string   | [Timestamp](#timestamps)           |
+| `replicas`     | object[] | Array of objects (see next table)  |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/replicas`.
+
+Each entry in the `replicas` array will contain *at least* each of the following fields:
+
+| Response Field | Type     | Remarks                                                            |
+|----------------|----------|--------------------------------------------------------------------|
+| `id`           | string   | Unique.                                                            |
+| `ref`          | string   | Canonical URL for the other Public Key Directory being replicated. |
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/repliacs",
+  "time": "1731080855",
+  "extensions": [
+    {
+      "id": "7k18At1PNkUmWokYbkpS5t29ZPWQASvg2dWXaFiOnac",
+      "ref": "https://example.org"
+    },
+    {
+      "id": "1jrlXOicceUMsxs1c5F1EbVPvy1CRWgH42k_UrMceQg",
+      "ref": "https://example.org"
+    }
+  ]
+}
+```
+
+#### GET api/replica/:replica_id/{...}
+
+Every replica URL will contain a direct replica of the original Public Key Directory's HTTP responses.
+
+For example, `api/replica/7k18At1PNkUmWokYbkpS5t29ZPWQASvg2dWXaFiOnac/actor/:actor_id` will contain the same contents
+as requesting `api/actor/:actor_id` from the original Public Key Directory.
+
+Thus, `api/replica/:replica_id/` will contain:
+
+ * [actor/:actor_id](#get-apiactoractorid)
+ * [actor/:actor_id/keys](#get-apiactoractoridkeys)
+ * [actor/:actor_id/key/:key_id](#get-apiactoractoridkeys)
+ * [actor/:actor_id/auxiliary](#get-apiactoractoridauxiliary)
+ * [actor/:actor_id/auxiliary/:aux_data_id](#get-apiactoractoridauxiliaryauxdataid)
+ * [history](#get-apihistory)
+ * [history/since/:last_hash](#get-apihistorysincelasthash)
+
+The `extensions`, `replica`, and `revoke` endpoints are not mirrored in a replica.
+
 #### POST api/revoke
 
 Purpose: Accepts [`RevokeKeyThirdParty`](#revokekeythirdparty) messages.
