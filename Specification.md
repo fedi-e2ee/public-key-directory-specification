@@ -1962,6 +1962,7 @@ For the first message in a PKD, the "recent" Merkle root **MUST** be set to a se
 1. Attribute name (e.g. `actor` from `message`), denoted `a`
 2. Plaintext (string, plaintext), denoted `p`
 3. The Merkle root of a recent accepted Protocol Message, `m`.
+4. Salt, `s`.
 
 **Output**:
 
@@ -1972,16 +1973,14 @@ For the first message in a PKD, the "recent" Merkle root **MUST** be set to a se
 1. Set `k` to `0x04bda9c2f2702ba3d345521f553b5e6704604602574c15a58ed265436a541d70ff19c695534c064318975730774f442ede17bae55eb320f2081aa11989108466`,
    which is the SHA-512 hash of the ASCII string `"FediE2EE-v1-Compliance-Plaintext-Commitment"` (without quotes).
 2. Set `l` to `len(m) || m || len(a) || a || len(p) || p`.
-3. Calculate `HMAC-SHA-512(k, l)`. Truncate the output to the rightmost 48 bits (6 bytes). This is equivalent to
-   reducing the result modulo 2^{48}. The output of this step will be denoted as `s`.
-4. Set `C` to the output of the Argon2id function with the following parameters:
+3. Set `C` to the output of the Argon2id function with the following parameters:
    * `password` = `l`
-   * `salt` = `"FE2EEPKDv1" || s`
+   * `salt` = `s`
    * `memory cost` = `16777216` (16 MiB)
    * `iterations` = `3`
    * `parallelism` = `1`
-   * `output length` = `26` (26 bytes, or 208 bits)
-5. Output `C || s`, which will be called `Q` elsewhere, which will have a total length of 32 bytes (256 bits).
+   * `output length` = `32` (32 bytes, or 256 bits)
+4. Output `C`, which will be called `Q` elsewhere.
 
 Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
 unsigned 64-bit integer. This is congruent to `LE64()` as used in 
@@ -2009,12 +2008,14 @@ unsigned 64-bit integer. This is congruent to `LE64()` as used in
    256 bits will be the encryption key, `Ek`, while the remaining 128 bits will be the nonce, `n`.
 4. Derive an authentication key, `Ak`, through HKDF-SHA512 with a NULL salt and an info string set to
    `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`, with an output length of 256 bits.
-5. Calculate [a commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm), designated `Q`.
-6. Encrypt the plaintext attribute using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
-7. Calculate the HMAC-SHA512 of `h || r || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key. 
+5. Derive a commitment salt, `s`, as the SHA512 hash of `"FediE2EE-v1-Compliance-KDF-Salt" || h || r || m || len(a) || a`
+   truncated to 128 bits (big endian / the least significant bits).
+6. Calculate [a commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm), designated `Q`.
+7. Encrypt the plaintext attribute using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
+8. Calculate the HMAC-SHA512 of `h || r || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key. 
    Truncate the HMAC output to the rightmost 32 bytes (256 bits) to obtain `t`. This is equivalent to reducing
    the HMAC output modulo 2^{256}.
-8. Return `h || r || Q || t || c`.
+9. Return `h || r || Q || t || c`.
 
 Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
 unsigned 64-bit integer. This is congruent to `LE64()` as used in
@@ -2049,14 +2050,16 @@ unsigned 64-bit integer. This is congruent to `LE64()` as used in
     the HMAC output modulo 2^{256}.
 5.  Compare `t` with `t2`, using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
     If the two are not equal, return a decryption error.
-6. Derive an encryption key, `Ek`, and nonce, `n`, through HKDF-SHA512 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 384 bits. The most significant
-   256 bits will be the encryption key, `Ek`, while the remaining 128 bits will be the nonce, `n`.
+6.  Derive an encryption key, `Ek`, and nonce, `n`, through HKDF-SHA512 with a NULL salt and an info string set to
+    `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 384 bits. The most significant
+    256 bits will be the encryption key, `Ek`, while the remaining 128 bits will be the nonce, `n`.
 7.  Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the message attribute value, `p`.
-8.  Recalculate [the commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm) to obtain  `Q2`.
-9.  Compare `Q` with `Q2` using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
+8.  Derive a commitment salt, `s`, as the SHA512 hash of `"FediE2EE-v1-Compliance-KDF-Salt" || h || r || m || len(a) || a`
+    truncated to 128 bits (big endian / the least significant bits).
+9.  Recalculate [the commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm) to obtain  `Q2`.
+10. Compare `Q` with `Q2` using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
     If the two are not equal, return a decryption error.
-10. Return `p`.
+11. Return `p`.
 
 Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
 unsigned 64-bit integer. This is congruent to `LE64()` as used in
@@ -2122,16 +2125,19 @@ corresponding plaintext. In order to keep the PKD honest, the ciphertext include
 should be computationally infeasible for a PKD to convincingly lie about the plaintext that produced a given ciphertext,
 even though the key is not being disclosed.
 
-To accomplish this, the commitment is a deterministic Argon2id KDF output where the password and salt are both based on
-the plaintext value, attribute name, and a recent Merkle root for a previously accepted Protocol Message. The salt
-consists of a 80-bit constant prefix combined with a 48-bit suffix derived from the HMAC of the inputs. The goal of this
-construction is to be completely deterministic based on public inputs (plaintext, attribute name, recent Merkle root),
-yet still difficult to perform offline dictionary attacks against (i.e., rainbow tables).
+To accomplish this, the commitment is a Argon2id KDF output where the password is based on the plaintext value, 
+attribute name, and a recent Merkle root for a previously accepted Protocol Message.
 
-The resulting plaintext commitment consists of a 208-bit Argon2id KDF output and the 48-bit salt suffix. This commitment
-is also covered by the authentication tag on the associated ciphertext, which is then committed to a new Merkle root.
-This gives no opportunity for the server to behave dishonestly about which plaintext corresponds to a committed
-ciphertext, outside complying with Right To Be Forgotten style legal demands.
+The salt is calculated from the random value used for encrypting this record, the attribute name, and the same recent
+Merkle root as the password.
+
+The goal of this construction is to be completely deterministic based on public inputs (plaintext, attribute name, 
+recent Merkle root), yet still difficult to perform offline dictionary attacks against (i.e., rainbow tables).
+
+The resulting plaintext commitment consists of a 256-bit Argon2id KDF output. This commitment is also covered by the
+authentication tag on the associated ciphertext, which is then committed to a new Merkle root. This gives no opportunity
+for the server to behave dishonestly about which plaintext corresponds to a committed ciphertext, outside complying with 
+Right To Be Forgotten style legal demands.
 
 ### Revocation and Account Recovery
 
