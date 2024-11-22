@@ -2,19 +2,27 @@
 namespace FediE2EE\TestCode;
 
 use Exception;
+use SodiumException;
 
 class MessageEncryptor
 {
     protected const string CURRENT_VERSION = "\x01";
     protected const string INFO_ENCRYPT = 'FediE2EE-v1-Compliance-Encryption-Key';
     protected const string INFO_AUTH = 'FediE2EE-v1-Compliance-Message-Auth-Key';
-    protected const string PLAIN_COMMIT = 'FediE2EE-v1-Compliance-Plaintext-Commitment';
     protected const string SALT_PREFIX = 'FediE2EE-v1-Compliance-Salt-Prekey';
-    protected const string PLAIN_SALT_PREFIX = 'FE2EEPKDv1';
 
     public function __construct(#[\SensitiveParameter] private string $ikm)
     {}
 
+    /**
+     * @param string $salt
+     * @param string $attributeName
+     * @param string $value
+     * @param string|null $recentRoot
+     *
+     * @return string
+     * @throws SodiumException
+     */
     public static function plaintextCommitment(
         string $salt,
         string $attributeName,
