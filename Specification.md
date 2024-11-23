@@ -1971,14 +1971,14 @@ For the first message in a PKD, the "recent" Merkle root **MUST** be set to a se
 **Algorithm**:
 
 1. Set `l` to `len(m) || m || len(a) || a || len(p) || p`.
-2. Set `C` to the output of the Argon2id function with the following parameters:
+2. Set `Q` to the output of the Argon2id function with the following parameters:
    * `password` = `l`
    * `salt` = `s`
    * `memory cost` = `16777216` (16 MiB)
    * `iterations` = `3`
    * `parallelism` = `1`
    * `output length` = `32` (32 bytes, or 256 bits)
-3. Output `C`, which will be called `Q` elsewhere.
+3. Output the commitment `Q`.
 
 Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
 unsigned 64-bit integer. This is congruent to `LE64()` as used in 
