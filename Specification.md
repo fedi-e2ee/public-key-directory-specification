@@ -2002,11 +2002,12 @@ unsigned 64-bit integer. This is congruent to `LE64()` as used in
 1. Set the version prefix `h` to `0x01`.
 2. Generate 32 bytes of random data, `r`.
 3. Derive an encryption key, `Ek`, and nonce, `n`, through HKDF-SHA512 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 384 bits. The most significant
+   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || len(a) || a`, with an output length of 384 bits. The most significant
    256 bits will be the encryption key, `Ek`, while the remaining 128 bits will be the nonce, `n`.
 4. Derive an authentication key, `Ak`, through HKDF-SHA512 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`, with an output length of 256 bits.
-5. Derive a commitment salt, `s`, as the SHA512 hash of `"FediE2EE-v1-Compliance-KDF-Salt" || h || r || m || len(a) || a`
+   `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || len(a) || a`, with an output length of 256 bits.
+5. Derive a commitment salt, `s`, as the SHA512 hash of 
+   `"FediE2EE-v1-Compliance-KDF-Salt" || h || r || len(m) || m || len(a) || a`
    truncated to 128 bits (big endian / the least significant bits).
 6. Calculate [a commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm), designated `Q`.
 7. Encrypt the plaintext attribute using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
