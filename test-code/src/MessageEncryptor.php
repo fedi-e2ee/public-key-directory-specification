@@ -64,6 +64,7 @@ class MessageEncryptor
         hash_update($st, self::SALT_PREFIX);
         hash_update($st, $header);
         hash_update($st, $randomness);
+        hash_update($st, self::len($recentRoot));
         hash_update($st, $recentRoot);
         hash_update($st, self::len($attributeName));
         hash_update($st, $attributeName);
@@ -86,11 +87,21 @@ class MessageEncryptor
         }
         $h = self::CURRENT_VERSION;
         $r = random_bytes(32);
-        $tmp = hash_hkdf('sha512', $this->ikm, 48, self::INFO_ENCRYPT . $h . $r . $attributeName);
+        $tmp = hash_hkdf(
+            'sha512',
+            $this->ikm,
+            48,
+            self::INFO_ENCRYPT . $h . $r . self::len($attributeName) . $attributeName
+        );
         $encKey = substr($tmp, 0, 32);
         $n = substr($tmp, 32, 16);
         $salt = self::commitmentSalt($h, $attributeName, $r, $recentRoot);
-        $macKey = hash_hkdf('sha512', $this->ikm, 32, self::INFO_AUTH . $h . $r . $attributeName);
+        $macKey = hash_hkdf(
+            'sha512',
+            $this->ikm,
+            32,
+            self::INFO_AUTH . $h . $r . self::len($attributeName) . $attributeName
+        );
         $Q = self::plaintextCommitment($salt, $attributeName, $plaintext, $recentRoot);
         $c = openssl_encrypt(
             $plaintext,
@@ -140,7 +151,12 @@ class MessageEncryptor
         if (!hash_equals($h, self::CURRENT_VERSION)) {
             throw new Exception('Invalid version prefix');
         }
-        $macKey = hash_hkdf('sha512', $this->ikm, 32, self::INFO_AUTH . $h . $r . $attributeName);
+        $macKey = hash_hkdf(
+            'sha512',
+            $this->ikm,
+            32,
+            self::INFO_AUTH . $h . $r . self::len($attributeName) . $attributeName
+        );
         $t2 = substr(
             hash_hmac(
                 'sha512',
@@ -154,7 +170,12 @@ class MessageEncryptor
         if (!hash_equals($t2, $t)) {
             throw new Exception('Invalid authentication tag');
         }
-        $tmp = hash_hkdf('sha512', $this->ikm, 48, self::INFO_ENCRYPT . $h . $r . $attributeName);
+        $tmp = hash_hkdf(
+            'sha512',
+            $this->ikm,
+            48,
+            self::INFO_ENCRYPT . $h . $r . self::len($attributeName) . $attributeName
+        );
         $encKey = substr($tmp, 0, 32);
         $n = substr($tmp, 32, 16);
         $p = openssl_encrypt(
