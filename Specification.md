@@ -2043,17 +2043,17 @@ unsigned 64-bit integer. This is congruent to `LE64()` as used in
     * `c` is always variable (equal to the length of the original plaintext)
 2.  Ensure `h` is equal to the expected version prefix (`0x01` currently). If it is not, return a decryption error.
 3.  Derive an authentication key, `Ak`, through HKDF-SHA512 with a NULL salt and an info string set to
-    `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || a`, with an output length of 256 bits.
+    `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || len(a) || a`, with an output length of 256 bits.
 4.  Recalculate the HMAC-SHA512 of `h || r || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key.
     Truncate the HMAC output to the rightmost 32 bytes (256 bits) to obtain `t2`. This is equivalent to reducing
     the HMAC output modulo 2^{256}.
 5.  Compare `t` with `t2`, using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
     If the two are not equal, return a decryption error.
 6.  Derive an encryption key, `Ek`, and nonce, `n`, through HKDF-SHA512 with a NULL salt and an info string set to
-    `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || a`, with an output length of 384 bits. The most significant
+    `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || len(a) || a`, with an output length of 384 bits. The most significant
     256 bits will be the encryption key, `Ek`, while the remaining 128 bits will be the nonce, `n`.
 7.  Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the message attribute value, `p`.
-8.  Derive a commitment salt, `s`, as the SHA512 hash of `"FediE2EE-v1-Compliance-KDF-Salt" || h || r || m || len(a) || a`
+8.  Derive a commitment salt, `s`, as the SHA512 hash of `"FediE2EE-v1-Compliance-KDF-Salt" || h || r || len(m) || m || len(a) || a`
     truncated to 128 bits (big endian / the least significant bits).
 9.  Recalculate [the commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm) to obtain  `Q2`.
 10. Compare `Q` with `Q2` using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
