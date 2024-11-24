@@ -259,20 +259,21 @@ Presently, there is no clear legal guidance on how to best navigate this issue. 
 none backed up by case law. Additionally, using a totally anonymous look-up-table introduces the risk of rewritten 
 on-the-fly by the Public Key Directory administrators. This is an unacceptable risk.
 
-As a best-effort, good faith design decision, we will introduce the technical capability to "shred" Actor IDs (which may
-contain usernames, and usernames are definitely PII in scope of the *Right to be Forgotten*) and other fields.
+As a best-effort, good faith design decision, we will introduce the technical capability to "shred" Actor IDs and other
+message attributes (which may contain usernames, and usernames are definitely personal data in scope of the *Right
+to be Forgotten*).
 
 Consequently, we will add a layer of indirection to the underlying Message storage and Sigsum integration, for handling
 sensitive attributes (e.g., Actor ID):
 
-1. Every Message will have a unique 256-bit random key. This can be generated client-side or provided by the Public Key
+1. Every Message will have a unique 256-bit random key per sensitive attribute. These can be generated client-side or provided by the Public Key
    Directory, so long as the keys never repeat. The Public Key Directory will include a key-generation API endpoint for
    generating 256-bit keys for this purpose.
-2. Each attribute will be encrypted with the key from (1), using a committing authenticated encryption mode.
+2. Each attribute will be encrypted with the corresponding key from (1), using a committing authenticated encryption mode.
    The encryption steps are described in [a later section](#message-attribute-encryption-algorithm).
 
-During insert, clients will provide both an encrypted representation of the Actor ID in `message.actor`, and disclose
-the accompanying key in the `symmetric-keys` attribute (outside of message, and not covered by the signature).
+During insert, of an attribute clients will provide both an encrypted representation of the attributes value in `message.<attribute>`, and disclose
+the accompanying key in the `symmetric-keys.<attribute>` (outside of `message.`, and not covered by the signature).
 
 When requesting data from the ledger, the Message will be returned as-is (i.e., ciphertext), along with the decrypted
 Message (provided the key has not been shredded yet).
@@ -281,13 +282,13 @@ To ensure the link between the encrypted message and plaintext message is provab
 publish a commitment of the plaintext. This prevents a server from serving the wrong plaintext alongside a given
 ciphertext and fooling clients into believing it.
 
-The key is not included in the Sigsum data, but stored alongside the record.
+The keys are not included in the Sigsum data, but stored alongside the record in a separate editable database.
 
 The decrypted message is also not included in the Sigsum data.
 
 To satisfy a "right to be forgotten" request, the key for the relevant blocks will be erased. The ciphertext will 
 persist forever, but without the correct key, the contents will be indistinguishable from randomness. Thus, the system
-will irrevocably forget the Actor ID for those records.
+will irrevocably forget the Actor ID or other message attribute for those records.
 
 It's important to note that this is not a security feature, it's meant to eliminate a compliance obstacle.
 
