@@ -1890,6 +1890,8 @@ separate specification exists for Ed25519. That is not a criticism of the algori
 The authors of this specification strongly recommend asking an applied cryptography expert develop these cryptographic
 components.
 
+The cryptography version used for the current specification is `1`.
+
 ### Protocol Message Encryption
 
 The entirety of a Protocol Message **MAY** be encrypted, client-side, using [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/).
@@ -1956,6 +1958,45 @@ provided no two Protocol Messages from the same actor reuse the same "recent" Me
 
 For the first message in a PKD, the "recent" Merkle root **MUST** be set to a sequence of 32 `0x00` bytes.
 
+### Algorithm Suite Versions
+
+Each of the function placeholders in the algorithm descriptions below can refer to these specific constants and
+functions.
+
+The `String` type in the tables below are encoded as UTF-8, and should be interpreted as a literal sequence of the bytes
+representing these characters.
+
+Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
+unsigned 64-bit integer. This is congruent to `LE64()` as used in
+[PAE from PASETO]((https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)).
+
+#### Version 1
+
+##### Version 1 Constants
+
+These constants are mostly used for domain separation.
+
+| Constant name   | Type    | Value                                       |
+|-----------------|---------|---------------------------------------------|
+| VERSION         | Byte    | `0x01`                                      |
+| KDF_ENCRYPT_KEY | String  | `"FediE2EE-v1-Compliance-Encryption-Key"`   |
+| KDF_AUTH_KEY    | String  | `"FediE2EE-v1-Compliance-Message-Auth-Key"` |
+| KDF_COMMIT_SALT | String  | `"FediE2EE-v1-Compliance-KDF-Salt"`         |
+| KEY_BITS        | Integer | 256                                         |
+| NONCE_BITS      | Integer | 128                                         |
+
+##### Version 1 Functions
+
+| Function Name | Cryptographic Algorithm | Configuration and Miscellaneous Details        |
+|---------------|-------------------------|------------------------------------------------|
+| Stream        | AES-256-CTR             | To encrypt, XOR the output with the plaintext. |
+| Hash          | SHA-512                 |                                                |
+| MAC           | HMAC-SHA512             |                                                |
+| KDF           | HKDF-HMAC-SHA512        |                                                |
+| PwKDF         | Argon2id                | mem = 16MiB, iter = 3, para = 1                |
+| Sign          | Ed25519.sign()          |                                                |
+| Verify        | Ed25519.verify()        |                                                |
+
 #### Message Attribute Plaintext Commitment Algorithm
 
 **Inputs**:
@@ -1972,18 +2013,11 @@ For the first message in a PKD, the "recent" Merkle root **MUST** be set to a se
 **Algorithm**:
 
 1. Set `l` to `len(m) || m || len(a) || a || len(p) || p`.
-2. Set `Q` to the output of the Argon2id function with the following parameters:
+2. Set `Q` to the output of [`PwKDF`](#version-1-functions) with the following parameters:
    * `password` = `l`
    * `salt` = `s`
-   * `memory cost` = `16777216` (16 MiB)
-   * `iterations` = `3`
-   * `parallelism` = `1`
    * `output length` = `32` (32 bytes, or 256 bits)
 3. Output the commitment `Q`.
-
-Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
-unsigned 64-bit integer. This is congruent to `LE64()` as used in 
-[PAE from PASETO]((https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)).
 
 #### Message Attribute Encryption Algorithm
 
@@ -2000,26 +2034,23 @@ unsigned 64-bit integer. This is congruent to `LE64()` as used in
 
 **Algorithm**:
 
-1. Set the version prefix `h` to `0x01`.
+1. Set the version prefix `h` to [`VERSION`](#version-1-constants).
 2. Generate 32 bytes of random data, `r`.
-3. Derive an encryption key, `Ek`, and nonce, `n`, through HKDF-SHA512 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || len(a) || a`, with an output length of 384 bits. The most significant
+3. Derive an encryption key, `Ek`, and nonce, `n`, through [`KDF`](#version-1-functions) with a NULL salt and an info 
+   string set to `KDF_ENCRYPT_KEY || h || r || len(a) || a`, with an output length of 384 bits. The most significant
    256 bits will be the encryption key, `Ek`, while the remaining 128 bits will be the nonce, `n`.
-4. Derive an authentication key, `Ak`, through HKDF-SHA512 with a NULL salt and an info string set to
-   `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || len(a) || a`, with an output length of 256 bits.
-5. Derive a commitment salt, `s`, as the SHA512 hash of 
-   `"FediE2EE-v1-Compliance-KDF-Salt" || h || r || len(m) || m || len(a) || a`
+4. Derive an authentication key, `Ak`, through [`KDF`](#version-1-functions) with a NULL salt and an info string set to
+   `KDF_AUTH_KEY || h || r || len(a) || a`, with an output length of 256 bits.
+5. Derive a commitment salt, `s`, as the [`Hash`](#version-1-functions) of 
+   `KDF_COMMIT_SALT || h || r || len(m) || m || len(a) || a`
    truncated to 128 bits (big endian / the least significant bits).
 6. Calculate [a commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm), designated `Q`.
-7. Encrypt the plaintext attribute using AES-256-CTR, with the nonce set to `n`, to obtain the ciphertext, `c`.
-8. Calculate the HMAC-SHA512 of `h || r || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key. 
-   Truncate the HMAC output to the rightmost 32 bytes (256 bits) to obtain `t`. This is equivalent to reducing
+7. Encrypt the plaintext attribute using [`Stream`](#version-1-functions), with the nonce set to `n`, to obtain the
+   ciphertext, `c`.
+8. Calculate the [`MAC`](#version-1-functions) of `h || r || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as 
+   the key. Truncate the HMAC output to the rightmost 32 bytes (256 bits) to obtain `t`. This is equivalent to reducing
    the HMAC output modulo 2^{256}.
 9. Return `h || r || Q || t || c`.
-
-Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
-unsigned 64-bit integer. This is congruent to `LE64()` as used in
-[PAE from PASETO]((https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)).
 
 #### Message Attribute Decryption Algorithm
 
@@ -2042,28 +2073,27 @@ unsigned 64-bit integer. This is congruent to `LE64()` as used in
     * `Q` is always 32 bytes long
     * `t` is always 32 bytes long
     * `c` is always variable (equal to the length of the original plaintext)
-2.  Ensure `h` is equal to the expected version prefix (`0x01` currently). If it is not, return a decryption error.
-3.  Derive an authentication key, `Ak`, through HKDF-SHA512 with a NULL salt and an info string set to
-    `"FediE2EE-v1-Compliance-Message-Auth-Key" || h || r || len(a) || a`, with an output length of 256 bits.
-4.  Recalculate the HMAC-SHA512 of `h || r || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` as the key.
-    Truncate the HMAC output to the rightmost 32 bytes (256 bits) to obtain `t2`. This is equivalent to reducing
-    the HMAC output modulo 2^{256}.
+2.  Ensure `h` is equal to the expected version prefix ([`VERSION`](#version-1-constants) currently). 
+    If it is not, return a decryption error.
+3.  Derive an authentication key, `Ak`, through [`KDF`](#version-1-functions) with a NULL salt and an info string set to
+    `KDF_AUTH_KEY || h || r || len(a) || a`, with an output length of 256 bits.
+4.  Recalculate the [`MAC`](#version-1-functions) of `h || r || len(a) || a || len(c) || c || len(Q) || Q`, with `Ak` 
+    as the key. Truncate the HMAC output to the rightmost 32 bytes (256 bits) to obtain `t2`. This is equivalent to 
+    reducing the HMAC output modulo 2^{256}.
 5.  Compare `t` with `t2`, using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
     If the two are not equal, return a decryption error.
-6.  Derive an encryption key, `Ek`, and nonce, `n`, through HKDF-SHA512 with a NULL salt and an info string set to
-    `"FediE2EE-v1-Compliance-Encryption-Key" || h || r || len(a) || a`, with an output length of 384 bits. The most significant
+6.  Derive an encryption key, `Ek`, and nonce, `n`, through [`KDF`](#version-1-functions) with a NULL salt and an info
+    string set to `KDF_ENCRYPT_KEY || h || r || len(a) || a`, with an output length of 384 bits. The most significant
     256 bits will be the encryption key, `Ek`, while the remaining 128 bits will be the nonce, `n`.
-7.  Decrypt `c` using AES-256-CTR, with the nonce set to `n`, to obtain the message attribute value, `p`.
-8.  Derive a commitment salt, `s`, as the SHA512 hash of `"FediE2EE-v1-Compliance-KDF-Salt" || h || r || len(m) || m || len(a) || a`
+7.  Decrypt `c` using [`Stream`](#version-1-functions), with the nonce set to `n`, to obtain the message attribute 
+    value, `p`.
+8.  Derive a commitment salt, `s`, as the [`Hash`](#version-1-functions) of 
+    `KDF_COMMIT_SALT || h || r || len(m) || m || len(a) || a`
     truncated to 128 bits (big endian / the least significant bits).
 9.  Recalculate [the commitment of the plaintext](#message-attribute-plaintext-commitment-algorithm) to obtain  `Q2`.
 10. Compare `Q` with `Q2` using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
     If the two are not equal, return a decryption error.
 11. Return `p`.
-
-Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
-unsigned 64-bit integer. This is congruent to `LE64()` as used in
-[PAE from PASETO]((https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)).
 
 ## Security Considerations
 
@@ -2091,14 +2121,13 @@ When comparing cryptographic outputs, a constant-time comparison **MUST** always
 
 ### Cryptographic Agility
 
-The cryptographic components specified by the initial version of this specification are
-[Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) (which includes SHA-512 internally), SHA-256, Argon2id, and 
-AES-256. SHA-256 is used by Sigsum, as well as for key derivation and message authentication (via HKDF an HMAC 
-respectively) for Actor ID encryption. The actual Actor IDs will be encrypted with AES-256 in Counter Mode.
+This specification uses sequential versioning as a mechanism for cryptographic agility with minimal in-band signaling.
+Each suite of algorithm is assigned to a number, which provides a hard-coded set of cryptographic primitives. 
 
-Future versions of this specification should make an effort to minimize the amount of complexity for implementors.
-To that end, cryptographic agility will only be satisfied by the introduction of new protocol versions, rather than
-enabling the hot-swapping of cryptographic primitives by configuration.
+There are no options within each version; only one algorithm is permitted in a specific context. Should multiple use
+cases exist that demand different algorithms, each use case will be codified in a distinct version.
+
+The suite of algorithms used are outlined in the [Algorithm Suite Versions](#algorithm-suite-versions) section.
 
 ### Interoperability As A Non-Goal
 
