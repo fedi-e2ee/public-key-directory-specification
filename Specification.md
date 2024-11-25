@@ -1890,7 +1890,7 @@ separate specification exists for Ed25519. That is not a criticism of the algori
 The authors of this specification strongly recommend asking an applied cryptography expert develop these cryptographic
 components.
 
-The cryptography version used for the current specification is `1`.
+The cryptography version used for the current specification is [Version 1](#version-1).
 
 ### Protocol Message Encryption
 
