@@ -1967,10 +1967,6 @@ We also include a commitment of the plaintext, which is also covered by the ciph
 domain-separated HMAC to calculate a salt, which is then used to calculate an Argon2id KDF output of the plaintext.
 We use Argon2id to make brute-force attacks impractical.
 
-The Argon2id salt is deliberately **NOT** collision-resistant, such that multiple plaintexts can produce the same salt.
-The salt probability space (2^{48}) is large enough to not give an attacker any significant advantage with 
-precomputation, while still allowing multiple plaintexts to generate the same salt (birthday bound = 2^{24} attributes).
-
 #### Recent Merkle Root Included in Plaintext Commitments
 
 We additionally include the Merkle root of a recent accepted Protocol Message when calculating this commitment. Which 
