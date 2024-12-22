@@ -1382,16 +1382,17 @@ known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occu
 
 An HTTP 200 OK request will contain the following response fields:
 
-| Response Field | Type           | Remarks                                       |
-|----------------|----------------|-----------------------------------------------|
-| `@context`     | string         | Domain separation                             |
-| `actor-id`     | string         | Matches the request parameter, sanitized      |
-| `created`      | string         | [Timestamp](#timestamps)                      |
-| `key-id`       | string         | See [Key IDs](#key-identifiers)               |
-| `merkle-root`  | string         | Merkle tree root hash for AddKey              |
-| `public-key`   | string         | Public key                                    |
-| `revoked`      | string \| null | [Timestamp](#timestamps) (or null)            |
-| `revoke-root`  | string \| null | Merkle tree root hash for RevokeKey (or null) |
+| Response Field     | Type           | Remarks                                                                                    |
+|--------------------|----------------|--------------------------------------------------------------------------------------------|
+| `@context`         | string         | Domain separation                                                                          |
+| `actor-id`         | string         | Matches the request parameter, sanitized                                                   |
+| `created`          | string         | [Timestamp](#timestamps)                                                                   |
+| `inclusion-proof`  | string[]       | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root. |
+| `key-id`           | string         | See [Key IDs](#key-identifiers)                                                            |
+| `merkle-root`      | string         | Merkle tree root hash for AddKey                                                           |
+| `public-key`       | string         | Public key                                                                                 |
+| `revoked`          | string \| null | [Timestamp](#timestamps) (or null)                                                         |
+| `revoke-root`      | string \| null | Merkle tree root hash for RevokeKey (or null)                                              |
 
 The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/key-info`.
 
@@ -1402,6 +1403,7 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/key
   "@context": "fedi-e2ee:v1/api/actor/key-info",
   "actor-id": "https://example.com/alice",
   "created": "1722176511",
+  "inclusion-proof": ["yWF2i5NqdyB9s0nEGnNQpoxSOcIwySMCch5xTOJurwE", "b67xzsl8mtyMGphDa-DNJEyrM0lWIgp94W36svRxjW4", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
   "key-id": "foo",
   "merkle-root": "pkd-mr-v1:rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
   "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM",
@@ -1480,17 +1482,18 @@ known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occu
 
 An HTTP 200 OK request will contain the following response fields:
 
-| Response Field | Type           | Remarks                                           |
-|----------------|----------------|---------------------------------------------------|
-| `@context`     | string         | Domain separation                                 |
-| `actor-id`     | string         | Matches the request parameter, sanitized          |
-| `aux-data`     | string         | Auxiliary Data Contents                           |
-| `aux-id`       | string         | [Auxiliary Data ID](#auxiliary-data-identifiers)  |
-| `aux-type`     | string         | [Auxiliary Data Type](#auxiliary-data)            |
-| `created`      | string         | [Timestamp](#timestamps)                          |
-| `merkle-root`  | string         | Merkle tree root hash for AddAuxData              |
-| `revoked`      | string \| null | [Timestamp](#timestamps) (or null)                |
-| `revoke-root`  | string \| null | Merkle tree root hash for RevokeAuxData (or null) |
+| Response Field     | Type           | Remarks                                                                                    |
+|--------------------|----------------|--------------------------------------------------------------------------------------------|
+| `@context`         | string         | Domain separation                                                                          |
+| `actor-id`         | string         | Matches the request parameter, sanitized                                                   |
+| `aux-data`         | string         | Auxiliary Data Contents                                                                    |
+| `aux-id`           | string         | [Auxiliary Data ID](#auxiliary-data-identifiers)                                           |
+| `aux-type`         | string         | [Auxiliary Data Type](#auxiliary-data)                                                     |
+| `created`          | string         | [Timestamp](#timestamps)                                                                   |
+| `inclusion-proof`  | string[]       | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root. |
+| `merkle-root`      | string         | Merkle tree root hash for AddAuxData                                                       |
+| `revoked`          | string \| null | [Timestamp](#timestamps) (or null)                                                         |
+| `revoke-root`      | string \| null | Merkle tree root hash for RevokeAuxData (or null)                                          |
 
 The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get-aux`.
 
@@ -1504,6 +1507,7 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get
   "aux-id": "XUUDSZSwIWsanCX9Dr4WH5g9p1_pTaK6hZymeISJI0A",
   "aux-type": "age-v1",
   "created": "1730902834",
+  "inclusion-proof": ["O4BrUUtPYC3PWIr6uo0o8-zMrH4hT43WLmNrpUJTpKk", "s-91v_WIcTNuyI-EbVTJs71Vq0iNbwj3dWN7akDj5jw", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
   "merkle-root": "pkd-mr-v1:KOspo1eBvXE9ZPyyNmW1sqqFeLqLA5f1LBCYHct1n9c",
   "revoked": null,
   "revoke-root": null
@@ -1606,6 +1610,7 @@ An HTTP 200 OK request will contain the following response fields:
 | `@context`          | string                      | Domain separation                                                                                                                  |
 | `created`           | string                      | [Timestamp](#timestamps)                                                                                                           |
 | `encrypted-message` | string                      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
+| `inclusion-proof`   | string[]                    | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root.                                         |
 | `message`           | map \| null                 | Decrypted protocol message (or null)                                                                                               |
 | `merkle-root`       | string                      | Merkle tree root hash for the latest record                                                                                        |
 | `rewrapped-keys`    | map<string, object> \| null | Array of objects (re-wrapped symmetric keys for each field)                                                                        |
@@ -1623,6 +1628,7 @@ permitted to persist.
   "@context": "fedi-e2ee:v1/api/history/view",
   "created": "1730905988",
   "encrypted-message": "{\"@context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
+  "inclusion-proof": ["w3N3BU44g4MLC-sDGSzr1nJO9jmZfh_yq1bhpLjjWmo", "MMh4YxMTJLUW5m-6TuyfVhL3bxPF5fnXKbajEVJeO_s", "5Oagf2KpIxEschB1bjyUCG9E8ap_7chIQFHyU4yJy1I"],
   "message": {
     "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
     "action": "AddAuxData",
