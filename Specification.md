@@ -100,7 +100,7 @@ attack on the system.
 
 This means that history is immutable, with one exception: [the ability for the protocol to forget users](#message-attribute-shreddability).
 This is achieved by committing encrypted fields to the Merkle tree, and storing an encryption key on the Public Key
-Directory until the encryption key's erasure is legally requested.
+Directory server until the encryption key's erasure is legally requested.
 
 Each Protocol Message **MUST** be unique. Public Key Directory servers **MUST** reject any replayed Protocol Message,
 even if it's otherwise valid.
