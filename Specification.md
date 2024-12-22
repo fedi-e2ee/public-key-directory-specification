@@ -100,7 +100,7 @@ attack on the system.
 
 This means that history is immutable, with one exception: [the ability for the protocol to forget users](#message-attribute-shreddability).
 This is achieved by committing encrypted fields to the Merkle tree, and storing an encryption key on the Public Key
-Directory until the encryption key's erasure is legally requested.
+Directory server until the encryption key's erasure is legally requested.
 
 Each Protocol Message **MUST** be unique. Public Key Directory servers **MUST** reject any replayed Protocol Message,
 even if it's otherwise valid.
@@ -118,9 +118,9 @@ For example: `ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM`
 ### Merkle Root Encoding
 
 Each Merkle Root will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
-string.
+string, prefixed with a distinct prefix for the current protocol version followed by a colon (currently, `pkd-mr-v1:`).
 
-For example: `7TwKAbkiKCCQuCpDBV2GbkkkIDfMg2AmG7TMHqXBDJU`
+For example: `pkd-mr-v1:7TwKAbkiKCCQuCpDBV2GbkkkIDfMg2AmG7TMHqXBDJU`
 
 ### Protocol Signatures
 
@@ -153,7 +153,7 @@ def signPayload(secret_key, payload):
         b'recent-merkle-root',
         payload['recent-merkle-root'],
     ])
-    return crypto_sign(secret_key, payloadToSign)
+    return base64url(crypto_sign(secret_key, payloadToSign))
 ```
 
 The `@context` strings are intended to provide domain separation. 
@@ -296,7 +296,8 @@ Crypto-shredding and message attribute encryption are intended to allow the syst
 record while still maintaining an immutable history.
 
 > Note: We considered using a zero-knowledge proof for this purpose, but couldn't justify the additional protocol
-> complexity.
+> complexity. For the curious, one of the authors of this specification 
+> [blogged about this topic in depth](https://soatok.blog/2024/11/21/key-transparency-and-the-right-to-be-forgotten/).
 
 It does not guarantee that other clients and servers did not persist the key necessary to comprehend the contents of the
 deleted records, since it's generated client-side, and we cannot control the behavior of client software. However, it 
@@ -327,7 +328,7 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 5.  HMAC, used with a SHA-2 family hash function, offers PRF security congruent to the size of the hash function.
 6.  AES is a secure block cipher (which can be modeled as a secure permutation) that offers a security level congruent
     to the length of its key.
-7.  EdDSA, as defined over the Edwards25519 curve, provides secure existential forgery under chosen message attack
+7.  EdDSA, as defined over the Edwards25519 curve, provides strong existential forgery under chosen message attack
     (SUF-CMA) security, at a security level in excess of 120 bits.
 8.  Argon2id is a secure, memory-hard password-based key derivation function.
 9.  HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
@@ -335,6 +336,9 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated as DHKEM with ECDH over Curve25519
     (X25519, [RFC 7748](https://datatracker.ietf.org/doc/rfc7748/)), HKDF-SHA256, and ChaCha20Poly1305--provides 
     IND-CCA2 security against adversaries not in possession of the X25519 secret key.
+11. AES in Counter Mode can be used to encrypt up to 2^{36} successive bytes under the same (key, initial counter),
+    and the resulting ciphertext will be indistinguishable an encryption of NUL (`0x00`) bytes.
+12. Merkle trees based on a secure hash function (assumption 4) provide a secure verifiable data structure.
 
 ### Assets
 
@@ -376,6 +380,35 @@ defined in alphabetical order within each classification.
 ### Risks
 
 This section seeks to outline specific risks and whether they are prevented, mitigated, addressable, or open.
+
+| Risk                                                                                                                                                                                                               | Status                  |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| [Attackers seek to change history.](#attackers-seek-to-change-history)                                                                                                                                             | **Prevented by design** |                                                                        
+| [Attackers seek to selectively censor historical records.](#attackers-seek-to-selectively-censor-historical-records)                                                                                               | Addressable             |
+| [Attackers seek to replace public key mappings without altering the ledger.](#attackers-seek-to-replace-public-key-mappings-without-altering-the-ledger)                                                           | **Prevented by design** |
+| [Attackers seek to leverage plaintext commitment to recover encrypted records whose keys were wiped.](#attackers-seek-to-leverage-plaintext-commitment-to-recover-encrypted-records-whose-keys-were-wiped)         | **Prevented by design** |
+| [Instance administrator enrolls a public key on behalf of an un-enrolled user.](#instance-administrator-enrolls-a-public-key-on-behalf-of-an-un-enrolled-user)                                                     | _Open_                  |
+| [Instance administrator attempts to enroll a new public key for a previously enrolled user.](#instance-administrator-attempts-to-enroll-a-new-public-key-for-a-previously-enrolled-user)                           | **Prevented by design** |
+| [Instance administrator attempts to reset the public keys for a previously enrolled user.](#instance-administrator-attempts-to-reset-the-public-keys-for-a-previously-enrolled-user)                               | Addressable             |
+| [Race condition between successful BurnDown and subsequent AddKey.](#race-condition-between-successful-burndown-and-subsequent-addkey)                                                                             | _Open_                  |
+| [Hostile nation state demands their public key be added to an existing actor under a gag order.](#hostile-nation-state-demands-their-public-key-be-added-to-an-existing-actor-under-a-gag-order)                   | Mitigated               |
+| [Hostile nation state seeks to abuse Right To Be Forgotten mechanisms to cover up an unlawful intrusion.](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion) | _Open_ / Addressable    |
+| [Instance administrator loses all their signing keys.](#instance-administrator-loses-all-their-signing-keys)                                                                                                       | Mitigated               |
+| [Attacker sends spoofed messages on behalf of another server.](#attacker-sends-spoofed-messages-on-behalf-of-another-server)                                                                                       | **Prevented by design** |
+| [Attacker sends spoofed messages from a compromised Fediverse server.](#attacker-sends-spoofed-messages-from-a-compromised-fediverse-server)                                                                       | _Open_                  |
+| [Cosmic ray causes a bit-flip on stored data or the result of a computation.](#cosmic-ray-causes-a-bit-flip-on-stored-data-or-the-result-of-a-computation)                                                         | _Open_                  |
+| [Malicious instance administrator attempts to censor Fireproof messages to retain control.](#malicious-instance-administrator-attempts-to-censor-fireproof-messages-to-retain-control)                             | Mitigated               |
+| [Malicious instance administrator also controls the Public Key Directory.](#malicious-instance-administrator-also-controls-the-public-key-directory)                                                               | _Open_                  |
+| [Attacker uses a decoy Public Key Directory that publishes a dishonest history.](#attacker-uses-a-decoy-public-key-directory-that-publishes-a-dishonest-history)                                                   | _Open_                  |
+| [Attacker submits contraband as auxiliary data.](#attacker-submits-contraband-as-auxiliary-data)                                                                                                                   | Addressable             |
+
+Each status is defined as follows:
+
+* **Prevented by design**: This risk is prevented (provided our assumptions above hold true) by our specification.
+* **Mitigated**: This risk is not totally prevented, but its useful consequences for attackers are.
+* **Addressable**: This risk can be mitigated, but requires another precondition to be true. If it's not true, then this
+  risk is actually Open. The truth value of this precondition may vary from user to user.
+* **Open**: This is a risk that we have not prevented.
 
 #### Attackers seek to change history.
 
@@ -535,7 +568,7 @@ The availability risk to self-hosters that lost all their keys is only present i
 
 #### Attacker sends spoofed messages on behalf of another server.
 
-**Status**: Prevented.
+**Status**: Prevented by design.
 
 Mallory wants to send a `BurnDown` then `AddKey` to the Public Key Directory to impersonate Bob. To do this, she 
 pretends to be Alice's Fediverse instance and signs messages, using HTTP Signatures, with a bogus asymmetric keypair.
@@ -586,7 +619,7 @@ to require a quorum before trusting its responses.
 
 #### Malicious instance administrator attempts to censor Fireproof messages to retain control.
 
-**Status**: Mitigated by design.
+**Status**: Mitigated.
 
 Richard wants to ensure Dave's account is never [Fireproof](#fireproof), because he wants the ability to issue a 
 BurnDown on Dave's behalf at a moment's notice. To that end, his server software is modified to silently drop any 
@@ -1321,19 +1354,19 @@ Only non-revoked public keys will be included in this list.
     {
       "created": "1722176511",
       "key-id": "foo",
-      "merkle-root": "rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
+      "merkle-root": "pkd-mr-v1:rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM"
     },
     {
       "created": "1722603182",
       "key-id": "bar",
-      "merkle-root": "p0n-vBu3mEx6BxnFKe6DDknwKUR8U42i8y_0VmEReg4",
+      "merkle-root": "pkd-mr-v1:p0n-vBu3mEx6BxnFKe6DDknwKUR8U42i8y_0VmEReg4",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLN"
     },
     {
       "created": "1730902833",
       "key-id": "baz",
-      "merkle-root": "HlRR_f1fFrRGu7Mczkdi41po07iP9JYjCp1GBb2y_nk",
+      "merkle-root": "pkd-mr-v1:HlRR_f1fFrRGu7Mczkdi41po07iP9JYjCp1GBb2y_nk",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLO"
     }
   ]
@@ -1349,16 +1382,17 @@ known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occu
 
 An HTTP 200 OK request will contain the following response fields:
 
-| Response Field | Type           | Remarks                                       |
-|----------------|----------------|-----------------------------------------------|
-| `@context`     | string         | Domain separation                             |
-| `actor-id`     | string         | Matches the request parameter, sanitized      |
-| `created`      | string         | [Timestamp](#timestamps)                      |
-| `key-id`       | string         | See [Key IDs](#key-identifiers)               |
-| `merkle-root`  | string         | Merkle tree root hash for AddKey              |
-| `public-key`   | string         | Public key                                    |
-| `revoked`      | string \| null | [Timestamp](#timestamps) (or null)            |
-| `revoke-root`  | string \| null | Merkle tree root hash for RevokeKey (or null) |
+| Response Field     | Type           | Remarks                                                                                    |
+|--------------------|----------------|--------------------------------------------------------------------------------------------|
+| `@context`         | string         | Domain separation                                                                          |
+| `actor-id`         | string         | Matches the request parameter, sanitized                                                   |
+| `created`          | string         | [Timestamp](#timestamps)                                                                   |
+| `inclusion-proof`  | string[]       | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root. |
+| `key-id`           | string         | See [Key IDs](#key-identifiers)                                                            |
+| `merkle-root`      | string         | Merkle tree root hash for AddKey                                                           |
+| `public-key`       | string         | Public key                                                                                 |
+| `revoked`          | string \| null | [Timestamp](#timestamps) (or null)                                                         |
+| `revoke-root`      | string \| null | Merkle tree root hash for RevokeKey (or null)                                              |
 
 The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/key-info`.
 
@@ -1369,8 +1403,9 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/key
   "@context": "fedi-e2ee:v1/api/actor/key-info",
   "actor-id": "https://example.com/alice",
   "created": "1722176511",
+  "inclusion-proof": ["yWF2i5NqdyB9s0nEGnNQpoxSOcIwySMCch5xTOJurwE", "b67xzsl8mtyMGphDa-DNJEyrM0lWIgp94W36svRxjW4", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
   "key-id": "foo",
-  "merkle-root": "rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
+  "merkle-root": "pkd-mr-v1:rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
   "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM",
   "revoked": null,
   "revoke-root": null
@@ -1447,17 +1482,18 @@ known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occu
 
 An HTTP 200 OK request will contain the following response fields:
 
-| Response Field | Type           | Remarks                                           |
-|----------------|----------------|---------------------------------------------------|
-| `@context`     | string         | Domain separation                                 |
-| `actor-id`     | string         | Matches the request parameter, sanitized          |
-| `aux-data`     | string         | Auxiliary Data Contents                           |
-| `aux-id`       | string         | [Auxiliary Data ID](#auxiliary-data-identifiers)  |
-| `aux-type`     | string         | [Auxiliary Data Type](#auxiliary-data)            |
-| `created`      | string         | [Timestamp](#timestamps)                          |
-| `merkle-root`  | string         | Merkle tree root hash for AddAuxData              |
-| `revoked`      | string \| null | [Timestamp](#timestamps) (or null)                |
-| `revoke-root`  | string \| null | Merkle tree root hash for RevokeAuxData (or null) |
+| Response Field     | Type           | Remarks                                                                                    |
+|--------------------|----------------|--------------------------------------------------------------------------------------------|
+| `@context`         | string         | Domain separation                                                                          |
+| `actor-id`         | string         | Matches the request parameter, sanitized                                                   |
+| `aux-data`         | string         | Auxiliary Data Contents                                                                    |
+| `aux-id`           | string         | [Auxiliary Data ID](#auxiliary-data-identifiers)                                           |
+| `aux-type`         | string         | [Auxiliary Data Type](#auxiliary-data)                                                     |
+| `created`          | string         | [Timestamp](#timestamps)                                                                   |
+| `inclusion-proof`  | string[]       | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root. |
+| `merkle-root`      | string         | Merkle tree root hash for AddAuxData                                                       |
+| `revoked`          | string \| null | [Timestamp](#timestamps) (or null)                                                         |
+| `revoke-root`      | string \| null | Merkle tree root hash for RevokeAuxData (or null)                                          |
 
 The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get-aux`.
 
@@ -1471,7 +1507,8 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get
   "aux-id": "XUUDSZSwIWsanCX9Dr4WH5g9p1_pTaK6hZymeISJI0A",
   "aux-type": "age-v1",
   "created": "1730902834",
-  "merkle-root": "KOspo1eBvXE9ZPyyNmW1sqqFeLqLA5f1LBCYHct1n9c",
+  "inclusion-proof": ["O4BrUUtPYC3PWIr6uo0o8-zMrH4hT43WLmNrpUJTpKk", "s-91v_WIcTNuyI-EbVTJs71Vq0iNbwj3dWN7akDj5jw", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
+  "merkle-root": "pkd-mr-v1:KOspo1eBvXE9ZPyyNmW1sqqFeLqLA5f1LBCYHct1n9c",
   "revoked": null,
   "revoke-root": null
 }
@@ -1499,7 +1536,7 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history`.
   "@context": "fedi-e2ee:v1/api/history",
   "current-time": "1730905988",
   "created": "1601016659",
-  "merkle-root": "XINzPw6Z8ygzDQSZVpGtUmjVIqGVkkzWat_tkuWit3M"
+  "merkle-root": "pkd-mr-v1:XINzPw6Z8ygzDQSZVpGtUmjVIqGVkkzWat_tkuWit3M"
 }
 ```
 
@@ -1547,10 +1584,10 @@ permitted to persist.
       "aux-data": "this-is-just-test-data",
       "time": "1730908981"
     },
-    "recent-merkle-root": "ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
+    "recent-merkle-root": "pkd-mr-v1:ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
     "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
   },
-  "merkle-root": "Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
+  "merkle-root": "pkd-mr-v1:Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
   "rewrapped-keys": {
     "example.foo.bar": {
       "aux-type": "<hpke ciphertext goes here>",
@@ -1573,6 +1610,7 @@ An HTTP 200 OK request will contain the following response fields:
 | `@context`          | string                      | Domain separation                                                                                                                  |
 | `created`           | string                      | [Timestamp](#timestamps)                                                                                                           |
 | `encrypted-message` | string                      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
+| `inclusion-proof`   | string[]                    | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root.                                         |
 | `message`           | map \| null                 | Decrypted protocol message (or null)                                                                                               |
 | `merkle-root`       | string                      | Merkle tree root hash for the latest record                                                                                        |
 | `rewrapped-keys`    | map<string, object> \| null | Array of objects (re-wrapped symmetric keys for each field)                                                                        |
@@ -1590,6 +1628,7 @@ permitted to persist.
   "@context": "fedi-e2ee:v1/api/history/view",
   "created": "1730905988",
   "encrypted-message": "{\"@context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
+  "inclusion-proof": ["w3N3BU44g4MLC-sDGSzr1nJO9jmZfh_yq1bhpLjjWmo", "MMh4YxMTJLUW5m-6TuyfVhL3bxPF5fnXKbajEVJeO_s", "5Oagf2KpIxEschB1bjyUCG9E8ap_7chIQFHyU4yJy1I"],
   "message": {
     "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
     "action": "AddAuxData",
@@ -1599,10 +1638,10 @@ permitted to persist.
       "aux-data": "this-is-just-test-data",
       "time": "1730908981"
     },
-    "recent-merkle-root": "ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
+    "recent-merkle-root": "pkd-mr-v1:ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
     "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
   },
-  "merkle-root": "Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
+  "merkle-root": "pkd-mr-v1:Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
   "rewrapped-keys": {
     "example.foo.bar": {
       "aux-type": "<hpke ciphertext goes here>",
