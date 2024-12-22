@@ -153,7 +153,7 @@ def signPayload(secret_key, payload):
         b'recent-merkle-root',
         payload['recent-merkle-root'],
     ])
-    return crypto_sign(secret_key, payloadToSign)
+    return base64url(crypto_sign(secret_key, payloadToSign))
 ```
 
 The `@context` strings are intended to provide domain separation. 
@@ -296,7 +296,8 @@ Crypto-shredding and message attribute encryption are intended to allow the syst
 record while still maintaining an immutable history.
 
 > Note: We considered using a zero-knowledge proof for this purpose, but couldn't justify the additional protocol
-> complexity.
+> complexity. For the curious, one of the authors of this specification 
+> [blogged about this topic in depth](https://soatok.blog/2024/11/21/key-transparency-and-the-right-to-be-forgotten/).
 
 It does not guarantee that other clients and servers did not persist the key necessary to comprehend the contents of the
 deleted records, since it's generated client-side, and we cannot control the behavior of client software. However, it 
@@ -327,7 +328,7 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 5.  HMAC, used with a SHA-2 family hash function, offers PRF security congruent to the size of the hash function.
 6.  AES is a secure block cipher (which can be modeled as a secure permutation) that offers a security level congruent
     to the length of its key.
-7.  EdDSA, as defined over the Edwards25519 curve, provides secure existential forgery under chosen message attack
+7.  EdDSA, as defined over the Edwards25519 curve, provides strong existential forgery under chosen message attack
     (SUF-CMA) security, at a security level in excess of 120 bits.
 8.  Argon2id is a secure, memory-hard password-based key derivation function.
 9.  HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
@@ -335,6 +336,9 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated as DHKEM with ECDH over Curve25519
     (X25519, [RFC 7748](https://datatracker.ietf.org/doc/rfc7748/)), HKDF-SHA256, and ChaCha20Poly1305--provides 
     IND-CCA2 security against adversaries not in possession of the X25519 secret key.
+11. AES in Counter Mode can be used to encrypt up to 2^{36} successive bytes under the same (key, initial counter),
+    and the resulting ciphertext will be indistinguishable an encryption of NUL (`0x00`) bytes.
+12. Merkle trees based on a secure hash function (assumption 4) provide a secure verifiable data structure.
 
 ### Assets
 
