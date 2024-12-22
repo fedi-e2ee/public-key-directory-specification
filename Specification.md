@@ -118,9 +118,9 @@ For example: `ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM`
 ### Merkle Root Encoding
 
 Each Merkle Root will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
-string.
+string, prefixed with a distinct prefix for the current protocol version followed by a colon (currently, `pkd-mr-v1:`).
 
-For example: `7TwKAbkiKCCQuCpDBV2GbkkkIDfMg2AmG7TMHqXBDJU`
+For example: `pkd-mr-v1:7TwKAbkiKCCQuCpDBV2GbkkkIDfMg2AmG7TMHqXBDJU`
 
 ### Protocol Signatures
 
@@ -1321,19 +1321,19 @@ Only non-revoked public keys will be included in this list.
     {
       "created": "1722176511",
       "key-id": "foo",
-      "merkle-root": "rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
+      "merkle-root": "pkd-mr-v1:rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM"
     },
     {
       "created": "1722603182",
       "key-id": "bar",
-      "merkle-root": "p0n-vBu3mEx6BxnFKe6DDknwKUR8U42i8y_0VmEReg4",
+      "merkle-root": "pkd-mr-v1:p0n-vBu3mEx6BxnFKe6DDknwKUR8U42i8y_0VmEReg4",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLN"
     },
     {
       "created": "1730902833",
       "key-id": "baz",
-      "merkle-root": "HlRR_f1fFrRGu7Mczkdi41po07iP9JYjCp1GBb2y_nk",
+      "merkle-root": "pkd-mr-v1:HlRR_f1fFrRGu7Mczkdi41po07iP9JYjCp1GBb2y_nk",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLO"
     }
   ]
@@ -1370,7 +1370,7 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/key
   "actor-id": "https://example.com/alice",
   "created": "1722176511",
   "key-id": "foo",
-  "merkle-root": "rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
+  "merkle-root": "pkd-mr-v1:rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
   "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM",
   "revoked": null,
   "revoke-root": null
@@ -1471,7 +1471,7 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get
   "aux-id": "XUUDSZSwIWsanCX9Dr4WH5g9p1_pTaK6hZymeISJI0A",
   "aux-type": "age-v1",
   "created": "1730902834",
-  "merkle-root": "KOspo1eBvXE9ZPyyNmW1sqqFeLqLA5f1LBCYHct1n9c",
+  "merkle-root": "pkd-mr-v1:KOspo1eBvXE9ZPyyNmW1sqqFeLqLA5f1LBCYHct1n9c",
   "revoked": null,
   "revoke-root": null
 }
@@ -1499,7 +1499,7 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history`.
   "@context": "fedi-e2ee:v1/api/history",
   "current-time": "1730905988",
   "created": "1601016659",
-  "merkle-root": "XINzPw6Z8ygzDQSZVpGtUmjVIqGVkkzWat_tkuWit3M"
+  "merkle-root": "pkd-mr-v1:XINzPw6Z8ygzDQSZVpGtUmjVIqGVkkzWat_tkuWit3M"
 }
 ```
 
@@ -1547,10 +1547,10 @@ permitted to persist.
       "aux-data": "this-is-just-test-data",
       "time": "1730908981"
     },
-    "recent-merkle-root": "ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
+    "recent-merkle-root": "pkd-mr-v1:ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
     "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
   },
-  "merkle-root": "Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
+  "merkle-root": "pkd-mr-v1:Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
   "rewrapped-keys": {
     "example.foo.bar": {
       "aux-type": "<hpke ciphertext goes here>",
@@ -1599,10 +1599,10 @@ permitted to persist.
       "aux-data": "this-is-just-test-data",
       "time": "1730908981"
     },
-    "recent-merkle-root": "ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
+    "recent-merkle-root": "pkd-mr-v1:ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
     "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
   },
-  "merkle-root": "Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
+  "merkle-root": "pkd-mr-v1:Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
   "rewrapped-keys": {
     "example.foo.bar": {
       "aux-type": "<hpke ciphertext goes here>",
