@@ -1336,8 +1336,9 @@ Some authenticator apps do not support these parameters.
 
 #### TOTP Enrollment
 
-Clients **MUST** generate at least 192 bits of randomness (preferably 256), then encode this with base32 (RFC 4648).
-This will serve as the TOTP secret key.
+Clients **MUST** generate at least 192 bits of randomness (preferably 256). This will serve as the TOTP secret key.
+This secret value will be encoded with base32 ([RFC 4648, section 6](https://www.rfc-editor.org/rfc/rfc4648.html#section-6))
+when served to the end users (e.g., via a QR code).
 
 This secret must be shared with the Public Key Directory instance, [encrypted with HPKE like Protocol Messages](#encryption-of-protocol-messages).
 
