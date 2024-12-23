@@ -2253,7 +2253,7 @@ the confidentiality) of a system.
 
 Conversely, [security at the cost of usability comes at the cost of security](https://security.stackexchange.com/a/6116).
 We introduced this capability in our designs in order to improve the usability of protocols that build upon our Public
-Key Directory project. We include an explicit, irreversible opt-out mechanism for any users that might feel threatened
+Key Directory project. We include an explicit, reversible opt-out mechanism for any users that might feel threatened
 by the existence of this capability.
 
 We believe this strikes the right balance between security and usability. It's important that this is communicated
