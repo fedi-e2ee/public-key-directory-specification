@@ -395,7 +395,7 @@ This section seeks to outline specific risks and whether they are prevented, mit
 | [Hostile nation state seeks to abuse Right To Be Forgotten mechanisms to cover up an unlawful intrusion.](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion) | _Open_ / Addressable    |
 | [Instance administrator loses all their signing keys.](#instance-administrator-loses-all-their-signing-keys)                                                                                                       | Mitigated               |
 | [Attacker sends spoofed messages on behalf of another server.](#attacker-sends-spoofed-messages-on-behalf-of-another-server)                                                                                       | **Prevented by design** |
-| [Attacker sends spoofed messages from a compromised Fediverse server.](#attacker-sends-spoofed-messages-from-a-compromised-fediverse-server)                                                                       | _Open_                  |
+| [Attacker sends spoofed messages from a compromised Fediverse server.](#attacker-sends-spoofed-messages-from-a-compromised-fediverse-server)                                                                       | Addressable             |
 | [Cosmic ray causes a bit-flip on stored data or the result of a computation.](#cosmic-ray-causes-a-bit-flip-on-stored-data-or-the-result-of-a-computation)                                                         | _Open_                  |
 | [Malicious instance administrator attempts to censor Fireproof messages to retain control.](#malicious-instance-administrator-attempts-to-censor-fireproof-messages-to-retain-control)                             | Mitigated               |
 | [Malicious instance administrator also controls the Public Key Directory.](#malicious-instance-administrator-also-controls-the-public-key-directory)                                                               | _Open_                  |
@@ -581,15 +581,18 @@ But that does lead into another risk:
 
 #### Attacker sends spoofed messages from a compromised Fediverse server.
 
-**Status**: Open (but Prevented by Design if Fireproof).
+**Status**: Addressable (but Prevented by Design if Fireproof).
 
 This is a variant of [the previous threat](#attacker-sends-spoofed-messages-on-behalf-of-another-server), but Mallory
 has managed to compromise the server in some way; either through a direct software (or hardware) compromise, or a DNS 
 hijack and issuing a new TLS certificate for her fake Fediverse server.
 
-As the specification is currently written, this attack would succeed. However, Mallory would be obligated to create
-immutable evidence of her intrusion that she cannot wipe without Yvonne's assistance. See also,
-[abusing _Right to Be Forgotten_ mechanisms to cover-up intrusions](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion).
+As the specification is currently written, whether this attack succeeds depends on whether the administrators have 
+enabled TOTP challenge-response authentication with the Fediverse server. If they have, Mallory cannot succeed without
+also compromising the administrators' devices or stealing the TOTP secret through some other mechanism.
+
+However, Mallory would be obligated to create immutable evidence of her intrusion that she cannot wipe without 
+Yvonne's assistance. See also, [abusing _Right to Be Forgotten_ mechanisms to cover-up intrusions](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion).
 
 Mallory cannot, however, issue a `BurnDown` or `AddKey` for a [Fireproof](#fireproof) user. In this sense, the risk to
 the user is mitigated **so long as they use Fireproof**: You cannot `AddKey` a user with at least one trusted public
@@ -934,6 +937,7 @@ This allows a user to issue a self-signed `AddKey` and start over.
       of the user. Encrypted.
     * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
+* `otp` -- **string (One-Time Password)** (optional, but required if enabled): A one-time password (see [TOTP](#totp)). 
 * `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
     * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
@@ -949,14 +953,16 @@ validating an `BurnDown` message are as follows:
    error status.
 2. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
 3. If this actor is fireproof, abort.
-4. Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
+4. If the instance has previously enrolled a TOTP secret to this Fediverse server, verify that the `otp` field (which
+   is now required) is a correct [TOTP challenge](#totp).
+5. Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
    decryption fails, return an error status.
-5. If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 7. If there is no
+6. If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 8. If there is no
    public key for this Actor with a matching `key-id`, return an error status.
-6. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor (Operator) until
+7. If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor (Operator) until
    one succeeds. If none of them do, return an error status.
-7. Validate the message signature for the given public key.
-8. If the signature is valid in step 7, process the message.
+8. Validate the message signature for the given public key.
+9. If the signature is valid in step 8, process the message.
 
 ### Fireproof
 
@@ -1244,6 +1250,9 @@ Attempting to send requests that trigger rate limit rejection **MAY** incur addi
 configuration, but it isn't required. Public Key Directories **MAY** also permanently block Fediverse Servers that 
 routinely misbehave at their operator's discretion. 
 
+[TOTP Messages](#totp) **MUST** employ aggressive rate-limiting for incorrect guesses, but for which the HTTP Signature
+was valid (i.e., the request originated from the instance).
+
 #### Protocol Message Parsing
 
 The Public Key Directory expects a JSON blob in the HTTP request body. This should correspond to the structure of a
@@ -1298,6 +1307,83 @@ After the message validation is complete, [commit the Protocol Message to Sigsum
 Sigsum integration fails, return an HTTP 500 response to the client and abort.
 
 Finally, make the appropriate changes to the local database (based on what action is to be performed).
+
+### TOTP
+
+Every Fediverse instance may enroll a secret key for use with [TOTP (RFC 6238)](https://www.rfc-editor.org/rfc/rfc6238.html).
+If one is enrolled for a given instance, an TOTP challenge will be required in order to successfully issue a 
+[BurnDown](#burndown) protocol message, or to rotate or disenroll the TOTP secret.
+
+Every instance will have one TOTP secret that may be shared across administrators, for the following reasons:
+
+1. The Public Key Directory doesn't know which Actor on a given instance is an administrator, and which isn't.
+2. If an attacker gets root access to your instance, if TOTPs were per-Actor, they could just issue protocol messages
+   from an Actor that has not enrolled a TOTP secret before. (Or enroll a fresh TOTP secret for a desired Actor.)
+
+Instead of per-Actor, we constrain the TOTP secret to affect the entire instance (should anyone choose to issue a
+BurnDown on behalf of other users).
+
+There are four TOTP operations, but none of them will result in a Protocol Message or change to the underlying Merkle
+Tree state.
+
+#### TOTP Configuration
+
+* Time window size: **`30` seconds**
+* Hash function: **`SHA-512`**
+* OTP length: **`8` digits**
+
+Some authenticator apps do not support these parameters.
+
+#### TOTP Enrollment
+
+Clients **MUST** generate at least 192 bits of randomness (preferably 256), then encode this with base32 (RFC 4648).
+This will serve as the TOTP secret key.
+
+This secret must be shared with the Public Key Directory instance, [encrypted with HPKE like Protocol Messages](#encryption-of-protocol-messages).
+
+In addition, the one-time passwords for two successive time windows must be included. Both of these one-time passwords
+**MUST** be valid for the decrypted secret key before it is accepted by the Public Key Directory.
+
+See the [corresponding JSON REST API endpoint](#post-apitotpenroll) for details.
+
+#### TOTP Disenrollment
+
+This removes the TOTP shared secret for this instance stored in the Public Key Directory.
+
+This disables TOTP verification for BurnDown messages issued by the entire instance.
+
+See the [corresponding JSON REST API endpoint](#post-apitotpdisenroll) for details.
+
+#### TOTP Rotation
+
+This is congruent to disenrolling the old secret and enrolling a new secret in one step.
+
+See the [corresponding JSON REST API endpoint](#post-apitotprotate) for details.
+
+#### TOTP Signatures
+
+HTTP requests to enroll, disenroll, or rotate the TOTP secret will include a [construction congruent to protocol signatures](#protocol-signatures),
+with the following tweaks:
+
+* The `action` will simply be `totp-enroll`, `totp-disenroll`, or `totp-rotate`.
+* The `message` key will be replaced with `enrollment`, `disenrollment`, or `rotation`.
+    * Its contents will be serialized exactly the same as Protocol Messages, to facilitate code reuse.
+* The `recent-merkle-root` will be omitted.
+
+Each message-equivalent object **MUST** have an `actor-id` field, which allows the Public Key Directory software know
+which public key to use when verifying the message.
+
+The Public Key Directory software **MUST** verify that the Actor ID belongs to the instance in scope for the TOTP.
+Additionally, the HTTP Signature on the HTTP request body **MUST** also match the public key for the same actor.
+
+#### TOTP Verification
+
+Per [RFC 6238, Section 5.2](https://datatracker.ietf.org/doc/html/rfc6238#section-5.2), each one-time password will have
+a time-window size of 30 seconds, and a maximum of 2 previous windows will be accepted.
+
+When enrolling, two successive one-time passwords are necessary (both (t) and (t-1) for any given time window, t). 
+
+During validation, only one valid window is accepted.
 
 ### JSON REST API
 
@@ -1797,6 +1883,110 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/revoke`.
 ```json5
 {
   "@context": "fedi-e2ee:v1/api/revoke",
+  "time": "1730909831",
+}
+```
+
+#### POST api/totp/disenroll
+
+Purpose: Remove the current TOTP secret stored in the Public Key Directory for the current instance.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Request Parameter | Type   | Remarks                      |
+|-------------------|--------|------------------------------|
+| `@context`        | string | Domain separation            |
+| `current-time`    | string | [Timestamp](#timestamps)     |
+| `disenrollment`   | object | See next table               |
+| `signature`       | string | Signature of `disenrollment` |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/disenroll`.
+
+The disenrollment object will consist of the following fields:
+
+| Request Parameter | Type   | Remarks                                        |
+|-------------------|--------|------------------------------------------------|
+| `actor-id`        | string | The Actor ID that produced the signature.      |
+| `key-id`          | string | The specific public key to use for this actor. | 
+| `otp`             | string | One-Time Password (see [TOTP](#totp))          |
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/totp/disenroll",
+  "success": true,
+  "time": "1730909831",
+}
+```
+
+#### POST api/totp/enroll
+
+Purpose: Enroll an TOTP secret for the current Fediverse instance.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Request Parameter | Type   | Remarks                   |
+|-------------------|--------|---------------------------|
+| `@context`        | string | Domain separation         |
+| `current-time`    | string | [Timestamp](#timestamps)  |
+| `enrollment`      | object | See next table            |
+| `signature`       | string | Signature of `enrollment` |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/enroll`.
+
+The enrollment object will consist of the following fields:
+
+| Request Parameter | Type   | Remarks                                                      |
+|-------------------|--------|--------------------------------------------------------------|
+| `actor-id`        | string | The Actor ID that produced the signature.                    |
+| `key-id`          | string | The specific public key to use for this actor.               |
+| `otp-current`     | string | One-Time Password (see [TOTP](#totp)), current time window.  |
+| `otp-previous`    | string | One-Time Password (see [TOTP](#totp)), previous time window. |
+| `totp-secret`     | string | HPKE-encrypted                                               |
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/totp/enroll",
+  "success": true,
+  "time": "1730909831",
+}
+```
+
+#### POST api/totp/rotate
+
+Purpose: Rotate the TOTP secret.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Request Parameter | Type   | Remarks                  |
+|-------------------|--------|--------------------------|
+| `@context`        | string | Domain separation        |
+| `current-time`    | string | [Timestamp](#timestamps) |
+| `rotation`        | object | See next table           |
+| `signature`       | string | Signature of `rotation`  |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/rotate`.
+
+The enrollment object will consist of the following fields:
+
+| Request Parameter  | Type   | Remarks                                                      |
+|--------------------|--------|--------------------------------------------------------------|
+| `actor-id`         | string | The Actor ID that produced the signature.                    |
+| `key-id`           | string | The specific public key to use for this actor.               |
+| `new-otp-current`  | string | One-Time Password (see [TOTP](#totp)), current time window.  | 
+| `new-otp-previous` | string | One-Time Password (see [TOTP](#totp)), previous time window. |
+| `new-totp-secret`  | string | HPKE-encrypted                                               |
+| `old-otp`          | string | One-Time Password (see [TOTP](#totp))                        |
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/totp/rotate",
+  "success": true,
   "time": "1730909831",
 }
 ```
