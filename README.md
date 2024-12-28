@@ -33,6 +33,14 @@ so [Johnny can finally encrypt](https://people.eecs.berkeley.edu/~tygar/papers/W
 Other applications can build atop our Public Key Directory design to build advanced use cases (i.e., authenticated key 
 exchanges for end-to-end encryption).
 
+### How Does This Help Non-Technical Users?
+
+The Public Key Directory is a building block for developers. Our immediate audience for this specific component is 
+necessarily somewhat technical.
+
+However, the projects that build *atop* this building block should take pains to minimize the friction for non-technical
+users. (That includes the other projects we will be opening in this GitHub organization!)
+
 ## Documents In Scope
 
 * [Architecture](Architecture.md)
