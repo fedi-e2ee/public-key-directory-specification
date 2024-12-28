@@ -1314,7 +1314,7 @@ Every Fediverse instance may enroll a secret key for use with [TOTP (RFC 6238)](
 If one is enrolled for a given instance, an TOTP challenge will be required in order to successfully issue a 
 [BurnDown](#burndown) protocol message, or to rotate or disenroll the TOTP secret.
 
-Every instance will have one TOTP secret that may be shared across administrators, for the following reasons:
+Every Fediverse instance will have one TOTP secret that may be shared across administrators, for the following reasons:
 
 1. The Public Key Directory doesn't know which Actor on a given instance is an administrator, and which isn't.
 2. If an attacker gets root access to your instance, if TOTPs were per-Actor, they could just issue protocol messages
@@ -1336,14 +1336,16 @@ Some authenticator apps do not support these parameters.
 
 #### TOTP Enrollment
 
-Clients **MUST** generate at least 192 bits of randomness (preferably 256). This will serve as the TOTP secret key.
-This secret value will be encoded with base32 ([RFC 4648, section 6](https://www.rfc-editor.org/rfc/rfc4648.html#section-6))
-when served to the end users (e.g., via a QR code).
+TOTP secret keys must be 256 bits of randomness. This secret value will be encoded with base32
+([RFC 4648, section 6](https://www.rfc-editor.org/rfc/rfc4648.html#section-6)) when served to the end users (e.g., 
+via a QR code).
 
 This secret must be shared with the Public Key Directory instance, [encrypted with HPKE like Protocol Messages](#encryption-of-protocol-messages).
 
 In addition, the one-time passwords for two successive time windows must be included. Both of these one-time passwords
 **MUST** be valid for the decrypted secret key before it is accepted by the Public Key Directory.
+
+This operation **MUST** fail if there is already a TOTP secret enrolled for an instance.
 
 See the [corresponding JSON REST API endpoint](#post-apitotpenroll) for details.
 
@@ -1352,6 +1354,8 @@ See the [corresponding JSON REST API endpoint](#post-apitotpenroll) for details.
 This removes the TOTP shared secret for this instance stored in the Public Key Directory.
 
 This disables TOTP verification for BurnDown messages issued by the entire instance.
+
+This operation **MUST** fail if there is no TOTP secret enrolled for an instance.
 
 See the [corresponding JSON REST API endpoint](#post-apitotpdisenroll) for details.
 
@@ -1864,7 +1868,7 @@ The `extensions`, `replica`, and `revoke` endpoints are not mirrored in a replic
 
 Purpose: Accepts [`RevokeKeyThirdParty`](#revokekeythirdparty) messages.
 
-The following HTTP request parameter **MUST** be included:
+The following HTTP request parameters **MUST** be included:
 
 | Request Parameter  | Type   | Remarks                  |
 |--------------------|--------|--------------------------|
@@ -1892,7 +1896,7 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/revoke`.
 
 Purpose: Remove the current TOTP secret stored in the Public Key Directory for the current instance.
 
-An HTTP 200 OK request will contain the following response fields:
+The following HTTP request parameters **MUST** be included:
 
 | Request Parameter | Type   | Remarks                      |
 |-------------------|--------|------------------------------|
@@ -1921,11 +1925,17 @@ The disenrollment object will consist of the following fields:
 }
 ```
 
+If there is no TOTP secret key enrolled for a specific instance, the OTP is ignored and a "success" response is 
+returned.
+
+If the TOTP secret is enrolled, but the OTP is incorrect, return an HTTP 403 error. This should count as a penalty for
+rate-limiting.
+
 #### POST api/totp/enroll
 
 Purpose: Enroll an TOTP secret for the current Fediverse instance.
 
-An HTTP 200 OK request will contain the following response fields:
+The following HTTP request parameters **MUST** be included:
 
 | Request Parameter | Type   | Remarks                   |
 |-------------------|--------|---------------------------|
@@ -1956,11 +1966,16 @@ The enrollment object will consist of the following fields:
 }
 ```
 
+If the TOTP secret is already enrolled, return an HTTP 409 error.
+
+If the `otp-current` or `otp-previous` is invalid for the HPKE-encrypted secret (or if a decryption error occurs), then
+the Public Key Directory will return an HTTP 406 error.
+
 #### POST api/totp/rotate
 
 Purpose: Rotate the TOTP secret.
 
-An HTTP 200 OK request will contain the following response fields:
+The following HTTP request parameters **MUST** be included:
 
 | Request Parameter | Type   | Remarks                  |
 |-------------------|--------|--------------------------|
@@ -1991,6 +2006,14 @@ The enrollment object will consist of the following fields:
   "time": "1730909831",
 }
 ```
+
+If there is no TOTP secret key enrolled for a specific instance, return an HTTP 400 error.
+
+If the TOTP secret is enrolled, but `old-otp` is incorrect, return an HTTP 403 error. This should count as a penalty for
+rate-limiting.
+
+If the `new-otp-current` or `new-otp-previous` is invalid for the HPKE-encrypted secret (or if a decryption error 
+occurs), then the Public Key Directory will return an HTTP 406 error.
 
 ### Gossip Protocol
 
