@@ -54,6 +54,23 @@ The [SigSum](https://www.sigsum.org/) component is an append-only data structure
 in a Merkle tree. It doesn't natively support arbitrary data storage, so we only use it for verifying
 the messages and records stored in the PKD.
 
+## Roles
+
+### User
+
+A user wants to use End-to-End Encryption for ActivityPub direct messages to communicate with other users or share [Auxiliary Data](/Specification.md#auxiliary-data) with them via the PKD.
+The user already has an account at a Fediverse Server or creates one to use the PKD.
+
+### Fediverse Operator (Fedi Operator)
+
+The Fediverse Operator manages one or more Fediverse Server instances.
+This operator is responsible for managing the users of their instances and for choosing a PKD instance for their Fediverse Servers.
+
+### PKD Operator
+
+The PKD Operator manages the daily operations of their PKD and the SigSum Server.
+The PKD Operator adds the trusted Fediverse Servers to the PKD.
+
 ## Questions and Answers
 
 ### Why are Public Key Directories separate from the Fediverse Servers?
