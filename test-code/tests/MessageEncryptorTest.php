@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace FediE2EE\TestCode\Tests;
 
 use FediE2EE\TestCode\MessageEncryptor;
+use ParagonIE\ConstantTime\Base64UrlSafe;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -27,10 +28,10 @@ class MessageEncryptorTest extends TestCase
         $this->assertTrue($failed, 'Decryption should have failed');
     }
 
-    public function testWithReentRoot()
+    public function testWithRecentRoot()
     {
         $key = random_bytes(32);
-        $recentRoot = random_bytes(32);
+        $recentRoot = 'pkd-mr-v1:' . Base64UrlSafe::encodeUnpadded(random_bytes(32));
         $crypt = new MessageEncryptor($key);
         $cipher = $crypt->encrypt('foo', 'bar', $recentRoot);
         $plain = $crypt->decrypt('foo', $cipher, $recentRoot);

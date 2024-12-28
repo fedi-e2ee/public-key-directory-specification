@@ -54,19 +54,40 @@ The [SigSum](https://www.sigsum.org/) component is an append-only data structure
 in a Merkle tree. It doesn't natively support arbitrary data storage, so we only use it for verifying
 the messages and records stored in the PKD.
 
-# Roles
+## Roles
 
-# User
+### User
 
 A user wants to use End-to-End Encryption for ActivityPub direct messages to communicate with other users or share [Auxiliary Data](/Specification.md#auxiliary-data) with them via the PKD.
 The user already has an account at a Fediverse Server or creates one to use the PKD.
 
-# Fediverse Operator (Fedi Operator)
+### Fediverse Operator (Fedi Operator)
 
 The Fediverse Operator manages one or more Fediverse Server instances.
 This operator is responsible for managing the users of their instances and for choosing a PKD instance for their Fediverse Servers.
 
-# PKD Operator
+### PKD Operator
 
 The PKD Operator manages the daily operations of their PKD and the SigSum Server.
 The PKD Operator adds the trusted Fediverse Servers to the PKD.
+
+## Questions and Answers
+
+### Why are Public Key Directories separate from the Fediverse Servers?
+
+As sketched in the diagrams above, each Public Key Directory will have a one-to-many relationship with Fediverse 
+Servers.
+
+The goal of this architecture decision is to achieve something close to what Taylor Hornby calls
+[Userbase Consistency Verification](https://defuse.ca/triangle-of-secure-code-delivery.htm#:~:text=are%20successfully%20attacked.-,Userbase%20Consistency%20Verification,-%3A).
+when describing the requirements for a secure code delivery system.
+
+We do not expect to perfectly achieve this goal, however. The Fediverse is inherently fragmented.
+
+For example, users on an LGBTQIA+-friendly instance will generally not want to host the identity keys for Truth Social.
+
+You are **NOT** required to adhere to this separation. We do recommend it, however.
+
+A large part of the [threat model](Specification.md#threat-model) is focused on protecting users from curious or 
+malicious administrators. If the same entity controls the Fediverse Server **AND** the Public Key Directory, they are
+able to perform more sophisticated attacks than if there is a separation of responsibility. 
