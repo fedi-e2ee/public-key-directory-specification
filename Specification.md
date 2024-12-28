@@ -677,6 +677,28 @@ To prevent this risk, extensions **SHOULD** be strict about the data they accept
 Failing that, instance operators can use the [message content shredability](#message-attribute-shreddability) mechanism
 to wipe unwanted illegal material from their records by wiping the decryption key for that record.
 
+#### Sharing Accounts
+
+It is possible that a group of users wants to share one Fediverse account. For example if they are part of an organisation which wants to receive encrypted messages, but share the work between the group. (E.g.
+ a whistleblower hotline).
+For the following we assume the smallest possible group of Bob and Troy, but all scenarios will affect larger groups, but they require just a single Troy.
+While this would not affect the groups ability to use the Fediverse account and accessing the Fediverse server, it sabotages all interactions where the key is used (E.g. reading e2ee messages.)
+
+##### Sharing an  account by sharing the secret key
+
+**Status:** Open / out of scope
+
+If Bob and Troy share an account by sharing a secret key, Troy can replace that key with his own, by send one `AddKey` message to insert a new key only know to Troy and sending a `RevokeKey` message which removes the shared key.
+
+Further can Troy send a `Fireproof` message for the shared account and by doing so make it impossible for Bob to regain the identity. 
+
+##### Shared accounts by adding two keys
+
+**Status:** Open / out of scope
+
+If Bob and Troy share an account by adding two keys for one identity in the PKD and Bob and Troy have each one of the keys, it is possible for Troy to send a `RevokeKey` message for Bobs key which is signed by Troys key.
+Further can Troy send a `Fireproof` message, to make it impossible for Bob to regain the identity.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
