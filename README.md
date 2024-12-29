@@ -47,6 +47,13 @@ users. (That includes the other projects we will be opening in this GitHub organ
   \- This document succinctly describes how the Public Key Directory fits into the Fediverse.
 * **[Specification](Specification.md)**
   \- This document contains the specification text in its entirety.
+  1. [Introduction](Specification.md#introduction)
+  2. [Concepts](Specification.md#concepts)
+  3. [Threat Model](Specification.md#threat-model)
+  4. [Protocol Messages](Specification.md#protocol-messages)
+  5. [The Federated Public Key Directory](Specification.md#the-federated-public-key-directory)
+  6. [Cryptography Protocols](Specification.md#cryptography-protocols)
+  7. [Security Considerations](Specification.md#security-considerations)
 * [Test Vectors](Test-Vectors.md)
   \- This document will contain test vectors for the protocols used in the Public Key Directory.
 

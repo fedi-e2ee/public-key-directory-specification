@@ -2151,7 +2151,7 @@ transparency log.
 To provide a mechanism for this requirement, PKDs are encouraged to send [`Checkpoint`](#checkpoint) Protocol Messages
 to their peers in addition to regular Sigsum witness co-signatures.
 
-## Auxiliary Data Extensions
+### Auxiliary Data Extensions
 
 Auxiliary Data Extensions should be registered in [this GitHub repository](https://github.com/fedi-e2ee/fedi-pkd-extensions).
 
