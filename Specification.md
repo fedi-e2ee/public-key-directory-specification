@@ -1,6 +1,6 @@
 # Public Key Directory Specification
 
-This document defines the FediE2EE-PKD (Fediverse End-to-End Encryption Public Key Directory), which consists of 
+This document defines the Fediverse End-to-End Encryption Public Key Directory (FediE2EE-PKD), which consists of 
 ActivityPub-enabled directory server software, a protocol for communicating with the directory server, and integration
 with a transparent, append-only data structure (e.g., based on Merkle trees).
 
