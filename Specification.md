@@ -97,7 +97,7 @@ The task of resolving aliases to Actor IDs is left to the client software.
 
 This project is built atop an append-only transparency log. Each Protocol Message will be processed and appended to the
 ledger. The Public Key Directory software will maintain a current state of which public keys and auxiliary data are
-currently valid for a given Actor. 
+currently valid for a given Actor.
 
 Any other machine **MUST** be able to reproduce the same state as the Public Key Directory by replaying the entire 
 message history from the first block to the current one. Any deviation from this behavior is considered an attempted
@@ -171,7 +171,7 @@ security vulnerabilities in our specification.
 
 ### Key Identifiers
 
-Every time an `AddKey` message is accepted by the Public Key Directory, the PKD will generate a 256-bit random unique 
+Every time an `AddKey` message is accepted by the Public Key Directory, the PKD will generate a 256-bit random unique
 `key-id` for that public key. This value is not secret or sensitive in any way, and is only used to point to an existing
 public key to reduce the amount of rejected signatures software must publish.
 
@@ -181,7 +181,7 @@ Each `key-id` is encoded as an unpadded [base64url](https://datatracker.ietf.org
 The `key-id` attribute **MUST NOT** be an encoded representation of the public key. The motivation for this restriction
 is to prevent accidental misuse (i.e., someone just decoding the public key from a message and trusting it blindly).
 
-The `key-id` is not covered in the protocol messages being signed. Instead, it is a hint to the signature validation 
+The `key-id` is not covered in the protocol messages being signed. Instead, it is a hint to the signature validation
 software which public key to select when there is more than one option. Their values are totally arbitrary and, aside
 from uniqueness, serve no other purpose.
 
@@ -190,7 +190,7 @@ from uniqueness, serve no other purpose.
 A revocation token is a compact token that a user can issue at any time to revoke an existing public key. If they issue
 a revocation against their only public key, the Public Key Directory will treat it as a `BurnDown`.
 
-Revocation tokens are [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded strings in the 
+Revocation tokens are [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded strings in the
 following format:
 
 ```
