@@ -1449,12 +1449,13 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get
 
 Each entry in the `public-keys` array will contain the following fields:
 
-| Response Field | Type     | Remarks                          |
-|----------------|----------|----------------------------------|
-| `created`      | string   | [Timestamp](#timestamps)         |
-| `key-id`       | string   | See [Key IDs](#key-identifiers)  |
-| `merkle-root`  | string   | Merkle tree root hash for AddKey |
-| `public-key`   | string   | Public key                       |
+| Response Field    | Type     | Remarks                                                                                    |
+|-------------------|----------|--------------------------------------------------------------------------------------------|
+| `created`         | string   | [Timestamp](#timestamps)                                                                   |
+| `key-id`          | string   | See [Key IDs](#key-identifiers)                                                            |
+| `inclusion-proof` | string[] | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root. |
+| `merkle-root`     | string   | Merkle tree root hash for AddKey                                                           |
+| `public-key`      | string   | Public key                                                                                 |
 
 Only non-revoked public keys will be included in this list.
 
@@ -1468,18 +1469,21 @@ Only non-revoked public keys will be included in this list.
     {
       "created": "1722176511",
       "key-id": "foo",
+      "inclusion-proof": ["yWF2i5NqdyB9s0nEGnNQpoxSOcIwySMCch5xTOJurwE", "b67xzsl8mtyMGphDa-DNJEyrM0lWIgp94W36svRxjW4", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
       "merkle-root": "pkd-mr-v1:rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM"
     },
     {
       "created": "1722603182",
       "key-id": "bar",
+      "inclusion-proof": ["-h8Ld1pCvMEopujWQ3dcAW3D6_dgdnwfazlRfSSRXUM", "b67xzsl8mtyMGphDa-DNJEyrM0lWIgp94W36svRxjW4", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
       "merkle-root": "pkd-mr-v1:p0n-vBu3mEx6BxnFKe6DDknwKUR8U42i8y_0VmEReg4",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLN"
     },
     {
       "created": "1730902833",
       "key-id": "baz",
+      "inclusion-proof": ["bqtD85NcSflBq0XGVuTwtvnoZ7AZcZYdUm7V8ScF1LI", "1ftW_n_zhfgCwenBdTaRJDEETmluqD3OPRN7hK8Jnvo", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
       "merkle-root": "pkd-mr-v1:HlRR_f1fFrRGu7Mczkdi41po07iP9JYjCp1GBb2y_nk",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLO"
     }
