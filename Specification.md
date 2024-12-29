@@ -2407,7 +2407,7 @@ HPKE cipher suites consists of the following information:
 
 This table includes some example HPKE ciphersuites. This list is not exhaustive.
 
-| Ciphersuite String             | Remarks                    |
+| Cipher Suite String            | Remarks                    |
 |--------------------------------|----------------------------|
 | `Curve25519_SHA256_ChachaPoly` | Default; must be supported |
 | `P256_SHA256_AES_GCM_256`      |                            |
