@@ -20,10 +20,14 @@ This challenge is not unique to federated systems and is usually solved by some 
 #### Public Key Infrastructures
 
 The classic SSH approach to addressing this problem is "Trust On First Use". Simple yet effective in many threat models.
+The obvious downside of "Trust On First Use" is that it creates a race condition that an attacker can exploit to get
+their substitute public key trusted first.
 
 The earliest designs for SSL/TLS required the use of Certificate Authorities, whose public keys would be provided by
 the Operating System as a root of trust. Each CA's public key would then be used to sign a cadre of intermediate
 certificates, which could in turn be used to sign individual servers' public keys (in the form of Certificates).
+The downside is that if any of these Certificate Authorities were compromised (as [has happened with nation states](https://www.wired.com/2012/05/flame/)),
+the downstream security consequences are immense.
 
 The OpenPGP solution to this problem is called Web of Trust, which involves a long chain of folks signing each other's
 public keys. The reasoning goes, if your friend's public key was signed by Linus Torvalds, they're probably a legitimate
@@ -38,7 +42,8 @@ TLS certificates are now required to be published in a Certificate Transparency 
 called [Key Transparency](https://engineering.fb.com/2023/04/13/security/whatsapp-key-transparency/) to secure their
 End-to-End Encryption.
 
-To that end, we hope to build a PKI for the Fediverse primarily focused on transparency logs.
+To that end, we hope to build a PKI for the Fediverse primarily focused on transparency logs. It's important that our
+solution does not rely on trusted third parties (i.e., Certificate Authorities) for the PKI to be secure.
 
 #### Use Case
 
