@@ -27,11 +27,15 @@ machine-verifiable proof of when each public key was enrolled. This is useful fo
 of trust that a given public key is correct for the party you wish to talk to.
 
 Additional manual key verification mechanisms (key fingerprints, safety numbers, etc.) are out-of-scope but totally 
-permitted for technical users in higher-level protocols. Really, we're trying to better than Trust on First Use (TOFU),
-so [Johnny can finally encrypt](https://people.eecs.berkeley.edu/~tygar/papers/Why_Johnny_Cant_Encrypt/OReilly.pdf). 
+permitted for technical users in higher-level protocols. Really, we're trying to do better than Trust on First Use 
+(TOFU), so [Johnny can finally encrypt](https://people.eecs.berkeley.edu/~tygar/papers/Why_Johnny_Cant_Encrypt/OReilly.pdf). 
 
 Other applications can build atop our Public Key Directory design to build advanced use cases (i.e., authenticated key 
 exchanges for end-to-end encryption).
+
+It's worth keeping in mind that the Public Key Directory isn't *just* the Merkle Tree, it's an API built on top of a
+Merkle Tree. To that end, you can query the API to retrieve every currently-trusted public key for a user, rather than
+having to manually parse this information out of the data stored in the underling data structure.
 
 ### How Does This Help Non-Technical Users?
 
@@ -47,6 +51,13 @@ users. (That includes the other projects we will be opening in this GitHub organ
   \- This document succinctly describes how the Public Key Directory fits into the Fediverse.
 * **[Specification](Specification.md)**
   \- This document contains the specification text in its entirety.
+  1. [Introduction](Specification.md#introduction)
+  2. [Concepts](Specification.md#concepts)
+  3. [Threat Model](Specification.md#threat-model)
+  4. [Protocol Messages](Specification.md#protocol-messages)
+  5. [The Federated Public Key Directory](Specification.md#the-federated-public-key-directory)
+  6. [Cryptography Protocols](Specification.md#cryptography-protocols)
+  7. [Security Considerations](Specification.md#security-considerations)
 * [Test Vectors](Test-Vectors.md)
   \- This document will contain test vectors for the protocols used in the Public Key Directory.
 

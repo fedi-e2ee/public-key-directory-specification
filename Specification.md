@@ -1,6 +1,6 @@
 # Public Key Directory Specification
 
-This document defines the FediE2EE-PKD (Fediverse End-to-End Encryption Public Key Directory), which consists of 
+This document defines the Fediverse End-to-End Encryption Public Key Directory (FediE2EE-PKD), which consists of 
 ActivityPub-enabled directory server software, a protocol for communicating with the directory server, and integration
 with a transparent, append-only data structure (e.g., based on Merkle trees).
 
@@ -20,10 +20,14 @@ This challenge is not unique to federated systems and is usually solved by some 
 #### Public Key Infrastructures
 
 The classic SSH approach to addressing this problem is "Trust On First Use". Simple yet effective in many threat models.
+The obvious downside of "Trust On First Use" is that it creates a race condition that an attacker can exploit to get
+their substitute public key trusted first.
 
 The earliest designs for SSL/TLS required the use of Certificate Authorities, whose public keys would be provided by
 the Operating System as a root of trust. Each CA's public key would then be used to sign a cadre of intermediate
 certificates, which could in turn be used to sign individual servers' public keys (in the form of Certificates).
+The downside is that if any of these Certificate Authorities were compromised (as [has happened with nation states](https://www.wired.com/2012/05/flame/)),
+the downstream security consequences are immense.
 
 The OpenPGP solution to this problem is called Web of Trust, which involves a long chain of folks signing each other's
 public keys. The reasoning goes, if your friend's public key was signed by Linus Torvalds, they're probably a legitimate
@@ -38,7 +42,8 @@ TLS certificates are now required to be published in a Certificate Transparency 
 called [Key Transparency](https://engineering.fb.com/2023/04/13/security/whatsapp-key-transparency/) to secure their
 End-to-End Encryption.
 
-To that end, we hope to build a PKI for the Fediverse primarily focused on transparency logs.
+To that end, we hope to build a PKI for the Fediverse primarily focused on transparency logs. It's important that our
+solution does not rely on trusted third parties (i.e., Certificate Authorities) for the PKI to be secure.
 
 #### Use Case
 
@@ -92,7 +97,7 @@ The task of resolving aliases to Actor IDs is left to the client software.
 
 This project is built atop an append-only transparency log. Each Protocol Message will be processed and appended to the
 ledger. The Public Key Directory software will maintain a current state of which public keys and auxiliary data are
-currently valid for a given Actor. 
+currently valid for a given Actor.
 
 Any other machine **MUST** be able to reproduce the same state as the Public Key Directory by replaying the entire 
 message history from the first block to the current one. Any deviation from this behavior is considered an attempted
@@ -166,7 +171,7 @@ security vulnerabilities in our specification.
 
 ### Key Identifiers
 
-Every time an `AddKey` message is accepted by the Public Key Directory, the PKD will generate a 256-bit random unique 
+Every time an `AddKey` message is accepted by the Public Key Directory, the PKD will generate a 256-bit random unique
 `key-id` for that public key. This value is not secret or sensitive in any way, and is only used to point to an existing
 public key to reduce the amount of rejected signatures software must publish.
 
@@ -176,7 +181,7 @@ Each `key-id` is encoded as an unpadded [base64url](https://datatracker.ietf.org
 The `key-id` attribute **MUST NOT** be an encoded representation of the public key. The motivation for this restriction
 is to prevent accidental misuse (i.e., someone just decoding the public key from a message and trusting it blindly).
 
-The `key-id` is not covered in the protocol messages being signed. Instead, it is a hint to the signature validation 
+The `key-id` is not covered in the protocol messages being signed. Instead, it is a hint to the signature validation
 software which public key to select when there is more than one option. Their values are totally arbitrary and, aside
 from uniqueness, serve no other purpose.
 
@@ -185,7 +190,7 @@ from uniqueness, serve no other purpose.
 A revocation token is a compact token that a user can issue at any time to revoke an existing public key. If they issue
 a revocation against their only public key, the Public Key Directory will treat it as a `BurnDown`.
 
-Revocation tokens are [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded strings in the 
+Revocation tokens are [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5)-encoded strings in the
 following format:
 
 ```
@@ -333,9 +338,9 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 8.  Argon2id is a secure, memory-hard password-based key derivation function.
 9.  HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
     security (which is a stronger notion than PRF security that makes no assumptions about the distribution of IKM bits).
-10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated as DHKEM with ECDH over Curve25519
-    (X25519, [RFC 7748](https://datatracker.ietf.org/doc/rfc7748/)), HKDF-SHA256, and ChaCha20Poly1305--provides 
-    IND-CCA2 security against adversaries not in possession of the X25519 secret key.
+10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated as 
+    [Curve25519_SHA256_ChachaPoly](#hpke-cipher-suites)--provides IND-CCA2 security against adversaries not in 
+    possession of the X25519 secret key.
 11. AES in Counter Mode can be used to encrypt up to 2^{36} successive bytes under the same (key, initial counter),
     and the resulting ciphertext will be indistinguishable an encryption of NUL (`0x00`) bytes.
 12. Merkle trees based on a secure hash function (assumption 4) provide a secure verifiable data structure.
@@ -455,7 +460,7 @@ encryption protocol is key-committing.
 **Status**: Mitigated by design; requires enormous resources to attempt to attack.
 
 At some point in the past, Eugene requested his data be removed from the ledger, and his request was honored by 
-[erasing the key](#encrypting-message-attributes-to-enable-crypto-shredding-).
+[erasing the key](#encrypting-message-attributes-to-enable-crypto-shredding).
 
 Later, Troy decides to attempt to recover the plaintext to undermine the privacy that many Eugenes enjoy by using the 
 plaintext commitment to brute force the corresponding plaintext values. Troy's goal is to troll the Public Key Directory
@@ -652,7 +657,7 @@ mechanism, not a technological one, we consider this risk to remain open.
 
 #### Attacker uses a decoy Public Key Directory that publishes a dishonest history.
 
-**Status**: Open. <!-- TODO: This will be addressed in a future Pull Request, but is not fixed yet! -->
+**Status**: Open.
 
 There exist multiple Public Key Directories, one controlled by an attacker, and their history disagrees. How does a user
 (or, as the case may be, the tools on behalf of the user) decide which directory is canonical?
@@ -664,8 +669,6 @@ in the [Architecture](Architecture.md) document), this risk is more likely to ma
 
 Having few independent Public Key Directories, rather than 1:1 for instances, makes this risk addressable. However, that
 is a social mechanism, not a technological one.
-
-<!-- TODO: Explain how the technological mechanism, once specified, addresses this. -->
 
 #### Attacker submits contraband as auxiliary data.
 
@@ -1182,8 +1185,6 @@ server for this purpose.
 The Public Key Directory's public key **MAY** rotate frequently, and **SHOULD** be fetched from the server and cached 
 client-side for no more than 24 hours. Public Key Directories are not required to rotate this public key.
 
-(TODO: Specify JSON REST API endpoint for fetching the HPKE public key and cipher suite).
-
 #### Protocol Message Encryption
 
 `BurnDown` messages **MUST NOT** be encrypted.
@@ -1448,12 +1449,13 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get
 
 Each entry in the `public-keys` array will contain the following fields:
 
-| Response Field | Type     | Remarks                          |
-|----------------|----------|----------------------------------|
-| `created`      | string   | [Timestamp](#timestamps)         |
-| `key-id`       | string   | See [Key IDs](#key-identifiers)  |
-| `merkle-root`  | string   | Merkle tree root hash for AddKey |
-| `public-key`   | string   | Public key                       |
+| Response Field    | Type     | Remarks                                                                                    |
+|-------------------|----------|--------------------------------------------------------------------------------------------|
+| `created`         | string   | [Timestamp](#timestamps)                                                                   |
+| `key-id`          | string   | See [Key IDs](#key-identifiers)                                                            |
+| `inclusion-proof` | string[] | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root. |
+| `merkle-root`     | string   | Merkle tree root hash for AddKey                                                           |
+| `public-key`      | string   | Public key                                                                                 |
 
 Only non-revoked public keys will be included in this list.
 
@@ -1467,18 +1469,21 @@ Only non-revoked public keys will be included in this list.
     {
       "created": "1722176511",
       "key-id": "foo",
+      "inclusion-proof": ["yWF2i5NqdyB9s0nEGnNQpoxSOcIwySMCch5xTOJurwE", "b67xzsl8mtyMGphDa-DNJEyrM0lWIgp94W36svRxjW4", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
       "merkle-root": "pkd-mr-v1:rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM"
     },
     {
       "created": "1722603182",
       "key-id": "bar",
+      "inclusion-proof": ["-h8Ld1pCvMEopujWQ3dcAW3D6_dgdnwfazlRfSSRXUM", "b67xzsl8mtyMGphDa-DNJEyrM0lWIgp94W36svRxjW4", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
       "merkle-root": "pkd-mr-v1:p0n-vBu3mEx6BxnFKe6DDknwKUR8U42i8y_0VmEReg4",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLN"
     },
     {
       "created": "1730902833",
       "key-id": "baz",
+      "inclusion-proof": ["bqtD85NcSflBq0XGVuTwtvnoZ7AZcZYdUm7V8ScF1LI", "1ftW_n_zhfgCwenBdTaRJDEETmluqD3OPRN7hK8Jnvo", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
       "merkle-root": "pkd-mr-v1:HlRR_f1fFrRGu7Mczkdi41po07iP9JYjCp1GBb2y_nk",
       "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLO"
     }
@@ -1864,6 +1869,34 @@ Thus, `api/replica/:replica_id/` will contain:
 
 The `extensions`, `replica`, and `revoke` endpoints are not mirrored in a replica.
 
+#### GET api/server-public-key
+
+Purpose: Retrieve the public key to encrypt Protocol Messages (for use in HPKE)
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field     | Type   | Remarks                           |
+|--------------------|--------|-----------------------------------|
+| `@context`         | string | Domain separation                 |
+| `current-time`     | string | [Timestamp](#timestamps)          |
+| `hpke-ciphersuite` | string | See below                         |
+| `hpke-public-key`  | string | Base64url-encoded HPKE public key |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/server-public-key`.
+
+The `hpke-ciphersuite` string will refer to an [HPKE cipher suite](#hpke-cipher-suites).
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/server-public-key",
+  "current-time": "1730909831",
+  "hpke-ciphersuite": "Curve25519_SHA256_ChachaPoly",
+  "hpke-public-key": "3NtzCdMS1nuAVGHQStL-2evsgYz_LCuEzLeXXlrX7tM"
+}
+```
+
 #### POST api/revoke
 
 Purpose: Accepts [`RevokeKeyThirdParty`](#revokekeythirdparty) messages.
@@ -1888,7 +1921,7 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/revoke`.
 ```json5
 {
   "@context": "fedi-e2ee:v1/api/revoke",
-  "time": "1730909831",
+  "time": "1730909831"
 }
 ```
 
@@ -1921,7 +1954,7 @@ The disenrollment object will consist of the following fields:
 {
   "@context": "fedi-e2ee:v1/api/totp/disenroll",
   "success": true,
-  "time": "1730909831",
+  "time": "1730909831"
 }
 ```
 
@@ -1962,7 +1995,7 @@ The enrollment object will consist of the following fields:
 {
   "@context": "fedi-e2ee:v1/api/totp/enroll",
   "success": true,
-  "time": "1730909831",
+  "time": "1730909831"
 }
 ```
 
@@ -2003,7 +2036,7 @@ The enrollment object will consist of the following fields:
 {
   "@context": "fedi-e2ee:v1/api/totp/rotate",
   "success": true,
-  "time": "1730909831",
+  "time": "1730909831"
 }
 ```
 
@@ -2146,7 +2179,7 @@ transparency log.
 To provide a mechanism for this requirement, PKDs are encouraged to send [`Checkpoint`](#checkpoint) Protocol Messages
 to their peers in addition to regular Sigsum witness co-signatures.
 
-## Auxiliary Data Extensions
+### Auxiliary Data Extensions
 
 Auxiliary Data Extensions should be registered in [this GitHub repository](https://github.com/fedi-e2ee/fedi-pkd-extensions).
 
@@ -2182,7 +2215,9 @@ For the current version of the protocol, clients and servers **MUST** support th
 [DHKEM(X25519, HKDF-SHA256) with HKDF-SHA256 and ChaCha20Poly1305](https://www.rfc-editor.org/rfc/rfc9180.html#name-dhkemx25519-hkdf-sha256-hkdf)
 cipher suite.
 
-### Encrypting Message Attributes to Enable Crypto-Shredding 
+See [HPKE cipher suites](#hpke-cipher-suites) for more information.
+
+### Encrypting Message Attributes to Enable Crypto Shredding
 
 The goal of attribute encryption is compliance, not security, but we still consider it important to use a committing
 authenticated encryption mode to ensure a backdoor is not possible through an Invisible Salamanders style attack.
@@ -2365,6 +2400,23 @@ These constants are mostly used for domain separation.
 10. Compare `Q` with `Q2` using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
     If the two are not equal, return a decryption error.
 11. Return `p`.
+
+### HPKE Cipher Suites
+
+HPKE cipher suites consists of the following information:
+
+* KEM algorithm
+* KDF algorithm
+* AEAD algorithm
+
+This table includes some example HPKE cipher suites. This list is not exhaustive.
+
+| Cipher Suite String            | Remarks                    |
+|--------------------------------|----------------------------|
+| `Curve25519_SHA256_ChachaPoly` | Default; must be supported |
+| `P256_SHA256_AES_GCM_256`      |                            |
+| `P384_SHA384_AES_GCM_256`      |                            |
+| `P521_SHA512_AES_GCM_256`      |                            |
 
 ## Security Considerations
 
