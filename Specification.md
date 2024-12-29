@@ -657,7 +657,7 @@ mechanism, not a technological one, we consider this risk to remain open.
 
 #### Attacker uses a decoy Public Key Directory that publishes a dishonest history.
 
-**Status**: Open. <!-- TODO: This will be addressed in a future Pull Request, but is not fixed yet! -->
+**Status**: Open.
 
 There exist multiple Public Key Directories, one controlled by an attacker, and their history disagrees. How does a user
 (or, as the case may be, the tools on behalf of the user) decide which directory is canonical?
@@ -669,8 +669,6 @@ in the [Architecture](Architecture.md) document), this risk is more likely to ma
 
 Having few independent Public Key Directories, rather than 1:1 for instances, makes this risk addressable. However, that
 is a social mechanism, not a technological one.
-
-<!-- TODO: Explain how the technological mechanism, once specified, addresses this. -->
 
 #### Attacker submits contraband as auxiliary data.
 
