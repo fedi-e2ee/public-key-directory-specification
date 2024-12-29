@@ -338,9 +338,9 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 8.  Argon2id is a secure, memory-hard password-based key derivation function.
 9.  HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
     security (which is a stronger notion than PRF security that makes no assumptions about the distribution of IKM bits).
-10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated as DHKEM with ECDH over Curve25519
-    (X25519, [RFC 7748](https://datatracker.ietf.org/doc/rfc7748/)), HKDF-SHA256, and ChaCha20Poly1305--provides 
-    IND-CCA2 security against adversaries not in possession of the X25519 secret key.
+10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated as 
+    [Curve25519_SHA256_ChachaPoly](#hpke-cipher-suites)--provides IND-CCA2 security against adversaries not in 
+    possession of the X25519 secret key.
 11. AES in Counter Mode can be used to encrypt up to 2^{36} successive bytes under the same (key, initial counter),
     and the resulting ciphertext will be indistinguishable an encryption of NUL (`0x00`) bytes.
 12. Merkle trees based on a secure hash function (assumption 4) provide a secure verifiable data structure.
@@ -1187,8 +1187,6 @@ server for this purpose.
 The Public Key Directory's public key **MAY** rotate frequently, and **SHOULD** be fetched from the server and cached 
 client-side for no more than 24 hours. Public Key Directories are not required to rotate this public key.
 
-(TODO: Specify JSON REST API endpoint for fetching the HPKE public key and cipher suite).
-
 #### Protocol Message Encryption
 
 `BurnDown` messages **MUST NOT** be encrypted.
@@ -1869,6 +1867,34 @@ Thus, `api/replica/:replica_id/` will contain:
 
 The `extensions`, `replica`, and `revoke` endpoints are not mirrored in a replica.
 
+#### GET api/server-public-key
+
+Purpose: Retrieve the public key to encrypt Protocol Messages (for use in HPKE)
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field     | Type   | Remarks                           |
+|--------------------|--------|-----------------------------------|
+| `@context`         | string | Domain separation                 |
+| `current-time`     | string | [Timestamp](#timestamps)          |
+| `hpke-ciphersuite` | string | See below                         |
+| `hpke-public-key`  | string | Base64url-encoded HPKE public key |
+
+The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/server-public-key`.
+
+The `hpke-ciphersuite` string will refer to an [HPKE cipher suite](#hpke-cipher-suites).
+
+**Example Response**:
+
+```json5
+{
+  "@context": "fedi-e2ee:v1/api/server-public-key",
+  "current-time": "1730909831",
+  "hpke-ciphersuite": "Curve25519_SHA256_ChachaPoly",
+  "hpke-public-key": "3NtzCdMS1nuAVGHQStL-2evsgYz_LCuEzLeXXlrX7tM"
+}
+```
+
 #### POST api/revoke
 
 Purpose: Accepts [`RevokeKeyThirdParty`](#revokekeythirdparty) messages.
@@ -1893,7 +1919,7 @@ The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/revoke`.
 ```json5
 {
   "@context": "fedi-e2ee:v1/api/revoke",
-  "time": "1730909831",
+  "time": "1730909831"
 }
 ```
 
@@ -1926,7 +1952,7 @@ The disenrollment object will consist of the following fields:
 {
   "@context": "fedi-e2ee:v1/api/totp/disenroll",
   "success": true,
-  "time": "1730909831",
+  "time": "1730909831"
 }
 ```
 
@@ -1967,7 +1993,7 @@ The enrollment object will consist of the following fields:
 {
   "@context": "fedi-e2ee:v1/api/totp/enroll",
   "success": true,
-  "time": "1730909831",
+  "time": "1730909831"
 }
 ```
 
@@ -2008,7 +2034,7 @@ The enrollment object will consist of the following fields:
 {
   "@context": "fedi-e2ee:v1/api/totp/rotate",
   "success": true,
-  "time": "1730909831",
+  "time": "1730909831"
 }
 ```
 
@@ -2186,6 +2212,8 @@ if the client and server both support it.
 For the current version of the protocol, clients and servers **MUST** support the
 [DHKEM(X25519, HKDF-SHA256) with HKDF-SHA256 and ChaCha20Poly1305](https://www.rfc-editor.org/rfc/rfc9180.html#name-dhkemx25519-hkdf-sha256-hkdf)
 cipher suite.
+
+See [HPKE cipher suites](#hpke-cipher-suites) for more information.
 
 ### Encrypting Message Attributes to Enable Crypto Shredding
 
@@ -2370,6 +2398,23 @@ These constants are mostly used for domain separation.
 10. Compare `Q` with `Q2` using a [constant-time compare operation](https://soatok.blog/2020/08/27/soatoks-guide-to-side-channel-attacks/#string-comparison).
     If the two are not equal, return a decryption error.
 11. Return `p`.
+
+### HPKE Cipher Suites
+
+HPKE cipher suites consists of the following information:
+
+* KEM algorithm
+* KDF algorithm
+* AEAD algorithm
+
+This table includes some example HPKE ciphersuites. This list is not exhaustive.
+
+| Ciphersuite String             | Remarks                    |
+|--------------------------------|----------------------------|
+| `Curve25519_SHA256_ChachaPoly` | Default; must be supported |
+| `P256_SHA256_AES_GCM_256`      |                            |
+| `P384_SHA384_AES_GCM_256`      |                            |
+| `P521_SHA512_AES_GCM_256`      |                            |
 
 ## Security Considerations
 
