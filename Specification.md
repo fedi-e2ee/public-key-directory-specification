@@ -460,7 +460,7 @@ encryption protocol is key-committing.
 **Status**: Mitigated by design; requires enormous resources to attempt to attack.
 
 At some point in the past, Eugene requested his data be removed from the ledger, and his request was honored by 
-[erasing the key](#encrypting-message-attributes-to-enable-crypto-shredding-).
+[erasing the key](#encrypting-message-attributes-to-enable-crypto-shredding).
 
 Later, Troy decides to attempt to recover the plaintext to undermine the privacy that many Eugenes enjoy by using the 
 plaintext commitment to brute force the corresponding plaintext values. Troy's goal is to troll the Public Key Directory
@@ -2187,7 +2187,7 @@ For the current version of the protocol, clients and servers **MUST** support th
 [DHKEM(X25519, HKDF-SHA256) with HKDF-SHA256 and ChaCha20Poly1305](https://www.rfc-editor.org/rfc/rfc9180.html#name-dhkemx25519-hkdf-sha256-hkdf)
 cipher suite.
 
-### Encrypting Message Attributes to Enable Crypto-Shredding 
+### Encrypting Message Attributes to Enable Crypto Shredding
 
 The goal of attribute encryption is compliance, not security, but we still consider it important to use a committing
 authenticated encryption mode to ensure a backdoor is not possible through an Invisible Salamanders style attack.
