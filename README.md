@@ -33,6 +33,10 @@ permitted for technical users in higher-level protocols. Really, we're trying to
 Other applications can build atop our Public Key Directory design to build advanced use cases (i.e., authenticated key 
 exchanges for end-to-end encryption).
 
+It's worth keeping in mind that the Public Key Directory isn't *just* the Merkle Tree, it's an API built on top of a
+Merkle Tree. To that end, you can query the API to retrieve every currently-trusted public key for a user, rather than
+having to manually parse this information out of the data stored in the underling data structure.
+
 ### How Does This Help Non-Technical Users?
 
 The Public Key Directory is a building block for developers. Our immediate audience for this specific component is 
