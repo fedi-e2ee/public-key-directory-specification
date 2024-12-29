@@ -2405,7 +2405,7 @@ HPKE cipher suites consists of the following information:
 * KDF algorithm
 * AEAD algorithm
 
-This table includes some example HPKE ciphersuites. This list is not exhaustive.
+This table includes some example HPKE cipher suites. This list is not exhaustive.
 
 | Cipher Suite String            | Remarks                    |
 |--------------------------------|----------------------------|
