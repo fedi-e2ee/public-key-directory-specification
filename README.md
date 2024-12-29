@@ -27,8 +27,8 @@ machine-verifiable proof of when each public key was enrolled. This is useful fo
 of trust that a given public key is correct for the party you wish to talk to.
 
 Additional manual key verification mechanisms (key fingerprints, safety numbers, etc.) are out-of-scope but totally 
-permitted for technical users in higher-level protocols. Really, we're trying to better than Trust on First Use (TOFU),
-so [Johnny can finally encrypt](https://people.eecs.berkeley.edu/~tygar/papers/Why_Johnny_Cant_Encrypt/OReilly.pdf). 
+permitted for technical users in higher-level protocols. Really, we're trying to do better than Trust on First Use 
+(TOFU), so [Johnny can finally encrypt](https://people.eecs.berkeley.edu/~tygar/papers/Why_Johnny_Cant_Encrypt/OReilly.pdf). 
 
 Other applications can build atop our Public Key Directory design to build advanced use cases (i.e., authenticated key 
 exchanges for end-to-end encryption).
