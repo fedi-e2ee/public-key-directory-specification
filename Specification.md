@@ -734,7 +734,7 @@ subsections of this document:
   /* A signature calculated over "@context", "action", "recent-merkle-root", and "message": */
   "signature": "",
   "symmetric-keys": {
-    /* These are used to decrypt attributed in the "message" object. They are not signed.
+    /* These are used to decrypt attributes in the "message" object. They are not signed.
      * This feature also only exists for compliance purposes, not to accomplish security goals.
      * These are disclosed to the server, but not echoed to clients. Instead, plaintext will be served back. */
   }
