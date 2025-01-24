@@ -45,6 +45,33 @@ necessarily somewhat technical.
 However, the projects that build *atop* this building block should take pains to minimize the friction for non-technical
 users. (That includes the other projects we will be opening in this GitHub organization!)
 
+### Our Guiding Principals
+
+All design decisions for this proposal have been influenced by the following guiding principals.
+
+1. Build for people, and
+2. Security over legacy
+
+#### Build for People
+
+The main goal of this project is to enable more people to securely communicate with each others.
+From this it follows that we
+
+* don't require any expert knowledge from the users of this system.
+* minimize the number of steps a user has to take to use this system securely.
+* value the privacy of the users, by only storing the minimal amount of information necessary and make it possible to delete data when the user demands it.
+* clearly communicate errors and incidents to the users and by doing so give them a proper understanding of their security state.
+
+As a side note, we don't consider companies as people.
+
+#### Security Over Legacy
+
+We want to build a system, which solves key management for people, nothing less and nothing more.
+There are many ways to solves this problem and many existing solutions which could become part of our solution.
+But we want to take the opportunity to focus on security and verifiability.
+This means if we have the choice we will not take an existing solution, when this solution leads to an unwarranted increase in complexity or a security compromise. Even if this solution is an established standard and used by everyone else.
+
+
 ## Documents In Scope
 
 * [Architecture](Architecture.md)
