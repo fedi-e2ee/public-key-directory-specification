@@ -134,23 +134,23 @@ signatures will always be calculated the same way:
 
 Each digital signature will be calculated over the following information (in this order):
 
-1. The value of the top-level `@context` attribute.
+1. The value of the top-level `!pkd-context` attribute.
 2. The value of the top-level `action` attribute.
 3. The JSON serialization of the top-level `message` attribute.
    Object keys **MUST** be sorted in ASCII byte order, and there **MUST** be no duplicate keys.
 4. The value of the top-level `recent-merkle-root` attribute.
 
 To ensure domain separation, we will use [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)
-function, with a tweak: We will insert the top-level key (`@context`, `action`, `message`, `recent-merkle-root`) before
-each piece.
+function, with a tweak: We will insert the top-level key (`!pkd-context`, `action`, `message`, `recent-merkle-root`)
+before each piece.
 
 For example, a Python function might look like this:
 
 ```python
 def signPayload(secret_key, payload):
     payloadToSign = preAuthEncode([
-        b'@context',
-        payload['@context'],
+        b'!pkd-context',
+        payload['!pkd-context'],
         b'action',
         payload['action'],
         b'message',
@@ -161,7 +161,7 @@ def signPayload(secret_key, payload):
     return base64url(crypto_sign(secret_key, payloadToSign))
 ```
 
-The `@context` strings are intended to provide domain separation. 
+The `!pkd-context` strings are intended to provide domain separation. 
 
 Raw hashes and signatures without any domain separation in the direct scope of this specification are considered a 
 security vulnerability. 
@@ -718,8 +718,8 @@ subsections of this document:
 
 ```json5
 {
-  /* The version number used in @context may change in the future: */
-  "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+  /* The version number used in !pkd-context may change in the future: */
+  "!pkd-context": "https://github.com/fedi-e2ee/public-key-directory/v1",
   /* The action, such as AddKey or RevokeKey, goes here: */
   "action": "",
   // key-id sometimes goes here
@@ -731,7 +731,7 @@ subsections of this document:
   },
   /* A recent Merkle root (if applicable) for a previous message: */
   "recent-merkle-root": "", 
-  /* A signature calculated over "@context", "action", "recent-merkle-root", and "message": */
+  /* A signature calculated over "!pkd-context", "action", "recent-merkle-root", and "message": */
   "signature": "",
   "symmetric-keys": {
     /* These are used to decrypt attributes in the "message" object. They are not signed.
@@ -1195,7 +1195,7 @@ the specific HPKE cipher suite advertised by the Public Key Directory, using the
 Users **MAY** pad the plaintext before encryption with additional whitespace to their desired length, but **SHOULD** 
 keep their plaintext JSON blobs smaller than 16 MiB (16,777,216 bytes).
 
-When encrypting, the AAD parameter of the HPKE encryption **MUST** be set to the value of the `@context` field.
+When encrypting, the AAD parameter of the HPKE encryption **MUST** be set to the value of the `!pkd-context` field.
 
 The result of the ciphertext will be encoded with unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5).
 
@@ -1204,7 +1204,7 @@ The message emitted to the Public Key Directory will consist of the following el
 ```json5
 {
   /* This is always included. */
-  "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+  "!pkd-context": "https://github.com/fedi-e2ee/public-key-directory/v1",
   /* The value of encrypted-message MUST be an unpadded base64url-encoded string. */
   "encrypted-message": "..."
 }
@@ -1214,7 +1214,7 @@ The message emitted to the Public Key Directory will consist of the following el
 
 If `encrypted-message` was provided by the HTTP request, after verifying the HTTP Signature, decode this value from
 encoded with unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) then attempt to decrypt it.
-Ensure the AAD parameter is set to the value of the `@context` field. 
+Ensure the AAD parameter is set to the value of the `!pkd-context` field. 
 
 Decryption failures count as rejections and incur a [rate-limiting penalty](#rate-limiting-bad-requests).
 
@@ -1260,7 +1260,7 @@ The Public Key Directory expects a JSON blob in the HTTP request body. This shou
 [Protocol Message](#protocol-messages).
 
 The blob **MAY** be encrypted from the client software. See [Protocol Message Encryption](#protocol-message-encryption).
-If so, the JSON blob will be a top-level message containing only `@context` and `encrypted-message`.
+If so, the JSON blob will be a top-level message containing only `!pkd-context` and `encrypted-message`.
 
 Protocol Messages encrypted with HPKE in this way **MUST** always include an HTTP Signature header, and it **MUST** be 
 valid.
@@ -1291,11 +1291,11 @@ Every Protocol Message received by a Public Key Directory **MUST** be unique. Ad
 message types (except `RevokeKeyThirdParty`) **MUST** be present and within a reasonable window. Public Key Directories
 **MAY** configure a preferred time window for timestamps, but it **MUST** be no greater than 30 days (2592000 seconds).
 
-After parsing the Protocol Message, verify that the `@context` matches the expected value for a Public Key Directory
+After parsing the Protocol Message, verify that the `!pkd-context` matches the expected value for a Public Key Directory
 Protocol Message. If it is absent or mismatched, discard the message. Servers **MAY** count this as an invalid message 
 that incurs a rate limit penalty, but it is not required.
 
-Once we have established the `@context` matches, the `action` should be examined. If the action is one of the following,
+Once we have established the `!pkd-context` matches, the `action` should be examined. If the action is one of the following,
 a valid HTTP Signature **MUST** have been sent with the message: `AddKey`, `BurnDown`.
 
 If the `action` is not one of the expected values (see [Protocol Messages](#protocol-messages)), discard the message.
@@ -1412,18 +1412,18 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type   | Remarks                                             |
 |----------------|--------|-----------------------------------------------------|
-| `@context`     | string | Domain separation                                   |
+| `!pkd-context` | string | Domain separation                                   |
 | `actor-id`     | string | Matches the request parameter, sanitized            |
 | `count-aux`    | number | The number of auxiliary data records for this Actor |
 | `count-keys`   | number | The number of active public keys for this Actor     |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/info`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/info`.
 
 **Example Response**:
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/actor/info",
+  "!pkd-context": "fedi-e2ee:v1/api/actor/info",
   "actor-id": "https://example.com/alice",
   "count-aux": 5,
   "count-keys": 3
@@ -1439,13 +1439,13 @@ known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occu
 
 An HTTP 200 OK request will contain the following response fields:
 
-| Response Field | Type     | Remarks                                  |
-|----------------|----------|------------------------------------------|
-| `@context`     | string   | Domain separation                        |
-| `actor-id`     | string   | Matches the request parameter, sanitized |
-| `public-keys`  | object[] | Array of objects (see next table)        |
+| Response Field  | Type     | Remarks                                  |
+|-----------------|----------|------------------------------------------|
+| `!pkd-context`  | string   | Domain separation                        |
+| `actor-id`      | string   | Matches the request parameter, sanitized |
+| `public-keys`   | object[] | Array of objects (see next table)        |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get-keys`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get-keys`.
 
 Each entry in the `public-keys` array will contain the following fields:
 
@@ -1463,7 +1463,7 @@ Only non-revoked public keys will be included in this list.
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/actor/get-keys",
+  "!pkd-context": "fedi-e2ee:v1/api/actor/get-keys",
   "actor-id": "https://example.com/alice",
   "public-keys": [
     {
@@ -1502,7 +1502,7 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field     | Type           | Remarks                                                                                    |
 |--------------------|----------------|--------------------------------------------------------------------------------------------|
-| `@context`         | string         | Domain separation                                                                          |
+| `!pkd-context`     | string         | Domain separation                                                                          |
 | `actor-id`         | string         | Matches the request parameter, sanitized                                                   |
 | `created`          | string         | [Timestamp](#timestamps)                                                                   |
 | `inclusion-proof`  | string[]       | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root. |
@@ -1512,13 +1512,13 @@ An HTTP 200 OK request will contain the following response fields:
 | `revoked`          | string \| null | [Timestamp](#timestamps) (or null)                                                         |
 | `revoke-root`      | string \| null | Merkle tree root hash for RevokeKey (or null)                                              |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/key-info`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/key-info`.
 
 **Example Response**:
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/actor/key-info",
+  "!pkd-context": "fedi-e2ee:v1/api/actor/key-info",
   "actor-id": "https://example.com/alice",
   "created": "1722176511",
   "inclusion-proof": ["yWF2i5NqdyB9s0nEGnNQpoxSOcIwySMCch5xTOJurwE", "b67xzsl8mtyMGphDa-DNJEyrM0lWIgp94W36svRxjW4", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
@@ -1541,11 +1541,11 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type     | Remarks                                  |
 |----------------|----------|------------------------------------------|
-| `@context`     | string   | Domain separation                        |
+| `!pkd-context` | string   | Domain separation                        |
 | `actor-id`     | string   | Matches the request parameter, sanitized |
 | `auxiliary`    | object[] | Array of objects (see next table)        |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/aux-info`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/aux-info`.
 
 Each entry in the `auxiliary` array will contain the following fields:
 
@@ -1559,7 +1559,7 @@ Each entry in the `auxiliary` array will contain the following fields:
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/actor/aux-info",
+  "!pkd-context": "fedi-e2ee:v1/api/actor/aux-info",
   "actor-id": "https://example.com/alice",
   "auxiliary": [
     {
@@ -1600,26 +1600,26 @@ known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occu
 
 An HTTP 200 OK request will contain the following response fields:
 
-| Response Field     | Type           | Remarks                                                                                    |
-|--------------------|----------------|--------------------------------------------------------------------------------------------|
-| `@context`         | string         | Domain separation                                                                          |
-| `actor-id`         | string         | Matches the request parameter, sanitized                                                   |
-| `aux-data`         | string         | Auxiliary Data Contents                                                                    |
-| `aux-id`           | string         | [Auxiliary Data ID](#auxiliary-data-identifiers)                                           |
-| `aux-type`         | string         | [Auxiliary Data Type](#auxiliary-data)                                                     |
-| `created`          | string         | [Timestamp](#timestamps)                                                                   |
-| `inclusion-proof`  | string[]       | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root. |
-| `merkle-root`      | string         | Merkle tree root hash for AddAuxData                                                       |
-| `revoked`          | string \| null | [Timestamp](#timestamps) (or null)                                                         |
-| `revoke-root`      | string \| null | Merkle tree root hash for RevokeAuxData (or null)                                          |
+| Response Field    | Type           | Remarks                                                                                    |
+|-------------------|----------------|--------------------------------------------------------------------------------------------|
+| `!pkd-context`    | string         | Domain separation                                                                          |
+| `actor-id`        | string         | Matches the request parameter, sanitized                                                   |
+| `aux-data`        | string         | Auxiliary Data Contents                                                                    |
+| `aux-id`          | string         | [Auxiliary Data ID](#auxiliary-data-identifiers)                                           |
+| `aux-type`        | string         | [Auxiliary Data Type](#auxiliary-data)                                                     |
+| `created`         | string         | [Timestamp](#timestamps)                                                                   |
+| `inclusion-proof` | string[]       | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root. |
+| `merkle-root`     | string         | Merkle tree root hash for AddAuxData                                                       |
+| `revoked`         | string \| null | [Timestamp](#timestamps) (or null)                                                         |
+| `revoke-root`     | string \| null | Merkle tree root hash for RevokeAuxData (or null)                                          |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get-aux`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor/get-aux`.
 
 **Example Response**:
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/actor/get-aux",
+  "!pkd-context": "fedi-e2ee:v1/api/actor/get-aux",
   "actor-id": "https://example.com/alice",
   "aux-data": "age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p",
   "aux-id": "XUUDSZSwIWsanCX9Dr4WH5g9p1_pTaK6hZymeISJI0A",
@@ -1640,18 +1640,18 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type   | Remarks                                     |
 |----------------|--------|---------------------------------------------|
-| `@context`     | string | Domain separation                           |
+| `!pkd-context` | string | Domain separation                           |
 | `current-time` | string | [Timestamp](#timestamps)                    |
 | `created`      | string | [Timestamp](#timestamps)                    |
 | `merkle-root`  | string | Merkle tree root hash for the latest record |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/history`.
 
 **Example Response**:
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/history",
+  "!pkd-context": "fedi-e2ee:v1/api/history",
   "current-time": "1730905988",
   "created": "1601016659",
   "merkle-root": "pkd-mr-v1:XINzPw6Z8ygzDQSZVpGtUmjVIqGVkkzWat_tkuWit3M"
@@ -1666,11 +1666,11 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type     | Remarks                           |
 |----------------|----------|-----------------------------------|
-| `@context`     | string   | Domain separation                 |
+| `!pkd-context` | string   | Domain separation                 |
 | `current-time` | string   | [Timestamp](#timestamps)          |
 | `records`      | object[] | Array of objects (see next table) |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/since`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/since`.
 
 Each entry in the `records` array will contain the following fields:
 
@@ -1690,11 +1690,11 @@ permitted to persist.
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/history/since",
+  "!pkd-context": "fedi-e2ee:v1/api/history/since",
   "created": "1730905988",
-  "encrypted-message": "{\"@context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
+  "encrypted-message": "{\"!pkd-context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
   "message": {
-    "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+    "!pkd-context": "https://github.com/fedi-e2ee/public-key-directory/v1",
     "action": "AddAuxData",
     "message": {
       "aux-type": "test",
@@ -1725,7 +1725,7 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field      | Type                        | Remarks                                                                                                                            |
 |---------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| `@context`          | string                      | Domain separation                                                                                                                  |
+| `!pkd-context`      | string                      | Domain separation                                                                                                                  |
 | `created`           | string                      | [Timestamp](#timestamps)                                                                                                           |
 | `encrypted-message` | string                      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
 | `inclusion-proof`   | string[]                    | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root.                                         |
@@ -1733,7 +1733,7 @@ An HTTP 200 OK request will contain the following response fields:
 | `merkle-root`       | string                      | Merkle tree root hash for the latest record                                                                                        |
 | `rewrapped-keys`    | map<string, object> \| null | Array of objects (re-wrapped symmetric keys for each field)                                                                        |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/view`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/history/view`.
 
 The optional `rewrapped-keys` field maps a Trusted Replica's fully qualified domain name to an object.  
 This object contains the re-wrapped symmetric key for each encrypted field that the Trusted Replica is
@@ -1743,12 +1743,12 @@ permitted to persist.
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/history/view",
+  "!pkd-context": "fedi-e2ee:v1/api/history/view",
   "created": "1730905988",
-  "encrypted-message": "{\"@context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
+  "encrypted-message": "{\"!pkd-context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
   "inclusion-proof": ["w3N3BU44g4MLC-sDGSzr1nJO9jmZfh_yq1bhpLjjWmo", "MMh4YxMTJLUW5m-6TuyfVhL3bxPF5fnXKbajEVJeO_s", "5Oagf2KpIxEschB1bjyUCG9E8ap_7chIQFHyU4yJy1I"],
   "message": {
-    "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+    "!pkd-context": "https://github.com/fedi-e2ee/public-key-directory/v1",
     "action": "AddAuxData",
     "message": {
       "aux-type": "test",
@@ -1778,11 +1778,11 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type     | Remarks                            |
 |----------------|----------|------------------------------------|
-| `@context`     | string   | Domain separation                  |
+| `!pkd-context` | string   | Domain separation                  |
 | `current-time` | string   | [Timestamp](#timestamps)           |
 | `extensions`   | object[] | Array of objects (see next table)  |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/extensions`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/extensions`.
 
 Each entry in the `extensions` array will contain *at least* each of the following fields:
 
@@ -1798,7 +1798,7 @@ Extensions **MAY** include optional additional fields, if necessary, in the abov
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/extensions",
+  "!pkd-context": "fedi-e2ee:v1/api/extensions",
   "time": "1731080850",
   "extensions": [
     {
@@ -1818,11 +1818,11 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field | Type     | Remarks                            |
 |----------------|----------|------------------------------------|
-| `@context`     | string   | Domain separation                  |
+| `!pkd-context` | string   | Domain separation                  |
 | `current-time` | string   | [Timestamp](#timestamps)           |
 | `replicas`     | object[] | Array of objects (see next table)  |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/replicas`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/replicas`.
 
 Each entry in the `replicas` array will contain *at least* each of the following fields:
 
@@ -1835,7 +1835,7 @@ Each entry in the `replicas` array will contain *at least* each of the following
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/repliacs",
+  "!pkd-context": "fedi-e2ee:v1/api/replicas",
   "time": "1731080855",
   "extensions": [
     {
@@ -1877,12 +1877,12 @@ An HTTP 200 OK request will contain the following response fields:
 
 | Response Field     | Type   | Remarks                           |
 |--------------------|--------|-----------------------------------|
-| `@context`         | string | Domain separation                 |
+| `!pkd-context`     | string | Domain separation                 |
 | `current-time`     | string | [Timestamp](#timestamps)          |
 | `hpke-ciphersuite` | string | See below                         |
 | `hpke-public-key`  | string | Base64url-encoded HPKE public key |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/server-public-key`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/server-public-key`.
 
 The `hpke-ciphersuite` string will refer to an [HPKE cipher suite](#hpke-cipher-suites).
 
@@ -1890,7 +1890,7 @@ The `hpke-ciphersuite` string will refer to an [HPKE cipher suite](#hpke-cipher-
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/server-public-key",
+  "!pkd-context": "fedi-e2ee:v1/api/server-public-key",
   "current-time": "1730909831",
   "hpke-ciphersuite": "Curve25519_SHA256_ChachaPoly",
   "hpke-public-key": "3NtzCdMS1nuAVGHQStL-2evsgYz_LCuEzLeXXlrX7tM"
@@ -1905,7 +1905,7 @@ The following HTTP request parameters **MUST** be included:
 
 | Request Parameter  | Type   | Remarks                  |
 |--------------------|--------|--------------------------|
-| `@context`         | string | Domain separation        |
+| `!pkd-context`     | string | Domain separation        |
 | `current-time`     | string | [Timestamp](#timestamps) |
 | `revocation-token` | string | Revocation token         |
 
@@ -1913,14 +1913,14 @@ If the revocation token is valid, it will be processed and an HTTP 200 OK respon
 
 If the revocation token is invalid, an HTTP 2204 No Content response will be returned.
 
-Either way, the response body will only contain a `@context` header and a timestamp.
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/revoke`.
+Either way, the response body will only contain a `!pkd-context` header and a timestamp.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/revoke`.
 
 **Example Response**:
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/revoke",
+  "!pkd-context": "fedi-e2ee:v1/api/revoke",
   "time": "1730909831"
 }
 ```
@@ -1933,12 +1933,12 @@ The following HTTP request parameters **MUST** be included:
 
 | Request Parameter | Type   | Remarks                      |
 |-------------------|--------|------------------------------|
-| `@context`        | string | Domain separation            |
+| `!pkd-context`    | string | Domain separation            |
 | `current-time`    | string | [Timestamp](#timestamps)     |
 | `disenrollment`   | object | See next table               |
 | `signature`       | string | Signature of `disenrollment` |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/disenroll`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/disenroll`.
 
 The disenrollment object will consist of the following fields:
 
@@ -1952,7 +1952,7 @@ The disenrollment object will consist of the following fields:
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/totp/disenroll",
+  "!pkd-context": "fedi-e2ee:v1/api/totp/disenroll",
   "success": true,
   "time": "1730909831"
 }
@@ -1972,12 +1972,12 @@ The following HTTP request parameters **MUST** be included:
 
 | Request Parameter | Type   | Remarks                   |
 |-------------------|--------|---------------------------|
-| `@context`        | string | Domain separation         |
+| `!pkd-context`    | string | Domain separation         |
 | `current-time`    | string | [Timestamp](#timestamps)  |
 | `enrollment`      | object | See next table            |
 | `signature`       | string | Signature of `enrollment` |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/enroll`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/enroll`.
 
 The enrollment object will consist of the following fields:
 
@@ -1993,7 +1993,7 @@ The enrollment object will consist of the following fields:
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/totp/enroll",
+  "!pkd-context": "fedi-e2ee:v1/api/totp/enroll",
   "success": true,
   "time": "1730909831"
 }
@@ -2012,12 +2012,12 @@ The following HTTP request parameters **MUST** be included:
 
 | Request Parameter | Type   | Remarks                  |
 |-------------------|--------|--------------------------|
-| `@context`        | string | Domain separation        |
+| `!pkd-context`    | string | Domain separation        |
 | `current-time`    | string | [Timestamp](#timestamps) |
 | `rotation`        | object | See next table           |
 | `signature`       | string | Signature of `rotation`  |
 
-The `@context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/rotate`.
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/rotate`.
 
 The enrollment object will consist of the following fields:
 
@@ -2034,7 +2034,7 @@ The enrollment object will consist of the following fields:
 
 ```json5
 {
-  "@context": "fedi-e2ee:v1/api/totp/rotate",
+  "!pkd-context": "fedi-e2ee:v1/api/totp/rotate",
   "success": true,
   "time": "1730909831"
 }
@@ -2145,8 +2145,8 @@ Each bundle submitted to Sigsum as a Sigsum message will consist of the followin
 
 ```json5
 {
-  /* The version number used in @context may change in the future: */
-  "@context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+  /* The version number used in !pkd-context may change in the future: */
+  "!pkd-context": "https://github.com/fedi-e2ee/public-key-directory/v1",
   /* The action, such as AddKey or RevokeKey, goes here: */
   "action": "",
   /* A recent Merkle root (if applicable) for a previous message: */
@@ -2157,14 +2157,14 @@ Each bundle submitted to Sigsum as a Sigsum message will consist of the followin
     Its contents may vary from action to action.
     */
   }, 
-  /* A signature calculated over "@context", "action", "recent-merkle-root", and "message": */
+  /* A signature calculated over "!pkd-context", "action", "recent-merkle-root", and "message": */
   "signature": ""
 }
 ```
 
 Note that `key-id` and `symmetric-keys` are deliberately excluded from being committed to Sigsum.
 
-The `@context` header (which is signed by the end user) is included for domain separation against other uses of the
+The `!pkd-context` header (which is signed by the end user) is included for domain separation against other uses of the
 user's secret key.
 
 #### Witness Co-Signing
