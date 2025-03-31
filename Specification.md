@@ -748,7 +748,7 @@ The following subsections each describe a different Protocol Message type.
 
 * [`AddKey`](#addkey): Add a new public key for a given Actor
 * [`RevokeKey`](#revokekey): Revoke a public key
-* [`RvokeKeyThirdParty`](#revokekeythirdparty): A mechanism for independent third parties to revoke compromised keys
+* [`RevokeKeyThirdParty`](#revokekeythirdparty): A mechanism for independent third parties to revoke compromised keys
 * [`MoveIdentity`](#moveidentity): Move all existing public keys and auxiliary data to a new Actor ID.
 * [`BurnDown`](#burndown): A mechanism for account recovery.
 * [`Fireproof`](#fireproof): Opt out of `BurnDown`.
