@@ -2,6 +2,7 @@
 
 This repository contains the specification for a **Public Key Directory** for the Fediverse.
 
+> [!CAUTION]
 > This is still a work in progress.
 
 ## What Is This All About?
