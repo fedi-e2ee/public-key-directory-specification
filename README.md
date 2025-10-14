@@ -90,7 +90,7 @@ This means if we have the choice we will not take an existing solution, when thi
 
 ## Reference Implementation
 
-(Coming soon!)
+The [**Public Key Directory Reference Implementation**](https://github.com/fedi-e2ee/pkd-server-go) is now available.
 
 ## Historical Development Blogs
 
