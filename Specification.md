@@ -140,7 +140,7 @@ Each digital signature will be calculated over the following information (in thi
    Object keys **MUST** be sorted in ASCII byte order, and there **MUST** be no duplicate keys.
 4. The value of the top-level `recent-merkle-root` attribute.
 
-To ensure domain separation, we will use [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)
+To ensure domain separation, we will use [Pre-Authentication Encoding](#preauthencode)
 function, with a tweak: We will insert the top-level key (`!pkd-context`, `action`, `message`, `recent-merkle-root`)
 before each piece.
 
@@ -168,6 +168,53 @@ security vulnerability.
 
 Raw hashes or signatures in the Merkle Tree, or in protocols built atop the Public Key Directory, are not considered
 security vulnerabilities in our specification.
+
+#### PreAuthEncode
+
+In order to canonicalize multi-part inputs to a hash function or signature algorithm, we will use the strategy from
+[PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition).
+
+To implement PreAuthEncode(), you first need a LE64() function that accepts an unsigned 64-bit integer and returns an
+octet sequence in little endian byte order. An example JavaScript function is included below:
+
+```javascript
+function LE64(n) {
+    var str = '';
+    for (var i = 0; i < 8; ++i) {
+        if (i === 7) {
+            // Clear the MSB for interoperability
+            n &= 127;
+        }
+        str += String.fromCharCode(n & 255);
+        n = n >>> 8;
+    }
+    return str;
+}
+```
+
+The algorithm is as follows:
+
+1. Append the LE64() of the number of pieces being encoded.
+2. For each piece:
+   1. Append the LE64() of the number of octets in this piece.
+   2. Append the octet sequence of this piece.
+
+For convenience, another example JavaScript function:
+
+```javascript
+function PAE(pieces) {
+    if (!Array.isArray(pieces)) {
+        throw TypeError('Expected an array.');
+    }
+    var count = pieces.length;
+    var output = LE64(count);
+    for (var i = 0; i < count; i++) {
+        output += LE64(pieces[i].length);
+        output += pieces[i];
+    }
+    return output;
+}
+```
 
 ### Key Identifiers
 
