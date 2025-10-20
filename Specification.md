@@ -4,7 +4,7 @@ This document defines the Fediverse End-to-End Encryption Public Key Directory (
 ActivityPub-enabled directory server software, a protocol for communicating with the directory server, and integration
 with a transparent, append-only data structure (e.g., based on Merkle trees).
 
-* Current version: v0.1.0
+* Current version: v0.2.0
 * Authors: [Soatok Dreamseeker](https://github.com/soatok)
 
 ## Introduction
@@ -262,7 +262,7 @@ said security researcher has deemed it necessary to do so to minimize harm.
 
 ### Auxiliary Data
 
-The Public Key Directory will advertise a list of Auxiliary Extensions, which can be developed at a later time, that 
+The Public Key Directory will advertise a list of Auxiliary Extensions, which can be developed at a later time, that
 define the types and formats of Auxiliary Data that will be accepted by a particular PKD server.
 
 For example, a PKD Server may include `age-v1` in its list of Auxiliary Extensions, which in turn allows users to submit
@@ -315,28 +315,29 @@ As a best-effort, good faith design decision, we will introduce the technical ca
 message attributes (which may contain usernames, and usernames are definitely personal data in scope of the *Right
 to be Forgotten*).
 
-Consequently, we will add a layer of indirection to the underlying Message storage and Sigsum integration, for handling
-sensitive attributes (e.g., Actor ID):
+Consequently, we will add a layer of indirection to the underlying Message storage and Transparency Log integration, 
+for handling sensitive attributes (e.g., Actor ID):
 
-1. Every Message will have a unique 256-bit random key per sensitive attribute. These can be generated client-side or provided by the Public Key
-   Directory, so long as the keys never repeat. The Public Key Directory will include a key-generation API endpoint for
-   generating 256-bit keys for this purpose.
+1. Every Message will have a unique 256-bit random key per sensitive attribute. These can be generated client-side or
+   provided by the Public Key Directory, so long as the keys never repeat. The Public Key Directory will include a 
+   key-generation API endpoint for generating 256-bit keys for this purpose.
 2. Each attribute will be encrypted with the corresponding key from (1), using a committing authenticated encryption mode.
    The encryption steps are described in [a later section](#message-attribute-encryption-algorithm).
 
-During insert, of an attribute clients will provide both an encrypted representation of the attributes value in `message.<attribute>`, and disclose
-the accompanying key in the `symmetric-keys.<attribute>` (outside of `message.`, and not covered by the signature).
+During insert, of an attribute clients will provide both an encrypted representation of the attributes value in 
+`message.<attribute>`, and disclose the accompanying key in the `symmetric-keys.<attribute>` (outside of `message.`, 
+and not covered by the signature).
 
 When requesting data from the ledger, the Message will be returned as-is (i.e., ciphertext), along with the decrypted
 Message (provided the key has not been shredded yet).
 
-To ensure the link between the encrypted message and plaintext message is provable, clients will also generate and 
+To ensure the link between the encrypted message and plaintext message is provable, clients will also generate and
 publish a commitment of the plaintext. This prevents a server from serving the wrong plaintext alongside a given
 ciphertext and fooling clients into believing it.
 
-The keys are not included in the Sigsum data, but stored alongside the record in a separate editable database.
+The keys are not included in the Transparency Log data, but stored alongside the record in a separate editable database.
 
-The decrypted message is also not included in the Sigsum data.
+The decrypted message is also not included in the Transparency Log data.
 
 To satisfy a "right to be forgotten" request, the key for the relevant blocks will be erased. The ciphertext will 
 persist forever, but without the correct key, the contents will be indistinguishable from randomness. Thus, the system
@@ -396,7 +397,7 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 
 1. JSON REST API, available over HTTPS.
 2. ActivityPub integration.
-3. Sigsum integration.
+3. Transparency Log integration.
 4. Shreddable symmetric-key storage.
 5. Local relational database.
 6. Mapping of Actor IDs to associated data.
@@ -593,9 +594,9 @@ To address this risk, any software building E2EE on top of the Public Key Direct
 trust status of any participants that receive a successful BurnDown. At minimum, this means requiring any higher-level
 validation be performed again (e.g., safety number comparison) as if chatting with a stranger.
 
-Obviously, if Grace is unable to enlist Yvonne, and cannot convince the Public Key Directory operator that the _Right To 
-Be Forgotten_ request is legitimate, then Grace's cover-up will not succeed. However, requiring legal acumen to prevent
-misbehavior is a poor mechanism, so we consider this risk "Open" in this case.
+Obviously, if Grace is unable to enlist Yvonne, and cannot convince the Public Key Directory operator that the _Right 
+To Be Forgotten_ request is legitimate, then Grace's cover-up will not succeed. However, requiring legal acumen to 
+prevent misbehavior is a poor mechanism, so we consider this risk "Open" in this case.
 
 #### Instance administrator loses all their signing keys.
 
@@ -695,8 +696,8 @@ Richard not only hosts Dave's account, but also controls the Public Key Director
 Fediverse servers. Richard plans to use his privileged access to selectively reject Fireproof messages, lie about the
 history of the transparency log, etc.
 
-To address dishonest logs, users can rely on witness co-signatures (part of the Sigsum protocol) to ensure that history
-is unchanged between different perspectives. This aspect is addressable.
+To address dishonest logs, users can rely on witness co-signatures (part of the Transparency Log protocol) 
+to ensure that history is unchanged between different perspectives. This aspect is addressable.
 
 Malicious, selective rejection of protocol messages cannot be addressed by construction. Instead, the independence of
 Public Key Directory operators from Fediverse instance administrators should be maintained. As this is a social 
@@ -732,18 +733,22 @@ to wipe unwanted illegal material from their records by wiping the decryption ke
 
 #### Sharing Accounts
 
-It is possible that a group of users wants to share one Fediverse account. For example if they are part of an organisation which wants to receive encrypted messages, but share the work between the group. (E.g.
- a whistleblower hotline).
-For the following we assume the smallest possible group of Bob and Troy, but all scenarios will affect larger groups, but they require just a single Troy.
-While this would not affect the groups ability to use the Fediverse account and accessing the Fediverse server, it sabotages all interactions where the key is used (E.g. reading e2ee messages.)
+It is possible that a group of users wants to share one Fediverse account. For example if they are part of an 
+organisation which wants to receive encrypted messages, but share the work between the group. 
+(e.g., a whistleblower hotline).
+For the following we assume the smallest possible group of Bob and Troy, but all scenarios will affect larger groups, 
+but they require just a single Troy. While this would not affect the groups ability to use the Fediverse account and 
+accessing the Fediverse server, it sabotages all interactions where the key is used (E.g. reading e2ee messages.)
 
 ##### Sharing an  account by sharing the secret key
 
 **Status:** Open / out of scope
 
-If Bob and Troy share an account by sharing a secret key, Troy can replace that key with his own, by send one `AddKey` message to insert a new key only know to Troy and sending a `RevokeKey` message which removes the shared key.
+If Bob and Troy share an account by sharing a secret key, Troy can replace that key with his own, by send one `AddKey`
+message to insert a new key only know to Troy and sending a `RevokeKey` message which removes the shared key.
 
-Further can Troy send a `Fireproof` message for the shared account and by doing so make it impossible for Bob to regain the identity. 
+Further can Troy send a `Fireproof` message for the shared account and by doing so make it impossible for Bob to regain
+the identity.
 
 ##### Shared accounts by adding two keys
 
@@ -871,8 +876,8 @@ See [BurnDown](#burndown) for clearing all keys and starting over (unless [Firep
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
 * `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
-    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
-    * `public-key` -- **string (Cryptography key)** (required): The key used to encrypt `message.public-key`.
+  * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
+  * `public-key` -- **string (Cryptography key)** (required): The key used to encrypt `message.public-key`.
 
 #### RevokeKey Validation Steps
 
@@ -939,14 +944,14 @@ This message **MUST** be rejected if there are existing public keys for the targ
 
 * `action` -- **string (Action Type)** (required): Must be set to `MoveIdentity`.
 * `message` -- **map**
-    * `old-actor` -- **string (Actor ID)** (required): Who is being moved. Encrypted.
-    * `new-actor` -- **string (Actor ID)** (required): Their new Actor ID. Encrypted.
-    * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
+  * `old-actor` -- **string (Actor ID)** (required): Who is being moved. Encrypted.
+  * `new-actor` -- **string (Actor ID)** (required): Their new Actor ID. Encrypted.
+  * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
 * `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
-    * `old-actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.old-actor`.
-    * `new-actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.new-actor`.
+  * `old-actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.old-actor`.
+  * `new-actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.new-actor`.
 
 #### MoveIdentity Validation Steps
 
@@ -1016,7 +1021,7 @@ validating an `BurnDown` message are as follows:
 
 ### Fireproof
 
-Where `BurnDown` resets the state for a given Actor to allow account recovery, `Fireproof` opts out of this recovery 
+Where `BurnDown` resets the state for a given Actor to allow account recovery, `Fireproof` opts out of this recovery
 mechanism entirely. See [the relevant Security Considerations section](#revocation-and-account-recovery).
 
 This message **MAY** be sent out-of-band to the Public Key Directory without the Fediverse server's involvement.
@@ -1031,12 +1036,12 @@ If the user is already in Fireproof status, this message is rejected.
 
 * `action` -- **string (Action Type)** (required): Must be set to `Fireproof`.
 * `message` -- **map**
-    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
-    * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
+  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
+  * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
 * `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
-    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
+  * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
 
 #### Fireproof Validation Steps
 
@@ -1067,12 +1072,12 @@ If the user is not in `Fireproof` status, this message is rejected.
 
 * `action` -- **string (Action Type)** (required): Must be set to `UndoFireproof`.
 * `message` -- **map**
-    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
-    * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
+  * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
+  * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
 * `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
 * `symmetric-keys` -- **map**
-    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
+  * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
 
 #### UndoFireproof Validation Steps
 
@@ -1103,7 +1108,7 @@ relevant extension, and the data provided conforms to whatever validation criter
   * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user. Encrypted.
   * `aux-type` -- **string (Auxiliary Data Type)** (required): The identifier used by the Auxiliary Data extension.
   * `aux-data` -- **string** (required): The auxiliary data. Encrypted.
-  * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided, 
+  * `aux-id` -- **string** (optional): See [Auxiliary Data Identifiers](#auxiliary-data-identifiers). If provided,
     the server will validate that the aux-id is valid for the given type and data. 
   * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
 * `key-id` -- **string (Key Identifier)** (optional): The key that is signing the Aux Data.
@@ -1179,7 +1184,8 @@ validating an `RevokeAuxData` message are as follows:
 Unlike other Protocol Message types, this one will strictly be performed from one Public Key Directory to another. See
 [the Witness co-signing section](#witness-co-signing) for context.
 
-`Checkpoint` messages contain three critical pieces of context, to be committed into the recipient's Sigsum ledger:
+`Checkpoint` messages contain three critical pieces of context, to be committed into the recipient's Transparency Log
+ledger:
 
 1. The current Merkle root of the sender (`from-root`).
 2. The most recent *validated* Merkle root of the recipient (`to-validated-root`).
@@ -1270,8 +1276,8 @@ JSON blob **MAY** have additional whitespace appended to it.
 
 ### Protocol Message Processing
 
-Most [Protocol Messages](#protocol-messages) will be received through ActivityPub. (Exception: [`RevokeKeyThirdParty`](#revokekeythirdparty)
-can be sent via HTTP request to the JSON REST API.)
+Most [Protocol Messages](#protocol-messages) will be received through ActivityPub. (Exception: 
+[`RevokeKeyThirdParty`](#revokekeythirdparty) can be sent via HTTP request to the JSON REST API.)
 
 Each type of Protocol Message has its own specific validation steps. This section defines the workflow for handling all
 ProtocolMessages.
@@ -1342,8 +1348,8 @@ After parsing the Protocol Message, verify that the `!pkd-context` matches the e
 Protocol Message. If it is absent or mismatched, discard the message. Servers **MAY** count this as an invalid message 
 that incurs a rate limit penalty, but it is not required.
 
-Once we have established the `!pkd-context` matches, the `action` should be examined. If the action is one of the following,
-a valid HTTP Signature **MUST** have been sent with the message: `AddKey`, `BurnDown`.
+Once we have established the `!pkd-context` matches, the `action` should be examined. If the action is one of the 
+following, a valid HTTP Signature **MUST** have been sent with the message: `AddKey`, `BurnDown`.
 
 If the `action` is not one of the expected values (see [Protocol Messages](#protocol-messages)), discard the message.
 This may indicate a newer specification.
@@ -1351,8 +1357,8 @@ This may indicate a newer specification.
 Next, pass the deserialized JSON to a handler (function, class, etc.) for that specific action type. This behavior
 **MUST** implement the validation steps relevant to the appropriate Protocol Message.
 
-After the message validation is complete, [commit the Protocol Message to Sigsum](#sigsum-integration). If the 
-Sigsum integration fails, return an HTTP 500 response to the client and abort.
+After the message validation is complete, [commit the Protocol Message to the Transparency Log](#tlog-integration).
+If the Transparency Log integration fails, return an HTTP 500 response to the client and abort.
 
 Finally, make the appropriate changes to the local database (based on what action is to be performed).
 
@@ -1385,7 +1391,7 @@ Some authenticator apps do not support these parameters.
 #### TOTP Enrollment
 
 TOTP secret keys must be 256 bits of randomness. This secret value will be encoded with base32
-([RFC 4648, section 6](https://www.rfc-editor.org/rfc/rfc4648.html#section-6)) when served to the end users (e.g., 
+([RFC 4648, section 6](https://www.rfc-editor.org/rfc/rfc4648.html#section-6)) when served to the end users (e.g.,
 via a QR code).
 
 This secret must be shared with the Public Key Directory instance, [encrypted with HPKE like Protocol Messages](#encryption-of-protocol-messages).
@@ -1541,7 +1547,7 @@ Only non-revoked public keys will be included in this list.
 #### GET api/actor/:actor_id/key/:key_id
 
 Purpose: Retrieve information about a specific public key.
-    
+
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
@@ -1765,7 +1771,7 @@ In the above example, dummy values were used for Merkle roots.
 
 #### GET api/history/view/:hash
 
-Purpose: View information about a specific protocol message. This will also return SigSum inclusion proofs and witness
+Purpose: View information about a specific protocol message. This will also return inclusion proofs and witness
 co-signatures.
 
 An HTTP 200 OK request will contain the following response fields:
@@ -2128,7 +2134,7 @@ The encrypted attributes will always be copied onto mirrors.
 Mirrors **MAY** cache the corresponding plaintext fields from the source directory, provided 
 they adhere to the [cache invalidation](#mirror-plaintext-cache-invalidation) specification.
 
-Replica instances **SHOULD** provide [witness co-signatures](#witness-co-signing) to the Sigsum transparency log that
+Replica instances **SHOULD** provide [witness co-signatures](#witness-co-signing) to the Transparency Log that
 the source PKD is built atop.
 
 ##### Recursive Replication
@@ -2175,20 +2181,19 @@ If the source is unavailable, the mirror may defer retries for up to 7 days. Aft
 the relevant rewrapped keys and cached plaintexts as invalid and remove them. If the source comes back online, the 
 mirror **MAY** re-cache the symmetric keys and/or plaintext.
 
-### Sigsum Integration
+### Tlog Integration
 
-[Sigsum](https://www.sigsum.org) is the transparency system that underpins the Public Key Directory design. Requests to
-SigSum contain the following:
+The Transparency Log is the transparency system that underpins the Public Key Directory design. The tree stores entries
+in a `tlog-tiles` compatible format.
 
-1. A message to be stored.
-2. A public key that signs the data.
-3. A signature over the message (1), using the public key (2).
+Each entry committed to the tree will consist of the following:
 
-After verifying the signature (3), Sigsum stores the SHA256 hash of (1), the SHA256 hash of (2), and the signature (3) 
-as-is.
+1.  A SHA-256 hash of the canonicalized Protocol Message.
+2.  An Ed25519 signature of the SHA-256 hash, created by the Public Key Directory server.
+3.  A SHA-256 hash of the Public Key Directory server's Ed25519 public key.
 
-The Public Key Directory Server will maintain its own Ed25519 keypair, which is used to sign new messages into Sigsum.
-Each bundle submitted to Sigsum as a Sigsum message will consist of the following subset of the Protocol Message:
+The Public Key Directory Server will maintain its own Ed25519 keypair for this purpose. The Protocol Message that is
+hashed is the same subset of the message that was previously committed to the Transparency Log:
 
 ```json5
 {
@@ -2209,22 +2214,26 @@ Each bundle submitted to Sigsum as a Sigsum message will consist of the followin
 }
 ```
 
-Note that `key-id` and `symmetric-keys` are deliberately excluded from being committed to Sigsum.
-
-The `!pkd-context` header (which is signed by the end user) is included for domain separation against other uses of the
-user's secret key.
+Note that `key-id` and `symmetric-keys` are deliberately excluded from the hashed message.
 
 #### Witness Co-Signing
 
-Sigsum doesn't use a gossip protocol. Instead, it relies on proactive witness co-signatures into other ledgers. See
-[section 3.5 of the Sigsum paper for more details](https://git.glasklar.is/nisse/cats-2023/-/blob/main/sigsum-design-cats-2023.pdf).
+To ensure the integrity and consistency of the Merkle tree across different observers, the system supports witness 
+co-signatures. Witnesses are independent entities that monitor the Public Key Directory and co-sign the Merkle tree 
+root. This allows clients to verify that the tree they are seeing is the same one that is being observed by the wider
+community.
 
 It's not sufficient for Public Key Directory entries to merely validate that a record exists in a Merkle tree. At least
 one witness **MUST** also validate that the current state is deterministically reproducible from the history of the 
 transparency log.
 
 To provide a mechanism for this requirement, PKDs are encouraged to send [`Checkpoint`](#checkpoint) Protocol Messages
-to their peers in addition to regular Sigsum witness co-signatures.
+to their peers.
+
+#### Cosignatures
+
+The system also supports cosignatures, allowing multiple parties to sign the same Merkle tree root. This is useful for
+scenarios where multiple entities are responsible for the operation of the Public Key Directory.
 
 ### Auxiliary Data Extensions
 
@@ -2611,7 +2620,7 @@ outages or data corruption, as outlined in [the threat model](#cosmic-ray-causes
 Each Public Key Directory **SHOULD** use a different symmetric key for attribute encryption. Fediverse Servers **MAY** 
 accept batches of different Protocol Messages (one for each Public Key Directory), and then fan them out asynchronously.
 Clients **SHOULD** also use a [recent Merkle root](#recent-merkle-root-included-in-plaintext-commitments) from the 
-Sigsum instance tied to that particular Public Key Directory.
+Transparency Log instance tied to that particular Public Key Directory.
 
 When requesting the public keys or auxiliary data for a specific ActivityPub actor, clients **SHOULD** query multiple
 Public Key Directories. The **RECOMMENDED** behavior is to require a specific entry exists in multiple PKDs to meet some
