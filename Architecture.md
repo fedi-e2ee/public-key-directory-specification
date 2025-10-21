@@ -11,12 +11,12 @@ flowchart TD
     B[Users] -->D
     C[Fediverse Servers] -->|Protocol Messages| E
     D[Fediverse Servers]-->|Protocol Messages| E
-    E[Public Key Directory] --> F{SigSum}
+    E[Public Key Directory] --> F{Transparency Log}
 ```
 
 Fediverse Servers will use [HTTP Signatures](https://swicg.github.io/activitypub-http-signature/)
 to send Protocol Messages to one or more Public Key Directory (PKD). Each directory will use
-[SigSum](https://sigsum.org) to store checksums of these messages.
+a Transparency Log to store checksums of these messages.
 
 There will be exceptions to this general rule.
 
@@ -33,7 +33,7 @@ flowchart TD
     B[Users] -->D
     C[Fediverse Servers] -->|Protocol Messages| E
     D[Fediverse Servers]-->|Protocol Messages| E
-    E[Public Key Directory] --> F{SigSum}
+    E[Public Key Directory] --> F{Transparency Log}
     B -->|Revocation| E
 ```
 
@@ -44,15 +44,20 @@ to support Public Key Directories.
 
 ## Public Key Directory
 
-The Public Key Directory (PKD) is what this repository is focused on specifying.  It will support 
-[ActivityPub](https://www.w3.org/TR/activitypub/) messages for reading and writing, as well as a 
+The Public Key Directory (PKD) is what this repository is focused on specifying.  It will support
+[ActivityPub](https://www.w3.org/TR/activitypub/) messages for reading and writing, as well as a
 simple JSON REST API for querying public keys for individual users (read only).
 
-## SigSum
+## Transparency Log
 
-The [SigSum](https://www.sigsum.org/) component is an append-only data structure that stores signatures
-in a Merkle tree. It doesn't natively support arbitrary data storage, so we only use it for verifying
-the messages and records stored in the PKD.
+The Transparency Log is an append-only data structure that stores information in a [`tlog-tiles`](https://github.com/C2SP/C2SP/blob/main/tlog-tiles.md)
+compatible format. It stores the following information:
+
+* SHA-256 hash of some data
+* Ed25519 signature of the SHA256 hash
+* SHA-256 hash of the Ed25519 public key
+
+Each leaf should, therefore, only require 128 bytes of real storage.
 
 ## Roles
 
@@ -68,7 +73,7 @@ This operator is responsible for managing the users of their instances and for c
 
 ### PKD Operator
 
-The PKD Operator manages the daily operations of their PKD and the SigSum Server.
+The PKD Operator manages the daily operations of their PKD.
 The PKD Operator adds the trusted Fediverse Servers to the PKD.
 
 ## Questions and Answers
