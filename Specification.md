@@ -1274,6 +1274,23 @@ Decryption failures count as rejections and incur a [rate-limiting penalty](#rat
 The result of a successful decryption **MUST** be a string that corresponds to a JSON-encoded Protocol Message. This
 JSON blob **MAY** have additional whitespace appended to it.
 
+### HPKE Rules for Encrypted Protocol Messages 
+
+#### HPKE Configuration
+
+The `info` parameter **MUST** always be set to the ASCII string, `fedi-e2ee/public-key-directory:v1:protocol-message`.
+
+The `aad` parameter will be set to the Server Encapsulation Key Identifier. This is calculated using HMAC, with the
+ciphersuite's configured hash function, of the ASCII string message, `fedi-e2ee/public-key-directory:v1:key-id`, with
+the Encapsulation Key as the HMAC key.
+
+The purpose these configurations is domain separation.
+
+#### Ciphertext Encoding
+
+When a Protocol Message is encrypted with HPKE, the resulting ciphertext **MUST** be base64url-encoded. This encoded
+string **MUST** be prefixed with `hpke:` (hexadecimal ASCII values: `68 70 6b 65 3a`).
+
 ### Protocol Message Processing
 
 Most [Protocol Messages](#protocol-messages) will be received through ActivityPub. (Exception: 
@@ -1731,13 +1748,10 @@ Each entry in the `records` array will contain the following fields:
 |---------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------|
 | `created`           | string                      | [Timestamp](#timestamps)                                                                                                           |
 | `encrypted-message` | string                      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
-| `message`           | map \| null                 | Decrypted protocol message (or null)                                                                                               |
 | `merkle-root`       | string                      | Merkle tree root hash for the latest record                                                                                        |
-| `rewrapped-keys`    | map<string, object> \| null | Array of objects (re-wrapped symmetric keys for each field)                                                                        |
 
-The optional `rewrapped-keys` field maps a Trusted Replica's fully qualified domain name to an object.  
-This object contains the re-wrapped symmetric key for each encrypted field that the Trusted Replica is
-permitted to persist.
+This API response will only include encrypted messages. To view the plaintext, you will need to call 
+`api/history/view/{hash}` for the hash you're interested in.
 
 **Example Response**:
 
@@ -1749,21 +1763,10 @@ permitted to persist.
   "message": {
     "!pkd-context": "https://github.com/fedi-e2ee/public-key-directory/v1",
     "action": "AddAuxData",
-    "message": {
-      "aux-type": "test",
-      "aux-id": "ntwVcdQXw0x2U8iBy78jFgv7zs2wipBRIYv9qz6KS0Y",
-      "aux-data": "this-is-just-test-data",
-      "time": "1730908981"
-    },
     "recent-merkle-root": "pkd-mr-v1:ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
     "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
   },
-  "merkle-root": "pkd-mr-v1:Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
-  "rewrapped-keys": {
-    "example.foo.bar": {
-      "aux-type": "<hpke ciphertext goes here>",
-    }
-  }
+  "merkle-root": "pkd-mr-v1:Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc"
 }
 ```
 
@@ -1987,11 +1990,14 @@ The following HTTP request parameters **MUST** be included:
 | Request Parameter | Type   | Remarks                      |
 |-------------------|--------|------------------------------|
 | `!pkd-context`    | string | Domain separation            |
+| `action`          | string | See below table              |
 | `current-time`    | string | [Timestamp](#timestamps)     |
 | `disenrollment`   | object | See next table               |
 | `signature`       | string | Signature of `disenrollment` |
 
 The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/disenroll`.
+
+The `action` field will be set to `TOTP-Disenroll`.
 
 The disenrollment object will consist of the following fields:
 
@@ -2026,11 +2032,14 @@ The following HTTP request parameters **MUST** be included:
 | Request Parameter | Type   | Remarks                   |
 |-------------------|--------|---------------------------|
 | `!pkd-context`    | string | Domain separation         |
+| `action`          | string | See below table           |
 | `current-time`    | string | [Timestamp](#timestamps)  |
 | `enrollment`      | object | See next table            |
 | `signature`       | string | Signature of `enrollment` |
 
 The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/enroll`.
+
+The `action` field will be set to `TOTP-Enroll`.
 
 The enrollment object will consist of the following fields:
 
@@ -2066,11 +2075,14 @@ The following HTTP request parameters **MUST** be included:
 | Request Parameter | Type   | Remarks                  |
 |-------------------|--------|--------------------------|
 | `!pkd-context`    | string | Domain separation        |
+| `action`          | string | See below table          |
 | `current-time`    | string | [Timestamp](#timestamps) |
 | `rotation`        | object | See next table           |
 | `signature`       | string | Signature of `rotation`  |
 
 The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/totp/rotate`.
+
+The `action` field will be set to `TOTP-Rotate`.
 
 The enrollment object will consist of the following fields:
 
@@ -2304,9 +2316,9 @@ root is selected **MUST** be stored alongside the ciphertext. By "recent", we st
    messages old (rounded up to the nearest whole number). Public Key Directories **MUST NOT** reject messages newer than
    this threshold on basis of staleness.
 3. To tolerate large transaction volumes in a short window of time, the chosen Merkle root **MUST** be at least in the 
-   most recent N/2 messages (for N currently accepted Protocol Messages). Public Key Directories **MAY** reject these
-   messages due to staleness, especially if the Directory isn't experiencing significant throughput, or if an Actor
-   submits multiple Protocol Messages tied to a Merkle root too old to satisfy rule 2.
+   most recent N/2 messages (for N currently accepted Protocol Messages), rounded down. Public Key Directories **MAY** 
+   reject these messages due to staleness, especially if the Directory isn't experiencing significant throughput, or if 
+   an Actor submits multiple Protocol Messages tied to a Merkle root too old to satisfy rule 2.
 
 For example: When attempting to insert the 1,000,001th record, this means there are currently 1,000,000 accepted
 Protocol Messages stored in the Public Key Database. The 1,000,000th record is preferred (by rule 1 above).
@@ -2318,7 +2330,9 @@ a message index in that range is acceptable to use by rule 2.
 However, if there is an enormous spike in traffic, Public Key Directories **MAY** tolerate as far back as 500,000,
 provided no two Protocol Messages from the same actor reuse the same "recent" Merkle root.
 
-For the first message in a PKD, the "recent" Merkle root **MUST** be set to a sequence of 32 `0x00` bytes.
+For the first message in a PKD, the "recent" Merkle root **MUST** be set to the encoding of a sequence of `0x00` 
+bytes equal in length to the hash function being used. For SHA-256, this encodes to 
+`pkd-mr-v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`.
 
 ### Algorithm Suite Versions
 
