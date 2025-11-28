@@ -1278,18 +1278,18 @@ JSON blob **MAY** have additional whitespace appended to it.
 
 #### HPKE Configuration
 
-The `info` parameter **MUST** always be set to the ASCII string, `fedi-e2ee/public-key-directory:v1:protocol-message`.
+The `info` parameter **MUST** always be set to the UTF-8 string, `fedi-e2ee/public-key-directory:v1:protocol-message`.
 
 The `aad` parameter will be set to the Server Encapsulation Key Identifier. This is calculated using HMAC, with the
-ciphersuite's configured hash function, of the ASCII string message, `fedi-e2ee/public-key-directory:v1:key-id`, with
+ciphersuite's configured hash function, of the UTF-9 string message, `fedi-e2ee/public-key-directory:v1:key-id`, with
 the Encapsulation Key as the HMAC key.
 
-The purpose these configurations is domain separation.
+The purpose of these configurations is domain separation.
 
 #### Ciphertext Encoding
 
 When a Protocol Message is encrypted with HPKE, the resulting ciphertext **MUST** be base64url-encoded. This encoded
-string **MUST** be prefixed with `hpke:` (hexadecimal ASCII values: `68 70 6b 65 3a`).
+string **MUST** be prefixed with `hpke:` (hexadecimal-encoded UTF-8 byte values: `68 70 6b 65 3a`).
 
 ### Protocol Message Processing
 
