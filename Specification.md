@@ -1281,7 +1281,7 @@ JSON blob **MAY** have additional whitespace appended to it.
 The `info` parameter **MUST** always be set to the UTF-8 string, `fedi-e2ee/public-key-directory:v1:protocol-message`.
 
 The `aad` parameter will be set to the Server Encapsulation Key Identifier. This is calculated using HMAC, with the
-ciphersuite's configured hash function, of the UTF-9 string message, `fedi-e2ee/public-key-directory:v1:key-id`, with
+ciphersuite's configured hash function, of the UTF-8 string message, `fedi-e2ee/public-key-directory:v1:key-id`, with
 the Encapsulation Key as the HMAC key.
 
 The purpose of these configurations is domain separation.
