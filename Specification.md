@@ -1865,6 +1865,31 @@ Extensions **MAY** include optional additional fields, if necessary, in the abov
   ]
 }
 ```
+#### GET api/info
+
+Purpose: Retrieve basic information about this PKD instance.
+
+An HTTP 200 OK request will contain the following response fields:
+
+| Response Field | Type   | Remarks                                                                                          |
+|----------------|--------|--------------------------------------------------------------------------------------------------|
+| `!pkd-context` | string | Domain separation                                                                                |
+| `current-time` | string | [Timestamp](#timestamps)                                                                         |
+| `actor`        | string | The specific actor name `username @ hostname` that accepts Protocol Messages via Direct Message. |
+| `public-key`   | string | Public key used with HTTP Message Signatures for PKD responses                                   |
+
+The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/info`.
+
+**Example Response**:
+
+```json5
+{
+  "!pkd-context": "fedi-e2ee:v1/api/server-public-key",
+  "current-time": "1730909831",
+  "actor": "pubkeydir@pkd.soatok.com",
+  "public-key": "ed25519:jbiRHmufss66fF3uAW4g21CEPiKlgXgwUxE3s-V-5Gc",
+}
+```
 
 #### GET api/replicas
 
