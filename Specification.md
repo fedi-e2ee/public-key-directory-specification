@@ -1478,7 +1478,7 @@ Purpose: List aggregate data about a given actor.
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type   | Remarks                                             |
 |----------------|--------|-----------------------------------------------------|
@@ -1507,7 +1507,7 @@ Purpose: List all currently-trusted public keys for a given actor.
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field  | Type     | Remarks                                  |
 |-----------------|----------|------------------------------------------|
@@ -1568,7 +1568,7 @@ Purpose: Retrieve information about a specific public key.
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field     | Type           | Remarks                                                                                    |
 |--------------------|----------------|--------------------------------------------------------------------------------------------|
@@ -1607,7 +1607,7 @@ Purpose: List all currently-trusted auxiliary data for a given actor.
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type     | Remarks                                  |
 |----------------|----------|------------------------------------------|
@@ -1668,7 +1668,7 @@ Purpose: Retrieve information about a specific auxiliary data.
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field    | Type           | Remarks                                                                                    |
 |-------------------|----------------|--------------------------------------------------------------------------------------------|
@@ -1706,7 +1706,7 @@ The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor
 
 Purpose: View the latest hash stored in the message history.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type   | Remarks                                     |
 |----------------|--------|---------------------------------------------|
@@ -1732,7 +1732,7 @@ The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/histo
 
 Purpose: List up to `PAGINATION_LIMIT` hashes starting after the provided hash, in sequence.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type     | Remarks                           |
 |----------------|----------|-----------------------------------|
@@ -1777,7 +1777,7 @@ In the above example, dummy values were used for Merkle roots.
 Purpose: View information about a specific protocol message. This will also return inclusion proofs and witness
 co-signatures.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field      | Type                        | Remarks                                                                                                                            |
 |---------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------|
@@ -1830,7 +1830,7 @@ In the above example, dummy values were used for Merkle roots.
 
 Purpose: Lists the [Auxiliary Data Extensions](#auxiliary-data-extensions) supported by this server.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type     | Remarks                            |
 |----------------|----------|------------------------------------|
@@ -1869,7 +1869,7 @@ Extensions **MAY** include optional additional fields, if necessary, in the abov
 
 Purpose: Retrieve basic information about this PKD instance.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type   | Remarks                                                                                          |
 |----------------|--------|--------------------------------------------------------------------------------------------------|
@@ -1895,7 +1895,7 @@ The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/info`
 
 Purpose: List the other Public Key Directory instances that are replicated onto this one.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type     | Remarks                            |
 |----------------|----------|------------------------------------|
@@ -1954,7 +1954,7 @@ The `extensions`, `replica`, and `revoke` endpoints are not mirrored in a replic
 
 Purpose: Retrieve the public key to encrypt Protocol Messages (for use in HPKE)
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field     | Type   | Remarks                           |
 |--------------------|--------|-----------------------------------|
