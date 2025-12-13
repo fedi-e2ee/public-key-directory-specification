@@ -2138,6 +2138,43 @@ rate-limiting.
 If the `new-otp-current` or `new-otp-previous` is invalid for the HPKE-encrypted secret (or if a decryption error 
 occurs), then the Public Key Directory will return an HTTP 406 error.
 
+#### POST api/history/cosign/:hash
+
+Purpose: Allow witness co-signatures to be published from third-party auditors.
+
+The following HTTP request parameters **MUST** be included:
+
+| Request Parameter | Type   | Remarks                                          |
+|-------------------|--------|--------------------------------------------------|
+| `witness`         | string | Unique identifier (e.g., hostname) for cosigner. |
+| `cosigned`        | string | JSON-encoded and signed cosignature token        |
+
+The `witness` field will be used by the PKD server software to lookup the public key to use to validate the
+signature attached to `cosigned`.
+
+Example request body:
+
+```json5
+{
+  "witness": "https://example.com",
+  "cosigned": "{\"!pkd-context\":\"fedi-e2ee-v1:cosignature\",\"current-time\":\"1765655318\",\"hostname\":\"http://pkd.example.com\",\"merkle-root\":\"pkd-mr-v1:Hy3Qtg_8f0iccceOFaO9qlT8sY5cH0OociI3ZUtXgjg\",\"signature\":\"6j9e_kZ3rOeliInHIRHo07Q6LbhZ1FLYXzqJZKg7EB1lk15x290eCp78LJBhcYAG8VWHE0K4p1U2f03o-SwxBw\"}"
+}
+```
+
+The public key used in this example was `ed25519:lNd1773FMPh5b94XcAWjXVNFtHMq5im1Zp1sbXS7l6w`.
+
+See the section on [cosignatures](#cosignatures) for more details.
+
+**Example Response**:
+
+```json5
+{
+  "!pkd-context": "fedi-e2ee:v1/api/history/cosign",
+  "success": true,
+  "time": "1730909831"
+}
+```
+
 ### Gossip Protocol
 
 #### Gossip Protocol Background
@@ -2271,6 +2308,60 @@ to their peers.
 
 The system also supports cosignatures, allowing multiple parties to sign the same Merkle tree root. This is useful for
 scenarios where multiple entities are responsible for the operation of the Public Key Directory.
+
+##### Cosigning A Merkle Root
+
+A cosignature will be formatted as a JSON string with the following fields:
+
+| Key            | Meaning                                                       |
+|----------------|---------------------------------------------------------------|
+| `!pkd-context` | Domain separation. Must be set to `fedi-e2ee-v1:cosignature`. |
+| `current-time` | [Current timestamp](#timestamps)                              |
+| `hostname`     | HTTP hostname for the PKD instance receiving the cosignature. |
+| `merkle-root`  | Root of the Merkle Tree being validated                       |
+| `signature`    | Signature. See below.                                         |
+
+The signature field will be calculated as follows:
+
+```python
+def cosign(secret_key, payload):
+    payloadToSign = preAuthEncode([
+        b'!pkd-context',
+        payload['!pkd-context'],
+        b'current-time',
+        payload['current-time'],
+        b'hostname',
+        payload['hostname'],
+        b'merkle-root',
+        payload['merkle-root'],
+    ])
+    payload['signature'] = base64url(crypto_sign(secret_key, payloadToSign))
+    return payload
+```
+
+That is to say, we pre-auth encode the key, followed by the value, for each of the following payload array indices:
+1. `!pkd-context`
+2. `current-time`
+3. `hostname`
+4. `merkle-root`
+
+This encoded value is then signed with Ed25519 (for version 1). The signature is then stored in the payload, and the
+whole shebang is JSON-encoded.
+
+##### Verifying a Cosignature
+
+To verify a witness cosignature, the following validation steps **MUST** be preformed.
+
+1. Determine which public key to use, based on metadata about who the witness is. 
+2. Decode the JSON string into an array or map.
+3. Verify all the following keys are set: `!pkd-context`, `current-time`, `hostname`, `merkle-root`, `signature`.
+4. Verify that `!pkd-context` matches the required value.
+5. Verify that `hostname` matches the hostname for the PKD instance receiving the signature.
+6. Recreate the `preAuthEncode()` of the provided payload.
+7. Verify that the signature is valid for the output of step 6 and the witness' public key.
+
+If you reach step 7 and the signature is valid, the cosignature should be registered with the Merkle Tree leaf node
+associated with the `merkle-root`.
 
 ### Auxiliary Data Extensions
 
