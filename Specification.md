@@ -1478,7 +1478,7 @@ Purpose: List aggregate data about a given actor.
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type   | Remarks                                             |
 |----------------|--------|-----------------------------------------------------|
@@ -1507,7 +1507,7 @@ Purpose: List all currently-trusted public keys for a given actor.
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field  | Type     | Remarks                                  |
 |-----------------|----------|------------------------------------------|
@@ -1568,7 +1568,7 @@ Purpose: Retrieve information about a specific public key.
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field     | Type           | Remarks                                                                                    |
 |--------------------|----------------|--------------------------------------------------------------------------------------------|
@@ -1607,7 +1607,7 @@ Purpose: List all currently-trusted auxiliary data for a given actor.
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type     | Remarks                                  |
 |----------------|----------|------------------------------------------|
@@ -1668,7 +1668,7 @@ Purpose: Retrieve information about a specific auxiliary data.
 If there is no data for a given `:actor_id`, this will return an HTTP 404 error. This can happen if an Actor ID is not
 known to this Public Key Directory or if a _Right To Be Forgotten_ takedown occurred.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field    | Type           | Remarks                                                                                    |
 |-------------------|----------------|--------------------------------------------------------------------------------------------|
@@ -1706,7 +1706,7 @@ The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor
 
 Purpose: View the latest hash stored in the message history.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type   | Remarks                                     |
 |----------------|--------|---------------------------------------------|
@@ -1732,7 +1732,7 @@ The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/histo
 
 Purpose: List up to `PAGINATION_LIMIT` hashes starting after the provided hash, in sequence.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type     | Remarks                           |
 |----------------|----------|-----------------------------------|
@@ -1777,7 +1777,7 @@ In the above example, dummy values were used for Merkle roots.
 Purpose: View information about a specific protocol message. This will also return inclusion proofs and witness
 co-signatures.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field      | Type                        | Remarks                                                                                                                            |
 |---------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------|
@@ -1830,7 +1830,7 @@ In the above example, dummy values were used for Merkle roots.
 
 Purpose: Lists the [Auxiliary Data Extensions](#auxiliary-data-extensions) supported by this server.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type     | Remarks                            |
 |----------------|----------|------------------------------------|
@@ -1869,7 +1869,7 @@ Extensions **MAY** include optional additional fields, if necessary, in the abov
 
 Purpose: Retrieve basic information about this PKD instance.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type   | Remarks                                                                                          |
 |----------------|--------|--------------------------------------------------------------------------------------------------|
@@ -1895,7 +1895,7 @@ The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/info`
 
 Purpose: List the other Public Key Directory instances that are replicated onto this one.
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field | Type     | Remarks                            |
 |----------------|----------|------------------------------------|
@@ -1954,7 +1954,7 @@ The `extensions`, `replica`, and `revoke` endpoints are not mirrored in a replic
 
 Purpose: Retrieve the public key to encrypt Protocol Messages (for use in HPKE)
 
-An HTTP 200 OK request will contain the following response fields:
+An HTTP 200 OK response will contain the following response fields:
 
 | Response Field     | Type   | Remarks                           |
 |--------------------|--------|-----------------------------------|
@@ -2138,6 +2138,43 @@ rate-limiting.
 If the `new-otp-current` or `new-otp-previous` is invalid for the HPKE-encrypted secret (or if a decryption error 
 occurs), then the Public Key Directory will return an HTTP 406 error.
 
+#### POST api/history/cosign/:hash
+
+Purpose: Allow witness co-signatures to be published from third-party auditors.
+
+The following HTTP request parameters **MUST** be included:
+
+| Request Parameter | Type   | Remarks                                          |
+|-------------------|--------|--------------------------------------------------|
+| `witness`         | string | Unique identifier (e.g., hostname) for cosigner. |
+| `cosigned`        | string | JSON-encoded and signed cosignature token        |
+
+The `witness` field will be used by the PKD server software to lookup the public key to use to validate the
+signature attached to `cosigned`.
+
+Example request body:
+
+```json5
+{
+  "witness": "https://example.com",
+  "cosigned": "{\"!pkd-context\":\"fedi-e2ee-v1:cosignature\",\"current-time\":\"1765655318\",\"hostname\":\"http://pkd.example.com\",\"merkle-root\":\"pkd-mr-v1:Hy3Qtg_8f0iccceOFaO9qlT8sY5cH0OociI3ZUtXgjg\",\"signature\":\"6j9e_kZ3rOeliInHIRHo07Q6LbhZ1FLYXzqJZKg7EB1lk15x290eCp78LJBhcYAG8VWHE0K4p1U2f03o-SwxBw\"}"
+}
+```
+
+The public key used in this example was `ed25519:lNd1773FMPh5b94XcAWjXVNFtHMq5im1Zp1sbXS7l6w`.
+
+See the section on [cosignatures](#cosignatures) for more details.
+
+**Example Response**:
+
+```json5
+{
+  "!pkd-context": "fedi-e2ee:v1/api/history/cosign",
+  "success": true,
+  "time": "1730909831"
+}
+```
+
 ### Gossip Protocol
 
 #### Gossip Protocol Background
@@ -2271,6 +2308,60 @@ to their peers.
 
 The system also supports cosignatures, allowing multiple parties to sign the same Merkle tree root. This is useful for
 scenarios where multiple entities are responsible for the operation of the Public Key Directory.
+
+##### Cosigning A Merkle Root
+
+A cosignature will be formatted as a JSON string with the following fields:
+
+| Key            | Meaning                                                       |
+|----------------|---------------------------------------------------------------|
+| `!pkd-context` | Domain separation. Must be set to `fedi-e2ee-v1:cosignature`. |
+| `current-time` | [Current timestamp](#timestamps)                              |
+| `hostname`     | HTTP hostname for the PKD instance receiving the cosignature. |
+| `merkle-root`  | Root of the Merkle Tree being validated                       |
+| `signature`    | Signature. See below.                                         |
+
+The signature field will be calculated as follows:
+
+```python
+def cosign(secret_key, payload):
+    payloadToSign = preAuthEncode([
+        b'!pkd-context',
+        payload['!pkd-context'],
+        b'current-time',
+        payload['current-time'],
+        b'hostname',
+        payload['hostname'],
+        b'merkle-root',
+        payload['merkle-root'],
+    ])
+    payload['signature'] = base64url(crypto_sign(secret_key, payloadToSign))
+    return payload
+```
+
+That is to say, we pre-auth encode the key, followed by the value, for each of the following payload array indices:
+1. `!pkd-context`
+2. `current-time`
+3. `hostname`
+4. `merkle-root`
+
+This encoded value is then signed with Ed25519 (for version 1). The signature is then stored in the payload, and the
+whole shebang is JSON-encoded.
+
+##### Verifying a Cosignature
+
+To verify a witness cosignature, the following validation steps **MUST** be preformed.
+
+1. Determine which public key to use, based on metadata about who the witness is. 
+2. Decode the JSON string into an array or map.
+3. Verify all the following keys are set: `!pkd-context`, `current-time`, `hostname`, `merkle-root`, `signature`.
+4. Verify that `!pkd-context` matches the required value.
+5. Verify that `hostname` matches the hostname for the PKD instance receiving the signature.
+6. Recreate the `preAuthEncode()` of the provided payload.
+7. Verify that the signature is valid for the output of step 6 and the witness' public key.
+
+If you reach step 7 and the signature is valid, the cosignature should be registered with the Merkle Tree leaf node
+associated with the `merkle-root`.
 
 ### Auxiliary Data Extensions
 
