@@ -4,7 +4,7 @@ This document defines the Fediverse End-to-End Encryption Public Key Directory (
 ActivityPub-enabled directory server software, a protocol for communicating with the directory server, and integration
 with a transparent, append-only data structure (e.g., based on Merkle trees).
 
-* Current version: v0.2.0
+* Current version: v0.3.0
 * Authors: [Soatok Dreamseeker](https://github.com/soatok)
 
 ## Introduction
@@ -1884,7 +1884,7 @@ The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/info`
 
 ```json5
 {
-  "!pkd-context": "fedi-e2ee:v1/api/server-public-key",
+  "!pkd-context": "fedi-e2ee:v1/api/info",
   "current-time": "1730909831",
   "actor": "pubkeydir@pkd.soatok.com",
   "public-key": "ed25519:jbiRHmufss66fF3uAW4g21CEPiKlgXgwUxE3s-V-5Gc",
