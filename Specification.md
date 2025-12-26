@@ -1252,16 +1252,7 @@ When encrypting, the AAD parameter of the HPKE encryption **MUST** be set to the
 
 The result of the ciphertext will be encoded with unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5).
 
-The message emitted to the Public Key Directory will consist of the following elements:
-
-```json5
-{
-  /* This is always included. */
-  "!pkd-context": "https://github.com/fedi-e2ee/public-key-directory/v1",
-  /* The value of encrypted-message MUST be an unpadded base64url-encoded string. */
-  "encrypted-message": "..."
-}
-```
+See [Wire Format for Protocol Messages](#wire-format-for-protocol-messages) for details.
 
 #### Protocol Message Decryption
 
@@ -2603,6 +2594,123 @@ This table includes some example HPKE cipher suites. This list is not exhaustive
 | `P256_SHA256_AES_GCM_256`      |                            |
 | `P384_SHA384_AES_GCM_256`      |                            |
 | `P521_SHA512_AES_GCM_256`      |                            |
+
+## Client-Side Behavior
+
+From the perspective of the Public Key Directory server, there are two possible "clients" to consider.
+
+1. The **Instance Client:** The Fediverse instance software (Mastodon, etc.).
+2. The **End User Client:** Software running on a user's personal device (e.g., Tusky, etc.).
+
+The **Instance Client** is responsible for all access control decisions. The PKD Server is totally agnostic towards
+roles, permissions, capabilities, and hierarchies within a given Fediverse instance (which are assumed to be scoped to
+specific HTTP hostnames).
+
+It is especially important that [BurnDown](#burndown) protocol messages only be issued by the instance's moderation
+team. This is meant to facilitate account recovery (see 
+[the relevant security consideration](#revocation-and-account-recovery)). BurnDown messages **MUST NOT** use HPKE 
+encryption (the Public Key Directory **MUST** reject a BurnDown if it was HPKE encrypted), but the Instance Client
+**MUST** reject plaintext BurnDowns sent by users that do not have elevated privileges. (The [TOTP](#totp) feature is
+meant as defense-in-depth.)
+
+### End User Clients
+
+The End User Client software is responsible for managing a user's secret keys and issuing encrypted protocol messages,
+such that the Instance Client cannot selectively censor certain types of protocol messages.
+
+With the sole exception of [RevokeKeyThirdParty](#revokekeythirdparty), End User-generated Protocol Messages intended 
+for the Public Key Directory **MUST** be sent to the Instance Client first. The Instance Client will handle access 
+control logic and then forward the Protocol Message to the Public Key Directory (with the necessary HTTP Message 
+Signature, as specified in [IETF RFC 9421](https://www.rfc-editor.org/rfc/rfc9421)).
+
+To prevent a malicious instance admin from selectively censoring different protocol message types, every protocol 
+message emitted by the End User client **SHOULD** encrypt the protocol messages with [HPKE](#hpke-cipher-suites).
+
+End User Clients, therefore, are only required to implement the 
+[HPKE encrypted protocol message format](#hpke-encrypted-protocol-message-format).
+
+### Instance Clients
+
+Instance Clients are the component installed on the Instance software (e.g., Mastodon) that talks directly to the
+Public Key Directory server-side software. These clients **MAY** also be used by Public Key Directory servers to talk
+to each other (i.e., [Checkpoint](#checkpoint) messages).
+
+The primary use case for Instance Clients is pass HPKE-encrypted messages from the End User Client to the Public Key
+Directory on behalf of the Actor, with the necessary HTTP Message Signature.
+
+For [non-Fireproof](#fireproof) Actors enrolled on the instance, administrators **MAY** also issue [BurnDown](#burndown)
+messages to help their users re-enroll fresh keys to the Public Key Directory. These BurnDown messages will be generated
+by the Instance software directly (with a [one-time password](#totp), if a TOTP secret was previously enrolled) and
+**MUST NOT** be HPKE-encrypted.
+
+Instance Clients, therefore, are only required to implement the
+[plaintext protocol message format](#plaintext-protocol-message-format), as well as the ActivityStream wrapping
+(since the Instance software speaks ActivityPub, while client software is not required to).
+
+### Wire Format for Protocol Messages
+
+Regardless of where a Protocol Message originates (or whether HPKE encryption is used), it will end up being serialized
+as a JSON message and passed to the Inbox via ActivityPub, as a Direct Message.
+
+These formatted JSON strings will be embedded as the `content` field in an ActivityStream `object`.
+
+Consider the following ActivityStream JSON message.
+
+```json5
+{
+  "@context": "https://www.w3.org/ns/activitystreams",
+  "id": "https://your-domain.com/activities/uuid-goes-here",
+  "type": "Create",
+  "actor": "https://your-domain.com/users/sender-username",
+  "to": [
+    "https://public-key-directory/users/pubkeydir" /* (whatever /api/info says is the actor) */
+  ],
+  "object": {
+    "id": "https://your-domain.com/objects/uuid-goes-here",
+    "type": "Note",
+    "attributedTo": "https://your-domain.com/users/sender-username",
+    "to": [
+      "https://public-key-directory/users/pubkeydir"
+    ],
+    "content": "JSON BLOB GOES HERE", // <-- JSON blob goes here!
+  }
+}
+```
+
+The `JSON BLOB GOES HERE` placeholder will contain a JSON string containing the protocol message contents, as defined by
+the following subsections.
+
+#### HPKE-encrypted Protocol Message Format
+
+HPKE-encrypted Protocol Messages will be formatted as follows:
+
+```json5
+{
+  /* Static context for all HPKE-encrypted messages: */
+  "!pkd-context": "fedi-e2ee:v1-encrypted-message",
+  /* Actor ID that issued the request (used for validating HTTP signatures): */
+  "actor": "https://example/user/alice",
+  /* HPKE-encrypted ciphertext with "hpke:" prefix: */
+  "encrypted-message": "hpke:base64urlgoeshere"
+}
+```
+
+See [Protocol Message Encryption](#protocol-message-encryption).
+
+#### Plaintext Protocol Message Format
+
+Plaintext messages will be formatted as follows:
+
+```json5
+{
+  /* Static context for all plaintext messages: */
+  "!pkd-context": "fedi-e2ee:v1-plaintext-message",
+  /* Actor ID that issued the request (used for validating HTTP signatures): */
+  "actor": "https://example/user/bob",
+  /* Plaintext JSON-encrypted message as a string: */
+  "message": "{\"!pkd-context\":\"...\",\"action\":\"...\",/*...*/}",
+}
+```
 
 ## Security Considerations
 
