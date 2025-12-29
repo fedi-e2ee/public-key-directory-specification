@@ -46,9 +46,9 @@ necessarily somewhat technical.
 However, the projects that build *atop* this building block should take pains to minimize the friction for non-technical
 users. (That includes the other projects we will be opening in this GitHub organization!)
 
-### Our Guiding Principals
+### Our Guiding Principles
 
-All design decisions for this proposal have been influenced by the following guiding principals.
+All design decisions for this proposal have been influenced by the following guiding principles.
 
 1. Build for people, and
 2. Security over legacy
@@ -91,7 +91,7 @@ This means if we have the choice we will not take an existing solution, when thi
 
 ## Reference Implementation
 
-The [**Public Key Directory Reference Implementation**](https://github.com/fedi-e2ee/pkd-server-go) is now available.
+The [**Public Key Directory Reference Implementation**](https://github.com/fedi-e2ee/pkd-server-php) is now available.
 
 ## Historical Development Blogs
 

@@ -298,7 +298,7 @@ def getAuxDataId(aux_type, data):
 
 Being very strict about the format of the data accepted by a given extension is highly **RECOMMENDED**.
 
-See [the relevant threat model entry](#attacker-submits-contraband-as-auxiliary-data)_
+See [the relevant threat model entry](#attacker-submits-contraband-as-auxiliary-data).
 
 ### Message Attribute Shreddability
 
@@ -906,7 +906,7 @@ If the user doesn't possess any other public keys, this message bypasses the usu
 user continue to must have a valid public key. Instead, the Actor will be treated as if they ran a successful 
 `BurnDown`, and allows them to start over with an `AddKey`.
 
-Since you need the secret key tog generate the revocation token for a given public key, `Fireproof` does not prevent
+Since you need the secret key to generate the revocation token for a given public key, `Fireproof` does not prevent
 third parties from revoking public keys.
 
 This does not cancel out a previous `Fireproof` status. Future `BurnDown` messages may fail.
@@ -1157,14 +1157,14 @@ This revokes one [Auxiliary Data](#auxiliary-data) record for a given Actor.
     * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
     * `aux-data` -- **string (Cryptography key)** (optional): The key used to encrypt `message.aux-data`.
 
-Note that either `message.auth-data` **OR** `message.aux-id` is required in order for revocation to succeed.
+Note that either `message.aux-data` **OR** `message.aux-id` is required in order for revocation to succeed.
 
 #### RevokeAuxData Validation Steps
 
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `RevokeAuxData` message are as follows:
 
-1.  Using `symmetric-keys.actor, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
+1.  Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails,
     return an error status.
 2.  If `symmetric-keys.aux-data` is provided, decrypt `message.aux-data`. If the decryption fails, return an error
     status. If a plaintext `message.aux-data` is provided without a symmetric key, abort.
@@ -1931,13 +1931,13 @@ as requesting `api/actor/:actor_id` from the original Public Key Directory.
 
 Thus, `api/replica/:replica_id/` will contain:
 
- * [actor/:actor_id](#get-apiactoractorid)
- * [actor/:actor_id/keys](#get-apiactoractoridkeys)
- * [actor/:actor_id/key/:key_id](#get-apiactoractoridkeys)
- * [actor/:actor_id/auxiliary](#get-apiactoractoridauxiliary)
- * [actor/:actor_id/auxiliary/:aux_data_id](#get-apiactoractoridauxiliaryauxdataid)
+ * [actor/:actor_id](#get-apiactoractor_id)
+ * [actor/:actor_id/keys](#get-apiactoractor_idkeys)
+ * [actor/:actor_id/key/:key_id](#get-apiactoractor_idkeykey_id)
+ * [actor/:actor_id/auxiliary](#get-apiactoractor_idauxiliary)
+ * [actor/:actor_id/auxiliary/:aux_data_id](#get-apiactoractor_idauxiliaryaux_data_id)
  * [history](#get-apihistory)
- * [history/since/:last_hash](#get-apihistorysincelasthash)
+ * [history/since/:last_hash](#get-apihistorysincelast_hash)
 
 The `extensions`, `replica`, and `revoke` endpoints are not mirrored in a replica.
 
@@ -1983,7 +1983,7 @@ The following HTTP request parameters **MUST** be included:
 
 If the revocation token is valid, it will be processed and an HTTP 200 OK response will be returned.
 
-If the revocation token is invalid, an HTTP 2204 No Content response will be returned.
+If the revocation token is invalid, an HTTP 204 No Content response will be returned.
 
 Either way, the response body will only contain a `!pkd-context` header and a timestamp.
 The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/revoke`.
@@ -2213,7 +2213,7 @@ flowchart TD
     B --> |replicated|C{bar.org}
 ```
 
-In the above flowchart, `bar.org` is replicating the history stored in `foo.net`. If they opt or a recursive 
+In the above flowchart, `bar.org` is replicating the history stored in `foo.net`. If they opt for a recursive
 replication, they will also replicate `example.com` by copying from the copies of records hosted by `foo.net`.
 
 ##### Trusted Mirrors
@@ -2341,7 +2341,7 @@ whole shebang is JSON-encoded.
 
 ##### Verifying a Cosignature
 
-To verify a witness cosignature, the following validation steps **MUST** be preformed.
+To verify a witness cosignature, the following validation steps **MUST** be performed.
 
 1. Determine which public key to use, based on metadata about who the witness is. 
 2. Decode the JSON string into an array or map.
@@ -2451,7 +2451,7 @@ representing these characters.
 
 Note: `len(x)` is defined as the little-endian encoding of the number of octets in the byte string `x`, treated as an
 unsigned 64-bit integer. This is congruent to `LE64()` as used in
-[PAE from PASETO]((https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition)).
+[PAE from PASETO](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition).
 
 #### Version 1
 
@@ -2542,7 +2542,7 @@ These constants are mostly used for domain separation.
 1. Attribute name (e.g. `actor` from `message`), denoted `a`
 2. Ciphertext (string, ciphertext).
 3. Input Key Material.
-4. The Merkle root from `recent-merkle-root` in the message , `m`.
+4. The Merkle root from `recent-merkle-root` in the message, `m`.
 
 **Output**:
 
