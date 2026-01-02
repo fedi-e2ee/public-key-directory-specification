@@ -454,6 +454,7 @@ This section seeks to outline specific risks and whether they are prevented, mit
 | [Malicious instance administrator also controls the Public Key Directory.](#malicious-instance-administrator-also-controls-the-public-key-directory)                                                               | _Open_                  |
 | [Attacker uses a decoy Public Key Directory that publishes a dishonest history.](#attacker-uses-a-decoy-public-key-directory-that-publishes-a-dishonest-history)                                                   | _Open_                  |
 | [Attacker submits contraband as auxiliary data.](#attacker-submits-contraband-as-auxiliary-data)                                                                                                                   | Addressable             |
+| [Actor Confusion Between HTTP Message Signatures and Protocol Messages](#actor-confusion-between-http-message-signatures-and-protocol-messages)                                                                    | **Prevented by design** | 
 
 Each status is defined as follows:
 
@@ -731,6 +732,21 @@ To prevent this risk, extensions **SHOULD** be strict about the data they accept
 Failing that, instance operators can use the [message content shredability](#message-attribute-shreddability) mechanism
 to wipe unwanted illegal material from their records by wiping the decryption key for that record.
 
+#### Actor Confusion Between HTTP Message Signatures and Protocol Messages
+
+**Status**: Prevented by design.
+
+Mallory sends an HPKE-encrypted message with a valid HTTP Message Signature for their account, but the message contains 
+a message for Bob.
+
+When verifying a message for Bob, the server will fetch all of Bob's public keys and check the signature. If Mallory 
+does not know Bob's secret key, she cannot produce a valid signature for a malicious Protocol Message for Bob. This is
+sufficient mitigation for most use cases.
+
+Since v0.3.0, there is an additional explicit check required to strictly compare the canonicalized Actor from the HTTP
+Message Signature with the canonicalized Actor from the Protocol Message. If this doesn't match, the Protocol Message is
+discarded.
+
 #### Sharing Accounts
 
 It is possible that a group of users wants to share one Fediverse account. For example if they are part of an 
@@ -850,10 +866,12 @@ validating an `AddKey` message are as follows:
    step 6. If the signature is invalid, return an error status.
 4. Otherwise, if the `key-id` is provided, select this public key for the given Actor. If there is no public key for
    this Actor with a matching `key-id`, return an error status.
-5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one 
+5. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor` 
+   from the Protocol Message. If they are not identical, return an error status.
+6. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one 
    succeeds. If none of them do, return an error status.
-6. Validate the message signature for the given public key.
-7. If the signature is valid in step 6, process the message.
+7. Validate the message signature for the given public key.
+8. If the signature is valid in step 7, process the message.
 
 ### RevokeKey
 
@@ -888,12 +906,14 @@ validating an `RevokeKey` message are as follows:
    error status.
 2. Using `symmetric-keys.public-key`, decrypt `message.public-key`. If the decryption fails, return an error status.
 3. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
-4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public 
+4. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
+   from the Protocol Message. If they are not identical, return an error status.
+5. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public 
    key for this Actor with a matching `key-id`, return an error status.
-5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
+6. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-6. Validate the message signature for the given public key.
-7. If the signature is valid in step 6, process the message.
+7. Validate the message signature for the given public key.
+8. If the signature is valid in step 7, process the message.
 
 ### RevokeKeyThirdParty
 
@@ -964,12 +984,27 @@ validating an `MoveIdentity` message are as follows:
    return an error status.
 3. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.old-actor`,
    abort.
-4. If the `key-id` is provided, select this public key for the Old Actor and proceed to step 6. If there is no public
+4. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals 
+   `message.new-actor` from the Protocol Message. If they are not identical, return an error status.
+5. If the `key-id` is provided, select this public key for the Old Actor and proceed to step 6. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
+6. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-6. Validate the message signature for the given public key.
-7. If the signature is valid in step 6, process the message.
+7. Validate the message signature for the given public key.
+8. If the signature is valid in step 7, process the message.
+
+The verification logic above was designed to adhere to these constraints: 
+
+* At a protocol message level, MoveIdentity is always signed by the `old-actor` being moved.
+  * Without a valid Protocol Message signature from the old actor, the authenticity chain is broken.
+* At the HTTP Message Signature level (ActivityPub), the MoveIdentity is always signed by the new actor receiving the
+  old identity's public keys and auxiliary data.
+  * Without a valid HTTP Message Signature from the new actor, you could use MoveIdentity to impersonate strangers that
+    are not enrolled in the protocol.
+
+In a scenario where your old Fediverse instance is unrecoverable, you can still sign protocol messages offline and pass 
+them to your new instance in order to issue a MoveIdentity. (Without first issuing a MoveIdentity message, the others
+will fail to validate.)
 
 ### BurnDown
 
@@ -1004,20 +1039,22 @@ This allows a user to issue a self-signed `AddKey` and start over.
 After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
 validating an `BurnDown` message are as follows:
 
-1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
-   error status.
-2. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
-3. If this actor is fireproof, abort.
-4. If the instance has previously enrolled a TOTP secret to this Fediverse server, verify that the `otp` field (which
-   is now required) is a correct [TOTP challenge](#totp).
-5. Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
-   decryption fails, return an error status.
-6. If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 8. If there is no
-   public key for this Actor with a matching `key-id`, return an error status.
-7. If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor (Operator) until
-   one succeeds. If none of them do, return an error status.
-8. Validate the message signature for the given public key.
-9. If the signature is valid in step 8, process the message.
+1.  Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+    error status.
+2.  If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+3.  Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals 
+    `message.operator` from the Protocol Message. If they are not identical, return an error status.
+4.  If this actor is fireproof, abort.
+5.  If the instance has previously enrolled a TOTP secret to this Fediverse server, verify that the `otp` field (which
+    is now required) is a correct [TOTP challenge](#totp).
+6.  Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
+    decryption fails, return an error status.
+7.  If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 8. If there is no
+    public key for this Actor with a matching `key-id`, return an error status.
+8.  If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor (Operator)
+    until one succeeds. If none of them do, return an error status.
+9.  Validate the message signature for the given public key.
+10. If the signature is valid in step 9, process the message.
 
 ### Fireproof
 
@@ -1050,13 +1087,15 @@ validating an `Fireproof` message are as follows:
 
 1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
    error status.
-2. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
-3. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public
+2. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
+   from the Protocol Message. If they are not identical, return an error status.
+3. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
+5. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-5. Validate the message signature for the given public key.
-6. If the signature is valid in step 5, process the message.
+6. Validate the message signature for the given public key.
+7. If the signature is valid in step 6, process the message.
 
 ### UndoFireproof
 
@@ -1087,12 +1126,14 @@ validating an `UndoFireproof` message are as follows:
 1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
    error status.
 2. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
-3. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public
+3. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
+   from the Protocol Message. If they are not identical, return an error status.
+4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-4. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
+5. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-5. Validate the message signature for the given public key.
-6. If the signature is valid in step 5, process the message.
+6. Validate the message signature for the given public key.
+7. If the signature is valid in step 6, process the message.
 
 ### AddAuxData
 
@@ -1127,13 +1168,15 @@ validating an `AddAuxData` message are as follows:
 2. Using `symmetric-keys.aux-data`, decrypt `message.aux-data`. If the decryption fails, return an error status.
 3. If `message.aux-type` does not match any of the identifiers for supported Auxiliary Data extensions for this Public 
    Key Directory, abort.
-4. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
-5. If the `key-id` is provided, select this public key for the given Actor and proceed to step 7. If there is no public
+4. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
+   from the Protocol Message. If they are not identical, return an error status.
+5. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+6. If the `key-id` is provided, select this public key for the given Actor and proceed to step 7. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-6. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor until one
+7. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
-7. Validate the message signature for the given public key.
-8. If the signature is valid in step 7, validate the contents of `message.aux-data` in accordance to the rules defined
+8. Validate the message signature for the given public key.
+9. If the signature is valid in step 8, validate the contents of `message.aux-data` in accordance to the rules defined
    in the extension for the given `message.aux-type`. Otherwise, return an error status.
 
 ### RevokeAuxData
@@ -1168,16 +1211,18 @@ validating an `RevokeAuxData` message are as follows:
     return an error status.
 2.  If `symmetric-keys.aux-data` is provided, decrypt `message.aux-data`. If the decryption fails, return an error
     status. If a plaintext `message.aux-data` is provided without a symmetric key, abort.
-3.  If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
-4.  If `message.aux-id` is provided, proceed to step 7.
-5.  Otherwise, if `message.aux-data` is provided, recalculate the expected `aux-id`, then proceed to step 7.
-6.  If there is no existing Auxiliary Data with a matching `aux-id` (whether provided or calculated), abort.
-7.  If the `key-id` is provided, select this public key for the given Actor and proceed to step 8. If there is no public
+3.  Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
+    from the Protocol Message. If they are not identical, return an error status.
+4.  If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+5.  If `message.aux-id` is provided, proceed to step 7.
+6.  Otherwise, if `message.aux-data` is provided, recalculate the expected `aux-id`, then proceed to step 7.
+7.  If there is no existing Auxiliary Data with a matching `aux-id` (whether provided or calculated), abort.
+8.  If the `key-id` is provided, select this public key for the given Actor and proceed to step 8. If there is no public
     key for this Actor with a matching `key-id`, return an error status.
-8.  If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor until one
+9.  If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor until one
     succeeds. If none of them do, return an error status.
-9.  Validate the message signature for the given public key.
-10. If the signature is valid in step 9, proceed with the revocation of the Auxiliary Data for this Actor.
+10. Validate the message signature for the given public key.
+11. If the signature is valid in step 10, proceed with the revocation of the Auxiliary Data for this Actor.
 
 ### Checkpoint
 
@@ -2891,3 +2936,26 @@ totally outsourced to the Public Key Directory (at least, without relying on hyp
 
 Don't blindly assume that the public keys we vend are trusted to the maximum level without the users verifying some
 other mechanism (e.g. safety numbers).
+
+### Understanding the role of signatures at different layers of the protocol
+
+There are signatures at multiple layers of the protocol. Each signature has a different purpose and provides different
+security properties.
+
+The outermost layer (ActivityPub, HTTP Message Signatures via RFC 9421) exists solely to authenticate a Protocol Message
+between a Fediverse instance and the Public Key Directory server. This asserts that the Protocol Message being passed to
+the Directory has come from an authenticated user to the instance. This signature is not stored or committed to the 
+Transparency Log.
+
+In the middle layer, you have the Protocol Message Signatures. These are generated client-side by the end users. The
+signed bundles are then optionally HPKE-encrypted to the Directory's encapsulation key. This ciphertext is then passed
+to the Instance. If the user has permission to send messages to the Directory, the Instance will pass it on with a valid
+HTTP Message Signature attached to the blob.
+
+Instances **SHOULD** reject plaintext `BurnDown` messages from being signed and passed onto the server and provide a
+specific mechanism for moderators to use for account recovery.
+
+At the bottom layer, each leaf on the Merkle Tree consists of [three components](#tlog-integration), including a
+signature (generated by the Directory) of the Protocol Message. This allows third parties to ensure each leaf on the
+tree was signed by the Public Key Directory server. It also introduces a bit of unpredictability to the Merkle Root for
+each message (provided the server's secret key is kept secret).
