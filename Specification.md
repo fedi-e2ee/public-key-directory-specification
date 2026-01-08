@@ -1039,15 +1039,16 @@ This allows a user to issue a self-signed `AddKey` and start over.
 
 #### BurnDown Validation Steps
 
-After validating that the Protocol Message originated from the expected Fediverse Server, the specific rules for
-validating an `BurnDown` message are as follows:
+After validating that the Protocol Message originated from the expected Fediverse Server (via a valid HTTP Message
+Signature from the [request to the appropriate HTTP endpoint](#post-apiburndown), the specific rules for validating an
+`BurnDown` message are as follows:
 
 1.  Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
     error status.
 2.  If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
 3.  Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals 
     `message.operator` from the Protocol Message. If they are not identical, return an error status.
-4.  If this actor is fireproof, abort.
+4.  If this actor is [fireproof](#fireproof), abort.
 5.  If the instance has previously enrolled a TOTP secret to this Fediverse server, verify that the `otp` field (which
     is now required) is a correct [TOTP challenge](#totp).
 6.  Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
@@ -1056,8 +1057,11 @@ validating an `BurnDown` message are as follows:
     public key for this Actor with a matching `key-id`, return an error status.
 8.  If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor (Operator)
     until one succeeds. If none of them do, return an error status.
-9.  Validate the message signature for the given public key.
-10. If the signature is valid in step 9, process the message.
+9.  Check that the domain of `operator` and `actor` match. If they do not, abort.
+10. Validate the message signature for the given public key.
+11. If the signature is valid in step 10, process the message.
+
+Note: Processing the message **SHOULD** also require a valid one-time password (OTP). See more [below](#totp).
 
 ### Fireproof
 
