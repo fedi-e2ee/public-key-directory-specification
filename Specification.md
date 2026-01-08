@@ -387,8 +387,8 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 9.  HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
     security (which is a stronger notion than PRF security that makes no assumptions about the distribution of IKM bits).
 10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated as 
-    [Curve25519_SHA256_ChachaPoly](#hpke-cipher-suites)--provides IND-CCA2 security against adversaries not in 
-    possession of the X25519 secret key.
+    [DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, ChaCha20Poly1305](#hpke-cipher-suites)--provides IND-CCA2 security against
+    adversaries not in possession of the X25519 secret key.
 11. AES in Counter Mode can be used to encrypt up to 2^{36} successive bytes under the same (key, initial counter),
     and the resulting ciphertext will be indistinguishable an encryption of NUL (`0x00`) bytes.
 12. Merkle trees based on a secure hash function (assumption 4) provide a secure verifiable data structure.
@@ -1008,6 +1008,9 @@ will fail to validate.)
 
 ### BurnDown
 
+> [!NOTE]
+> BurnDown will not be sent through the usual ActivityPub flow.
+
 A `BurnDown` message acts as a soft delete for all public keys and auxiliary data for a given Actor, unless they are
 under the effect of [Fireproof](#fireproof).
 
@@ -1275,7 +1278,10 @@ roots.
 
 ### Encryption of Protocol Messages
 
-Protocol Messages **MAY** be sent in plaintext at the HTTP layer, or encrypted using [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/).
+Protocol Messages **MAY** originate from an end user (via client-side software) or a Fediverse instance.
+
+Protocol messages that originate client-side **MUST** be encrypted using [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/),
+with the [HPKE ciphersuite](#hpke-cipher-suites) chosen by the server.
 
 When encryption is chosen, the client software **MUST** use a specific public key provided by the Public Key Directory
 server for this purpose. 
@@ -1287,7 +1293,9 @@ client-side for no more than 24 hours. Public Key Directories are not required t
 
 `BurnDown` messages **MUST NOT** be encrypted.
 
-When encryption is chosen, the Protocol Message **MUST** be serialized as a JSON string and then encrypted according to
+`BurnDown` messages also **MUST NOT** be sent via ActivityPub, and therefore are not generated client-side.
+
+When encryption is used, the Protocol Message **MUST** be serialized as a JSON string and then encrypted according to
 the specific HPKE cipher suite advertised by the Public Key Directory, using the given public key.
 
 Users **MAY** pad the plaintext before encryption with additional whitespace to their desired length, but **SHOULD** 
@@ -1329,8 +1337,11 @@ string **MUST** be prefixed with `hpke:` (hexadecimal-encoded UTF-8 byte values:
 
 ### Protocol Message Processing
 
-Most [Protocol Messages](#protocol-messages) will be received through ActivityPub. (Exception: 
-[`RevokeKeyThirdParty`](#revokekeythirdparty) can be sent via HTTP request to the JSON REST API.)
+Most [Protocol Messages](#protocol-messages) will be received through ActivityPub.
+
+* [`BurnDown`](#burndown) will be sent to a dedicated HTTP endpoint. While these messages **MAY** be generated 
+  client-side by the moderator, the PKD server **MUST NOT** accept a BurnDown request through its ActivityPub inbox.
+* [`RevokeKeyThirdParty`](#revokekeythirdparty) can be sent via HTTP request to the JSON REST API.
 
 Each type of Protocol Message has its own specific validation steps. This section defines the workflow for handling all
 ProtocolMessages.
@@ -1382,12 +1393,14 @@ Encrypted Protocol messages **MUST** be decrypted after the signature verificati
 Messages is described [in a previous section](#protocol-message-decryption). Encryption is performed client-side by the
 user.
 
-If encryption was used, and the decrypted Protocol Message is a `BurnDown`, the Public Key Directory **MUST** discard 
-it. BurnDown messages **MUST** be sent unencrypted. The instance is responsible for ensuring that only administrators 
-**MAY** send a`BurnDown` to a Public Key Directory.
+If the decrypted Protocol Message is a `BurnDown`, the Public Key Directory **MUST** discard it. BurnDown messages 
+**MUST** be sent by the instance server through a separate HTTP API, with a valid HTTP Message Signature for the
+operator issuing the BurnDown.
 
-Some Protocol Messages require an HTTP Signature, even when sent in plaintext. A missing signature in these instances is
-treated as invalid, and incurs a rate-limiting penalty.
+The instance is responsible for ensuring that only administrators **MAY** send a `BurnDown` to a Public Key Directory.
+
+With the sole exception of `RevokeKeyThirdParty`, all Protocol Messages require an HTTP Signature. A missing signature 
+in these instances is treated as invalid, and incurs a rate-limiting penalty.
 
 The JSON blob should then be deserialized into an Object and handled appropriately (see next subsection).
 
@@ -1402,7 +1415,7 @@ Protocol Message. If it is absent or mismatched, discard the message. Servers **
 that incurs a rate limit penalty, but it is not required.
 
 Once we have established the `!pkd-context` matches, the `action` should be examined. If the action is one of the 
-following, a valid HTTP Signature **MUST** have been sent with the message: `AddKey`, `BurnDown`.
+following, a valid HTTP Signature **MUST** have been sent with the message: `AddKey`, `MoveIdentity`.
 
 If the `action` is not one of the expected values (see [Protocol Messages](#protocol-messages)), discard the message.
 This may indicate a newer specification.
@@ -2009,8 +2022,34 @@ The `hpke-ciphersuite` string will refer to an [HPKE cipher suite](#hpke-cipher-
 {
   "!pkd-context": "fedi-e2ee:v1/api/server-public-key",
   "current-time": "1730909831",
-  "hpke-ciphersuite": "Curve25519_SHA256_ChachaPoly",
+  "hpke-ciphersuite": "DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, ChaCha20Poly1305",
   "hpke-public-key": "3NtzCdMS1nuAVGHQStL-2evsgYz_LCuEzLeXXlrX7tM"
+}
+```
+
+#### POST api/burndown
+
+Purpose: Accepts [`BurnDown`](#burndown) messages.
+
+An HTTP Message Signature **MUST** be included on the request. 
+
+**Example Request Body**:
+```json5
+{
+  "!pkd-context": "fedi-e2ee:v1-plaintext-message",
+  /* actor here refers to the one issuing the BurnDown, not the target: */
+  "actor": "https://example/user/bob",
+  "message": "{\"!pkd-context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"BurNDown\",/*...*/}",
+}
+```
+
+**Example Response**:
+
+```json5
+{
+  "!pkd-context": "fedi-e2ee:v1/api/burndown",
+  "time": "1730909831",
+  "status": true
 }
 ```
 
@@ -2422,7 +2461,10 @@ The cryptography version used for the current specification is [Version 1](#vers
 
 ### Protocol Message Encryption
 
-The entirety of a Protocol Message **MAY** be encrypted, client-side, using [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/).
+When sent over ActivityPub (i.e., generated client-side), the entirety of a Protocol Message **MUST** be encrypted
+using [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/).
+
+When a `BurnDown` Protocol Message is issued by an instance server, it **MUST NOT** be HPKE-encrypted.
 
 The encryption process is described in [Encryption of Protocol Messages](#protocol-message-encryption).
 
@@ -2633,12 +2675,13 @@ HPKE cipher suites consists of the following information:
 
 This table includes some example HPKE cipher suites. This list is not exhaustive.
 
-| Cipher Suite String            | Remarks                    |
-|--------------------------------|----------------------------|
-| `Curve25519_SHA256_ChachaPoly` | Default; must be supported |
-| `P256_SHA256_AES_GCM_256`      |                            |
-| `P384_SHA384_AES_GCM_256`      |                            |
-| `P521_SHA512_AES_GCM_256`      |                            |
+| Cipher Suite                                              | Remarks                    |
+|-----------------------------------------------------------|----------------------------|
+| DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, ChaCha20Poly1305 | Default; must be supported |
+| DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, AES-128-GCM      |                            | 
+| DHKEM(P-256, HKDF-SHA256), HKDF-SHA256, AES-128-GCM       |                            | 
+| DHKEM(P-256, HKDF-SHA256), HKDF-SHA512, AES-128-GCM       |                            |
+| DHKEM(P-521, HKDF-SHA512), HKDF-SHA512, AES-256-GCM       |                            | 
 
 ## Client-Side Behavior
 
@@ -2919,9 +2962,12 @@ comprehending their actions.
 The public key **MUST** be fetched directly from each Public Key Directory. Client software **MUST NOT** trust any
 public key provided by the Fediverse Server.
 
-[`BurnDown`](#burndown) messages **MUST NOT** be encrypted this way. The reason for this is that the Public Key
-Directory has no idea who is an administrator and who isn't. Therefore, the instance administration team **MUST** be the
-only entities capable of issuing a BurnDown.
+All client-originated protocol messags **MUST** use HPKE encryption. The only messages that are not in scope for this
+HPKE requirement are:
+
+1. [RevokeKeyThirdParty](#revokekeythirdparty), since it can also bypass the instance entirely.
+2. [BurnDown](#burndown), since it is not transmitted via ActivityPub.
+3. [Checkpoint](#checkpoint), since it is not generated client-side.
 
 ### Quantifying the Trustworthiness of the Public Key Directory
 
@@ -2948,12 +2994,12 @@ the Directory has come from an authenticated user to the instance. This signatur
 Transparency Log.
 
 In the middle layer, you have the Protocol Message Signatures. These are generated client-side by the end users. The
-signed bundles are then optionally HPKE-encrypted to the Directory's encapsulation key. This ciphertext is then passed
-to the Instance. If the user has permission to send messages to the Directory, the Instance will pass it on with a valid
-HTTP Message Signature attached to the blob.
+signed bundles are then HPKE-encrypted to the Directory's encapsulation key. This ciphertext is then passed to the 
+Instance. If the user has permission to send messages to the Directory, the Instance will pass it on with a valid HTTP
+Message Signature attached to the blob.
 
-Instances **SHOULD** reject plaintext `BurnDown` messages from being signed and passed onto the server and provide a
-specific mechanism for moderators to use for account recovery.
+Instances **SHOULD** reject plaintext messages from being signed and passed onto the server and provide a specific 
+mechanism for moderators to use for account recovery (which will use the [BurnDown API](#post-apiburndown).
 
 At the bottom layer, each leaf on the Merkle Tree consists of [three components](#tlog-integration), including a
 signature (generated by the Directory) of the Protocol Message. This allows third parties to ensure each leaf on the
