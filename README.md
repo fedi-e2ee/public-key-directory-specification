@@ -99,7 +99,7 @@ necessarily somewhat technical.
 However, the projects that build *atop* this building block should take pains to minimize the friction for non-technical
 users. (That includes the other projects we will be opening in this GitHub organization!)
 
-#### What kind of keys are vended by the Public Key Directory?
+### What kind of keys are vended by the Public Key Directory?
 
 Public keys meant for verifying digital signatures, not encryption keys.
 
@@ -107,7 +107,7 @@ To integrate the Public Key Directory with a broader E2EE project, you can use t
 a signed [key package (in MLS parlance)](https://www.rfc-editor.org/rfc/rfc9420.html#name-key-packages). This provides
 assurance that the "key package" your software is using to start a private chat is actually owned by your friend.
 
-#### Does the Public Key Directory publish anything except those public keys?
+### Does the Public Key Directory publish anything except those public keys?
 
 **Yes!** The Public Key Directory additionally publishes [Auxiliary Data](Specification.md#auxiliary-data), which allows
 developers a convenient way to build key transparency into their own systems by building atop ours.
