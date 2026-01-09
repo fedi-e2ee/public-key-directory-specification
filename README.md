@@ -93,6 +93,9 @@ having to manually parse this information out of the data stored in the underlyi
 
 ### How Does This Help Non-Technical Users?
 
+**It doesn't directly help non-technical users.** Instead, it provides technical users an easy way to help non-technical
+users.
+
 The Public Key Directory is a building block for developers. Our immediate audience for this specific component is 
 necessarily somewhat technical.
 
