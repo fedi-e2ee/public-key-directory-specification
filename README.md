@@ -7,6 +7,27 @@ This repository contains the specification for a **Public Key Directory** for th
 
 ## What Is This All About?
 
+> [!NOTE]
+> If you're more technical, [feel free to skip this section](#our-proposal).
+
+This project is an infrastructure component to improve the privacy of the Fediverse. Its intended audience is software
+developers, system administrators, security researchers, academics, cryptographers, and technology experts.
+
+If you're not already familiar with the Fediverse (e.g., Mastodon), [The Verge](https://www.theverge.com/24063290/fediverse-explained-activitypub-social-media-open-protocol)
+tried to explain it in 2024.
+
+Currently, Direct Messages (DMs) on the Fediverse are like postcards: Server admins and malicious hackers can read them,
+if they want to. Law enforcement can also compel server admins to disclose them if they want to prosecute you, and there
+is little recourse for them except to comply. (Unlike large tech companies, most instance admins do not have a large
+legal defense fund to fight the government in court.)
+
+The architects of the Fediverse are investigating a technique called [end-to-end encryption](https://github.com/swicg/activitypub-e2ee)
+to alleviate this privacy risk. This is like upgrading from postcards to sealed envelopes that only the recipient can
+open. This envelope upgrade requires careful use of math that involves something called a "public key". You can think of
+it as a special lock that only the intended party can open.
+
+### Where does this project come in?
+
 The hardest part of designing end-to-end encryption for the Fediverse is actually a **Key management** problem, which
 can be summed up as one question:
 
