@@ -13,8 +13,8 @@ This repository contains the specification for a **Public Key Directory** for th
 This project is an infrastructure component to improve the privacy of the Fediverse. Its intended audience is software
 developers, system administrators, security researchers, academics, cryptographers, and technology experts.
 
-If you're not already familiar with the Fediverse (e.g., Mastodon), [The Verge](https://www.theverge.com/24063290/fediverse-explained-activitypub-social-media-open-protocol)
-tried to explain it in 2024.
+If you're not already familiar with the Fediverse (e.g., Mastodon), [The Verge](https://www.theverge.com/24063290/fediverse-explained-activitypub-social-media-open-protocol) 
+([archived](https://archive.is/TuNUu)) tried to explain it in 2024.
 
 Currently, Direct Messages (DMs) on the Fediverse are like postcards: Server admins and malicious hackers can read them,
 if they want to. Law enforcement can also compel server admins to disclose them if they want to prosecute you, and there
