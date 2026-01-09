@@ -167,7 +167,7 @@ flowchart TB
 
 * **Users** generate keys locally and send encrypted [Protocol Messages](Specification.md#protocol-messages) through
   their Fediverse instance
-* **Instances** add HTTP MessageSignatures ([RFC 9421](https://www.rfc-editor.org/rfc/rfc9421.html)) and relay messages
+* **Instances** add HTTP Message Signatures ([RFC 9421](https://www.rfc-editor.org/rfc/rfc9421.html)) and relay messages
   to the Public Key Directory (PKD)
 * **PKD** validates messages, updates key state, and commits everything to the transparency log
 * **Disaster recovery** that can [pass the Mud Puddle test](https://blog.cryptographyengineering.com/2012/04/05/icloud-who-holds-key/)
