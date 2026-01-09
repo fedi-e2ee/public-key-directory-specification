@@ -2858,6 +2858,10 @@ When base64url-encoding a non-secret value, there is no expectation of constant-
 being encoded or decoded is a secret (e.g., plaintext or cryptography key), the codec **MUST** be implemented in
 constant-time.
 
+> An example of constant-time base64url encoding is available in [PHP](https://github.com/paragonie/constant_time_encoding/blob/master/src/Base64UrlSafe.php).
+> The linked class extends the behavior of [this class](https://github.com/paragonie/constant_time_encoding/blob/master/src/Base64.php),
+> but it should be easy to see how the pieces fit together.
+
 When comparing cryptographic outputs, a constant-time comparison **MUST** always be used.
 
 ### Cryptographic Agility
