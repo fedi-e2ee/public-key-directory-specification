@@ -39,6 +39,32 @@ How ever you decide to initially answer that question, the obvious follow-up que
 
 And if you repeat this exercise, you will eventually reinvent a trust model for a public key infrastructure.
 
+### Why This Problem Is Harder Than It Looks
+
+There are some obvious questions that arise when first faced with this problem, depending on your technical background.
+
+#### Why not just a simple directory?
+
+A simple directory is quick and easy: Just look up a username and get their public key. ActivityPub already offers such
+a mechanism with [webfinger](https://webfinger.net/). Why not just rely on that?
+
+The problem is: You have to **completely trust** whoever runs that directory. If a simple directory operator is 
+compromised, or decides to be malicious, they can silently hand you the wrong key for someone you want to message, and
+you'd have no way to detect it. The key you think belongs to Alice might actually belong to an attacker.
+
+#### Why not just use Certificates and Certificate Authorities?
+
+This creates a power structure where a few trusted entities (Authorities) have the capability to impersonate anyone in
+the ecosystem. This gives hackers and hostile governments easy targets to prioritize, and is fundamentally incompatible
+with the goals and culture of the Fediverse.
+
+#### Why not use an existing solution?
+
+The technical details matter a lot. Read [the thread model](Specification.md#threat-model) to understand more about what
+features and security properties we're trying to provide, which isn't compatible with existing designs.
+
+(This README only gets more technical from this point on.)
+
 ### Our Proposal
 
 Our solution is to require all relevant actions (public key enrollment and revocation) be published immediately onto an 
