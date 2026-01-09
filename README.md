@@ -123,8 +123,8 @@ Transparency systems allow you to prove that everyone has an identical view of h
 lie about its contents without detection. **This keeps everyone honest.**
 
 The mapping of public keys (and auxiliary data) to ActivityPub actors is entirely deterministic: If you replayed the 
-entire Transparency log from the first entry on (starting with a blank slate), you will always arrive at the same final
-mapping.
+entire Transparency log from the first entry to the current latest, starting with a blank slate, you will always arrive
+at the same final mapping.
 
 ### How the Pieces Fit Together
 
