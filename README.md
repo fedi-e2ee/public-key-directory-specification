@@ -112,6 +112,73 @@ assurance that the "key package" your software is using to start a private chat 
 **Yes!** The Public Key Directory additionally publishes [Auxiliary Data](Specification.md#auxiliary-data), which allows
 developers a convenient way to build key transparency into their own systems by building atop ours.
 
+### How the Pieces Fit Together
+
+```mermaid
+flowchart TB
+    subgraph Users["End Users"]
+        Alice["Alice's Client"]
+        Bob["Bob's Client"]
+    end
+
+    subgraph Fediverse["Fediverse Instances"]
+        ServerA["Instance A<br/>(e.g., mastodon.social)"]
+        ServerB["Instance B<br/>(e.g., hachyderm.io)"]
+    end
+
+    subgraph PKD["Public Key Directory"]
+        API["JSON REST API<br/>(read-only queries)"]
+        Inbox["ActivityPub Inbox<br/>(Protocol Messages)"]
+        State["Current Key State<br/>(valid keys per Actor)"]
+        TLog["Transparency Log<br/>(append-only Merkle tree)"]
+    end
+
+    subgraph Federation["PKD Federation"]
+        PKD2["Other PKD Instances"]
+    end
+
+    Auditors["Auditors & Verifiers"]
+
+    %% User to Instance flows
+    Alice -->|"HPKE-encrypted<br/>Protocol Messages"| ServerA
+    Bob -->|"HPKE-encrypted<br/>Protocol Messages"| ServerB
+
+    %% Instance to PKD flows
+    ServerA -->|"HTTP Signatures +<br/>AddKey, RevokeKey, etc."| Inbox
+    ServerB -->|"HTTP Signatures +<br/>AddKey, RevokeKey, etc."| Inbox
+
+    %% Direct user revocation (bypass instance)
+    Alice -.->|"RevokeKeyThirdParty<br/>(emergency revocation)"| API
+
+    %% PKD internal flows
+    Inbox --> State
+    State --> TLog
+
+    %% Query flows
+    ServerA & ServerB -->|"Query public keys<br/>for other users"| API
+    API --> State
+
+    %% Federation
+    TLog <-->|"Checkpoint<br/>(cross-PKD Merkle roots)"| PKD2
+
+    %% Auditing
+    TLog -->|"Verify append-only<br/>history"| Auditors
+```
+
+* **Users** generate keys locally and send encrypted [Protocol Messages](Specification.md#protocol-messages) through
+  their Fediverse instance
+* **Instances** add HTTP MessageSignatures ([RFC 9421](https://www.rfc-editor.org/rfc/rfc9421.html)) and relay messages
+  to the Public Key Directory (PKD)
+* **PKD** validates messages, updates key state, and commits everything to the transparency log
+* **Disaster recovery** that can [pass the Mud Puddle test](https://blog.cryptographyengineering.com/2012/04/05/icloud-who-holds-key/)
+  is baked into our design:
+  * Third-party revocation allows users to revoke compromised keys directly, bypassing a potentially malicious
+    instance
+  * Recovery is enabled through [BurnDown](Specification.md#burndown); users can elect to become 
+    [Fireproof](Specification.md#fireproof) to become immune to BurnDown
+* **Federation** enables multiple PKDs to cross-verify via Checkpoint messages
+* **Auditors** can independently verify the append-only log hasn't been tampered with
+
 ## Our Guiding Principles
 
 All design decisions for this proposal have been influenced by the following guiding principles.
