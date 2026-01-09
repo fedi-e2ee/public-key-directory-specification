@@ -115,6 +115,17 @@ assurance that the "key package" your software is using to start a private chat 
 **Yes!** The Public Key Directory additionally publishes [Auxiliary Data](Specification.md#auxiliary-data), which allows
 developers a convenient way to build key transparency into their own systems by building atop ours.
 
+### How does Key Transparency help the trust issue?
+
+It proves [everyone sees the same thing](https://defuse.ca/triangle-of-secure-code-delivery.htm#:~:text=are%20successfully%20attacked.-,Userbase%20Consistency%20Verification%3A,-Users%20of%20the).
+
+Transparency systems allow you to prove that everyone has an identical view of history. This means the directory cannot
+lie about its contents without detection. **This keeps everyone honest.**
+
+The mapping of public keys (and auxiliary data) to ActivityPub actors is entirely deterministic: If you replayed the 
+entire Transparency log from the first entry on (starting with a blank slate), you will always arrive at the same final
+mapping.
+
 ### How the Pieces Fit Together
 
 ```mermaid
