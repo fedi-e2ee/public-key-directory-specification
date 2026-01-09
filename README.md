@@ -57,7 +57,7 @@ exchanges for end-to-end encryption).
 
 It's worth keeping in mind that the Public Key Directory isn't *just* the Merkle Tree, it's an API built on top of a
 Merkle Tree. To that end, you can query the API to retrieve every currently-trusted public key for a user, rather than
-having to manually parse this information out of the data stored in the underluing data structure.
+having to manually parse this information out of the data stored in the underlying data structure.
 
 ### How Does This Help Non-Technical Users?
 
