@@ -65,7 +65,7 @@ features and security properties we're trying to provide, which isn't compatible
 
 (This README only gets more technical from this point on.)
 
-### Our Proposal
+## Our Proposal
 
 Our solution is to require all relevant actions (public key enrollment and revocation) be published immediately onto an 
 append-only data structure (i.e., a [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree)). In the cryptographic
