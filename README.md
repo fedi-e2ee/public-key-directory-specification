@@ -112,14 +112,14 @@ assurance that the "key package" your software is using to start a private chat 
 **Yes!** The Public Key Directory additionally publishes [Auxiliary Data](Specification.md#auxiliary-data), which allows
 developers a convenient way to build key transparency into their own systems by building atop ours.
 
-### Our Guiding Principles
+## Our Guiding Principles
 
 All design decisions for this proposal have been influenced by the following guiding principles.
 
 1. Build for people, and
 2. Security over legacy
 
-#### Build for People
+### Build for People
 
 The main goal of this project is to enable more people to securely communicate with each others.
 From this it follows that we
@@ -131,7 +131,7 @@ From this it follows that we
 
 As a side note, we don't consider companies as people.
 
-#### Security Over Legacy
+### Security Over Legacy
 
 We want to build a system, which solves key management for people, nothing less and nothing more.
 There are many ways to solves this problem and many existing solutions which could become part of our solution.
