@@ -63,7 +63,7 @@ with the goals and culture of the Fediverse.
 
 #### Why not use an existing solution?
 
-The technical details matter a lot. Read [the thread model](Specification.md#threat-model) to understand more about what
+The technical details matter a lot. Read [the threat model](Specification.md#threat-model) to understand more about what
 features and security properties we're trying to provide, which isn't compatible with existing designs.
 
 (This README only gets more technical from this point on.)
