@@ -75,9 +75,10 @@ append-only data structure (i.e., a [Merkle tree](https://en.wikipedia.org/wiki/
 literature, this is called "Key Transparency".
 
 The Public Key Directory vends a user's public keys (which originate from the user's device) that can be used with 
-digital signature algorithms, and includes a machine-verifiable proof of when each public key was enrolled. This is 
-useful for establishing a baseline, minimal level of trust that a given public key is correct for the party you wish to
-talk to.
+digital signature algorithms, and includes a machine-verifiable proof of when each public key was enrolled.
+
+This machine-verifiable proof is useful for establishing a baseline, minimal level of trust that a given public key is
+correct for the party you wish to talk to. That is to say: **It keeps the directory honest.**
 
 Additional manual key verification mechanisms (key fingerprints, safety numbers, etc.) are out-of-scope but totally 
 permitted for technical users in higher-level protocols. Really, we're trying to do better than Trust on First Use 
