@@ -68,7 +68,8 @@ features and security properties we're trying to provide, which isn't compatible
 ### Our Proposal
 
 Our solution is to require all relevant actions (public key enrollment and revocation) be published immediately onto an 
-append-only data structure (i.e., a Merkle tree). In the cryptographic literature, this is called "Key Transparency".
+append-only data structure (i.e., a [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree)). In the cryptographic
+literature, this is called "Key Transparency".
 
 The Public Key Directory vends a user's public keys that can be used with digital signature algorithms, and includes a
 machine-verifiable proof of when each public key was enrolled. This is useful for establishing a baseline, minimal level
