@@ -203,7 +203,7 @@ As a side note, we don't consider companies as people.
 
 ### Security Over Legacy
 
-We want to build a system, which solves key management for people, nothing less and nothing more.
+We want to build a system that solves key management for people, nothing less and nothing more.
 There are many ways to solves this problem and many existing solutions which could become part of our solution.
 But we want to take the opportunity to focus on security and verifiability.
 This means if we have the choice we will not take an existing solution, when this solution leads to an unwarranted increase in complexity or a security compromise. Even if this solution is an established standard and used by everyone else.
