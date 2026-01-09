@@ -367,6 +367,16 @@ JavaScript).
 
 Implementations **MUST NOT** truncate UNIX timestamps to 32 bits.
 
+## Gloasary
+
+* **Actor ID**: The canonical HTTPS URL for a given ActivityPub user. When provided with `user@domain`, the Public Key
+  Directory software (both client and server) **MUST** use WebFinger to obtain the correct URL for an Actor.
+* **Instance**: A Fediverse server that one or more users has an account on.
+* **Public Key Directory (PKD)**: The software we specify in this document (mostly server-side).
+* **Transparency Log**: An append-only data structure that stores information in a `tlog-tiles` compatible format.
+* **Protocol Message**: A JSON object that represents a specific action to be taken by the PKD.
+* **Fediverse**: A collection of interconnected servers that use the ActivityPub protocol.
+
 ## Threat Model
 
 In order to understand the security goals of this system, it is important to assess our assumptions, assets, actors, and
@@ -776,7 +786,7 @@ Further can Troy send a `Fireproof` message, to make it impossible for Bob to re
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
-Directory server.
+Directory server with an HTTP Message Signature.
 
 Each protocol message will be a UTF-8 encoded JSON string. Dictionary keys **MUST** be unique within the same level.
 Dictionary keys **SHOULD** be sorted. Participants **MAY** use whitespace, but it is not required or recommended.
@@ -814,6 +824,10 @@ one of many public keys to validate the signature. If no `key-id` is provided, e
 
 The following subsections each describe a different Protocol Message type.
 
+These Protocol Message types are generated client-side and **MUST** be
+[encrypted with HPKE](#protocol-message-encryption) before being sent to the Fediverse Server that provides the HTTP
+Message Signature if the client is properly authenticated.
+
 * [`AddKey`](#addkey): Add a new public key for a given Actor
 * [`RevokeKey`](#revokekey): Revoke a public key
 * [`RevokeKeyThirdParty`](#revokekeythirdparty): A mechanism for independent third parties to revoke compromised keys
@@ -823,6 +837,12 @@ The following subsections each describe a different Protocol Message type.
 * [`UndoFireproof`](#undofireproof): Opt back into `BurnDown`.
 * [`AddAuxData`](#addauxdata): Add auxiliary data (e.g. public keys for other protocols).
 * [`RevokeAuxData`](#revokeauxdata): Revoke auxiliary data.
+
+There are additionally three [special case Protocol message types](#special-protocol-messages) which deviate from the
+norm:
+
+* [`RevokeKeyThirdParty`](#revokekeythirdparty): A mechanism for independent third parties to revoke compromised keys
+* [`BurnDown`](#burndown): A mechanism for account recovery.
 * [`Checkpoint`](#checkpoint): Allows one PKD to commit their Merkle root to a peer PKD instance.
 
 ### AddKey
@@ -915,41 +935,6 @@ validating an `RevokeKey` message are as follows:
 7. Validate the message signature for the given public key.
 8. If the signature is valid in step 7, process the message.
 
-### RevokeKeyThirdParty
-
-This is a special message type in two ways:
-
-1. It can bypass the Fediverse server entirely, and be submitted directly to the Public Key Directory.
-2. It can be issued by an unrelated third party.
-
-If the user doesn't possess any other public keys, this message bypasses the usual `RevokeKey` restriction where the 
-user continue to must have a valid public key. Instead, the Actor will be treated as if they ran a successful 
-`BurnDown`, and allows them to start over with an `AddKey`.
-
-Since you need the secret key to generate the revocation token for a given public key, `Fireproof` does not prevent
-third parties from revoking public keys.
-
-This does not cancel out a previous `Fireproof` status. Future `BurnDown` messages may fail.
-
-Because the contents of this revocation token are signed, no `signature` is needed outside the `message` map. Nor is any
-`key-id`.
-
-#### RevokeKeyThirdParty Attributes
-
-* `action` -- **string (Action Type)** (required): Must be set to `RevokeKeyThirdParty`.
-* `revocation-token` --**string** (required): See [Revocation Tokens](#revocation-tokens).
-
-#### RevokeKeyThirdParty Validation Steps
-
-These tokens can be submitted directly to the Public Key Directory server at any time, with or without the involvement
-of any Fediverse instances.
-
-1. Decode the revocation token from base64url.
-2. Split the revocation token into `version`, `REVOCATION_CONSTANT`, `public_key`, and `signature`
-3. Validate signature for  `version || REVOCATION_CONSTANT || public_key`, using `public_key`.
-4. If the signature is valid in step 3, revoke this public key for all Actors that share it.
-   (In practice, this **SHOULD** only be one, but if that's ever not the case, we revoke them all here.)
-
 ### MoveIdentity
 
 This moves all the mappings from the old Actor ID to the new Actor ID.
@@ -1005,63 +990,6 @@ The verification logic above was designed to adhere to these constraints:
 In a scenario where your old Fediverse instance is unrecoverable, you can still sign protocol messages offline and pass 
 them to your new instance in order to issue a MoveIdentity. (Without first issuing a MoveIdentity message, the others
 will fail to validate.)
-
-### BurnDown
-
-> [!NOTE]
-> BurnDown will not be sent through the usual ActivityPub flow.
-
-A `BurnDown` message acts as a soft delete for all public keys and auxiliary data for a given Actor, unless they are
-under the effect of [Fireproof](#fireproof).
-
-Unlike most Fediverse messages, a `BurnDown` is issued by an operator account on the Fediverse instance that hosts the
-Actor in question. Servers are responsible for ensuring only trusted administrators are permitted to issue `BurnDown`
-messages for other users.
-
-This allows a user to issue a self-signed `AddKey` and start over.
-
-#### BurnDown Attributes
-
-* `action` -- **string (Action Type)** (required): Must be set to `BurnDown`.
-* `message` -- **map**
-    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user that is being
-      burned down. Encrypted.
-    * `operator` -- **string (Actor ID)** (required): The instance operator that is issuing the `BurnDown` on behalf
-      of the user. Encrypted.
-    * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
-* `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
-* `otp` -- **string (One-Time Password)** (optional, but required if enabled): A one-time password (see [TOTP](#totp)). 
-* `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
-* `symmetric-keys` -- **map**
-    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
-    * `operator` -- **string (Cryptography key)** (required): The key used to encrypt `message.operator`.
-    * `public-key` -- **string (Cryptography key)** (required): The key used to encrypt `message.public-key`.
-
-#### BurnDown Validation Steps
-
-After validating that the Protocol Message originated from the expected Fediverse Server (via a valid HTTP Message
-Signature from the [request to the appropriate HTTP endpoint](#post-apiburndown), the specific rules for validating an
-`BurnDown` message are as follows:
-
-1.  Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
-    error status.
-2.  If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
-3.  Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals 
-    `message.operator` from the Protocol Message. If they are not identical, return an error status.
-4.  If this actor is [fireproof](#fireproof), abort.
-5.  If the instance has previously enrolled a TOTP secret to this Fediverse server, verify that the `otp` field (which
-    is now required) is a correct [TOTP challenge](#totp).
-6.  Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
-    decryption fails, return an error status.
-7.  If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 8. If there is no
-    public key for this Actor with a matching `key-id`, return an error status.
-8.  If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor (Operator)
-    until one succeeds. If none of them do, return an error status.
-9.  Check that the domain of `operator` and `actor` match. If they do not, abort.
-10. Validate the message signature for the given public key.
-11. If the signature is valid in step 10, process the message.
-
-Note: Processing the message **SHOULD** also require a valid one-time password (OTP). See more [below](#totp).
 
 ### Fireproof
 
@@ -1253,6 +1181,75 @@ Checkpoint messages are purely informational, and only serve to cross-commit Mer
 so that a specific Merkle root can be verified to exist within a point in time with respect to other ledgers' Merkle
 roots.
 
+## Special Protocol Messages
+
+The three special case Protocol Message types are:
+
+* [BurnDown](#burndown) - Allows instance moderators to reset an Actor's keys and auxiliary data
+  (unless they are Fireproof)
+* [Checkpoint](#checkpoint) - Performs no real operation, only serves to cross-commit the latest Merkle Root from one
+  Public Key Directory to another.
+* [RevokeKeyThirdParty](#revokekeythirdparty) - These immediately revoke the public key. Useful for security researchers
+  that identify leaked secret keys. Neither the clients nor instance cannot censor these from the Public Key Directory.
+  To that end, you can submit them directly via HTTP to the Public Key Directory.
+
+### BurnDown
+
+> [!NOTE]
+> BurnDown will not be sent through the usual ActivityPub flow.
+
+A `BurnDown` message acts as a soft delete for all public keys and auxiliary data for a given Actor, unless they are
+under the effect of [Fireproof](#fireproof).
+
+Unlike most Fediverse messages, a `BurnDown` is issued by an operator account on the Fediverse instance that hosts the
+Actor in question. Servers are responsible for ensuring only trusted administrators are permitted to issue `BurnDown`
+messages for other users.
+
+This allows a user to issue a self-signed `AddKey` and start over.
+
+#### BurnDown Attributes
+
+* `action` -- **string (Action Type)** (required): Must be set to `BurnDown`.
+* `message` -- **map**
+    * `actor` -- **string (Actor ID)** (required): The canonical Actor ID for a given ActivityPub user that is being
+      burned down. Encrypted.
+    * `operator` -- **string (Actor ID)** (required): The instance operator that is issuing the `BurnDown` on behalf
+      of the user. Encrypted.
+    * `time` -- **string (Timestamp)** (required): The current [timestamp](#timestamps).
+* `key-id` -- **string (Key Identifier)** (optional): The key that is signing the revocation.
+* `otp` -- **string (One-Time Password)** (optional, but required if enabled): A one-time password (see [TOTP](#totp)).
+* `recent-merkle-root` -- **string (Merkle Root)** (required): [Used for plaintext commitment](#recent-merkle-root-included-in-plaintext-commitments)
+* `symmetric-keys` -- **map**
+    * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
+    * `operator` -- **string (Cryptography key)** (required): The key used to encrypt `message.operator`.
+    * `public-key` -- **string (Cryptography key)** (required): The key used to encrypt `message.public-key`.
+
+#### BurnDown Validation Steps
+
+After validating that the Protocol Message originated from the expected Fediverse Server (via a valid HTTP Message
+Signature from the [request to the appropriate HTTP endpoint](#post-apiburndown), the specific rules for validating an
+`BurnDown` message are as follows:
+
+1.  Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
+    error status.
+2.  If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
+3.  Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals
+    `message.operator` from the Protocol Message. If they are not identical, return an error status.
+4.  If this actor is [fireproof](#fireproof), abort.
+5.  If the instance has previously enrolled a TOTP secret to this Fediverse server, verify that the `otp` field (which
+    is now required) is a correct [TOTP challenge](#totp).
+6.  Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
+    decryption fails, return an error status.
+7.  If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 8. If there is no
+    public key for this Actor with a matching `key-id`, return an error status.
+8.  If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor (Operator)
+    until one succeeds. If none of them do, return an error status.
+9.  Check that the domain of `operator` and `actor` match. If they do not, abort.
+10. Validate the message signature for the given public key.
+11. If the signature is valid in step 10, process the message.
+
+Note: Processing the message **SHOULD** also require a valid one-time password (OTP). See more [below](#totp).
+
 #### Checkpoint Attributes
 
 * `action` -- **string (Action Type)** (required): Must be set to `Checkpoint`.
@@ -1277,6 +1274,41 @@ roots.
    are not identical at the time of insertion, abort.
 7. Validate the message signature for the given public key in `from-public-key`.
 8. Store the Checkpoint message in the underlying ledger.
+
+### RevokeKeyThirdParty
+
+This is a special message type in two ways:
+
+1. It can bypass the Fediverse server entirely, and be submitted directly to the Public Key Directory.
+2. It can be issued by an unrelated third party.
+
+If the user doesn't possess any other public keys, this message bypasses the usual `RevokeKey` restriction where the
+user continue to must have a valid public key. Instead, the Actor will be treated as if they ran a successful
+`BurnDown`, and allows them to start over with an `AddKey`.
+
+Since you need the secret key to generate the revocation token for a given public key, `Fireproof` does not prevent
+third parties from revoking public keys.
+
+This does not cancel out a previous `Fireproof` status. Future `BurnDown` messages may fail.
+
+Because the contents of this revocation token are signed, no `signature` is needed outside the `message` map. Nor is any
+`key-id`.
+
+#### RevokeKeyThirdParty Attributes
+
+* `action` -- **string (Action Type)** (required): Must be set to `RevokeKeyThirdParty`.
+* `revocation-token` --**string** (required): See [Revocation Tokens](#revocation-tokens).
+
+#### RevokeKeyThirdParty Validation Steps
+
+These tokens can be submitted directly to the Public Key Directory server at any time, with or without the involvement
+of any Fediverse instances.
+
+1. Decode the revocation token from base64url.
+2. Split the revocation token into `version`, `REVOCATION_CONSTANT`, `public_key`, and `signature`
+3. Validate signature for  `version || REVOCATION_CONSTANT || public_key`, using `public_key`.
+4. If the signature is valid in step 3, revoke this public key for all Actors that share it.
+   (In practice, this **SHOULD** only be one, but if that's ever not the case, we revoke them all here.)
 
 ## The Federated Public Key Directory
 
