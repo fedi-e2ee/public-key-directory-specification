@@ -4,6 +4,9 @@ This repository contains the specification for a **Public Key Directory** for th
 
 > [!CAUTION]
 > This is still a work in progress.
+> 
+> There may be bugs. Some things may be under-specified, or there could be subtle contradictions.
+> [Please tell us](https://github.com/fedi-e2ee/public-key-directory-specification/issues/new) if we made a mistake.
 
 ## What Is This All About?
 
