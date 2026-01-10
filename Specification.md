@@ -573,6 +573,8 @@ self-signed `AddKey` protocol message from the user's instance.
 
 This is an acceptable risk, as it's congruent to [un-enrolled users](#instance-administrator-enrolls-a-public-key-on-behalf-of-an-un-enrolled-user).
 
+Instances that opt to disable BurnDown are not affected by this risk.
+
 #### Hostile nation state demands their public key be added to an existing actor under a gag order.
 
 **Status**: Mitigated. One variant is prevented by design, the other is addressable.
@@ -760,13 +762,14 @@ discarded.
 #### Sharing Accounts
 
 It is possible that a group of users wants to share one Fediverse account. For example if they are part of an 
-organisation which wants to receive encrypted messages, but share the work between the group. 
-(e.g., a whistleblower hotline).
+organization which wants to receive encrypted messages, but share the work between the group (e.g., a whistleblower
+hotline).
+
 For the following we assume the smallest possible group of Bob and Troy, but all scenarios will affect larger groups, 
 but they require just a single Troy. While this would not affect the groups ability to use the Fediverse account and 
 accessing the Fediverse server, it sabotages all interactions where the key is used (E.g. reading e2ee messages.)
 
-##### Sharing an  account by sharing the secret key
+##### Sharing an account by sharing the secret key
 
 **Status:** Open / out of scope
 
@@ -998,6 +1001,9 @@ mechanism entirely. See [the relevant Security Considerations section](#revocati
 
 This message **MAY** be sent out-of-band to the Public Key Directory without the Fediverse server's involvement.
 
+BurnDown support is optional. Public Key Directory servers will announce its support via [the /api/info](#get-apiinfo)
+endpoint.
+
 `Fireproof` is only intended to prevent `BurnDown` (which the instance hosting the Actor may perform without a valid
 signature from the same Actor). It does not prevent users from having no valid public keys (i.e., if someone issues a
 `RevokeKeyThirdParty` against their only trusted public key.)
@@ -1159,28 +1165,6 @@ validating an `RevokeAuxData` message are as follows:
 10. Validate the message signature for the given public key.
 11. If the signature is valid in step 10, proceed with the revocation of the Auxiliary Data for this Actor.
 
-### Checkpoint
-
-Unlike other Protocol Message types, this one will strictly be performed from one Public Key Directory to another. See
-[the Witness co-signing section](#witness-co-signing) for context.
-
-`Checkpoint` messages contain three critical pieces of context, to be committed into the recipient's Transparency Log
-ledger:
-
-1. The current Merkle root of the sender (`from-root`).
-2. The most recent *validated* Merkle root of the recipient (`to-validated-root`).
-3. The current public key of the sender (`from-public-key`).
-
-By "validated", we mean that the sender has reconstructed the current state of mappings between Actors and public keys,
-as well as Actors to auxiliary data, of the recipient's history.
-
-The third item (`from-public-key`) also provides a mechanism for Public Key Directory instances to announce new public
-keys to their peers, in the event that a rotation is necessary.
-
-Checkpoint messages are purely informational, and only serve to cross-commit Merkle roots onto each other's histories,
-so that a specific Merkle root can be verified to exist within a point in time with respect to other ledgers' Merkle
-roots.
-
 ## Special Protocol Messages
 
 The three special case Protocol Message types are:
@@ -1200,6 +1184,9 @@ The three special case Protocol Message types are:
 
 A `BurnDown` message acts as a soft delete for all public keys and auxiliary data for a given Actor, unless they are
 under the effect of [Fireproof](#fireproof).
+
+BurnDown support is optional. Public Key Directory servers will announce its support via [the /api/info](#get-apiinfo)
+endpoint.
 
 Unlike most Fediverse messages, a `BurnDown` is issued by an operator account on the Fediverse instance that hosts the
 Actor in question. Servers are responsible for ensuring only trusted administrators are permitted to issue `BurnDown`
@@ -1249,6 +1236,29 @@ Signature from the [request to the appropriate HTTP endpoint](#post-apiburndown)
 11. If the signature is valid in step 10, process the message.
 
 Note: Processing the message **SHOULD** also require a valid one-time password (OTP). See more [below](#totp).
+
+### Checkpoint
+
+Unlike other Protocol Message types, this one will strictly be performed from one Public Key Directory to another. See
+[the Witness co-signing section](#witness-co-signing) for context.
+
+`Checkpoint` messages contain three critical pieces of context, to be committed into the recipient's Transparency Log
+ledger:
+
+1. The current Merkle root of the sender (`from-root`).
+2. The most recent *validated* Merkle root of the recipient (`to-validated-root`).
+3. The current public key of the sender (`from-public-key`).
+
+By "validated", we mean that the sender has reconstructed the current state of mappings between Actors and public keys,
+as well as Actors to auxiliary data, of the recipient's history.
+
+The third item (`from-public-key`) also provides a mechanism for Public Key Directory instances to announce new public
+keys to their peers, in the event that a rotation is necessary.
+
+Checkpoint messages are purely informational, and only serve to cross-commit Merkle roots onto each other's histories,
+so that a specific Merkle root can be verified to exist within a point in time with respect to other ledgers' Merkle
+roots.
+
 
 #### Checkpoint Attributes
 
@@ -1956,12 +1966,13 @@ Purpose: Retrieve basic information about this PKD instance.
 
 An HTTP 200 OK response will contain the following response fields:
 
-| Response Field | Type   | Remarks                                                                                          |
-|----------------|--------|--------------------------------------------------------------------------------------------------|
-| `!pkd-context` | string | Domain separation                                                                                |
-| `current-time` | string | [Timestamp](#timestamps)                                                                         |
-| `actor`        | string | The specific actor name `username @ hostname` that accepts Protocol Messages via Direct Message. |
-| `public-key`   | string | Public key used with HTTP Message Signatures for PKD responses                                   |
+| Response Field     | Type    | Remarks                                                                                          |
+|--------------------|---------|--------------------------------------------------------------------------------------------------|
+| `!pkd-context`     | string  | Domain separation                                                                                |
+| `current-time`     | string  | [Timestamp](#timestamps)                                                                         |
+| `actor`            | string  | The specific actor name `username @ hostname` that accepts Protocol Messages via Direct Message. |
+| `burndown-enabled` | boolean | Does this server accept [BurnDown](#burndown) messages?                                          |
+| `public-key`       | string  | Public key used with HTTP Message Signatures for PKD responses                                   |
 
 The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/info`.
 
@@ -1972,6 +1983,7 @@ The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/info`
   "!pkd-context": "fedi-e2ee:v1/api/info",
   "current-time": "1730909831",
   "actor": "pubkeydir@pkd.soatok.com",
+  "burndown-enabled": false,
   "public-key": "ed25519:jbiRHmufss66fF3uAW4g21CEPiKlgXgwUxE3s-V-5Gc",
 }
 ```
@@ -2954,6 +2966,8 @@ If users wish to opt out of being able to ever issue a `BurnDown`, they can issu
 feature off. The only way to reverse this opt-out is to issue an `UndoFireproof` message, signed by one of the user's
 secret keys. This is a deliberate design decision to enable power users to choose security over convenience, without
 being forever locked out of convenience if their personal threat model changes.
+
+Each Public Key Directory instance may choose whether to receive `BurnDown` messages.
 
 #### Position Statement From the Authors
 
