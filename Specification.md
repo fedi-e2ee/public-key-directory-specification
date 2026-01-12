@@ -1347,7 +1347,8 @@ the specific HPKE cipher suite advertised by the Public Key Directory, using the
 Users **MAY** pad the plaintext before encryption with additional whitespace to their desired length, but **SHOULD** 
 keep their plaintext JSON blobs smaller than 16 MiB (16,777,216 bytes).
 
-When encrypting, the AAD parameter of the HPKE encryption **MUST** be set to the value of the `!pkd-context` field.
+When encrypting, the AAD parameter of the HPKE encryption **MUST** be set to the Server Encapsulation Key Identifier.
+See [HPKE Rules for Encrypted Protocol Messages](#hpke-rules-for-encrypted-protocol-messages) for details.
 
 The result of the ciphertext will be encoded with unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5).
 
@@ -1357,14 +1358,14 @@ See [Wire Format for Protocol Messages](#wire-format-for-protocol-messages) for 
 
 If `encrypted-message` was provided by the HTTP request, after verifying the HTTP Signature, decode this value from
 encoded with unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) then attempt to decrypt it.
-Ensure the AAD parameter is set to the value of the `!pkd-context` field. 
+Ensure the AAD parameter is set to the Server Encapsulation Key Identifier.
 
 Decryption failures count as rejections and incur a [rate-limiting penalty](#rate-limiting-bad-requests).
 
 The result of a successful decryption **MUST** be a string that corresponds to a JSON-encoded Protocol Message. This
 JSON blob **MAY** have additional whitespace appended to it.
 
-### HPKE Rules for Encrypted Protocol Messages 
+### HPKE Rules for Encrypted Protocol Messages
 
 #### HPKE Configuration
 
