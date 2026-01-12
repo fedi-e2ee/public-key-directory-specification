@@ -93,6 +93,35 @@ Auxiliary Data records may also be supported, in order for other protocols to bu
 
 The task of resolving aliases to Actor IDs is left to the client software.
 
+### Actor ID Canonicalization
+
+Actor IDs in the Public Key Directory are canonical HTTPS URLs. When comparing Actor IDs, implementations **MUST**
+use byte-for-byte string comparison after canonicalization.
+
+Canonicalization rules:
+
+1. **URL Format**: If the input is already a URL (starts with `http://` or `https://`):
+   * Validate that the URL is well-formed per [RFC 3986](https://datatracker.ietf.org/doc/html/rfc3986)
+   * Normalize `http://` to `https://` (HTTPS is **REQUIRED** for all Actor IDs)
+   * Preserve the URL path exactly as provided (case-sensitive)
+   * Do not add or remove trailing slashes
+2. **Handle Format**: If the input is in `user@domain` or `@user@domain` format:
+   * Strip any leading `@` character
+   * Use [WebFinger (RFC 7033)](https://datatracker.ietf.org/doc/html/rfc7033) to resolve the canonical Actor ID URL
+   * The canonical URL is the `href` from the WebFinger response where `rel` equals `self` and `type` equals
+     `application/activity+json`
+3. **Internationalized Domain Names**: Implementations **SHOULD** convert internationalized domain names to ASCII
+   using [IDNA (RFC 5891)](https://datatracker.ietf.org/doc/html/rfc5891) before performing WebFinger lookups.
+
+Implementations **MUST NOT** perform additional URL normalization such as:
+
+* Converting path segments to lowercase
+* Removing default ports (`:443` for HTTPS)
+* Percent-encoding normalization beyond what the origin server provides
+
+This approach follows [ActivityPub's guidance](https://www.w3.org/TR/activitypub/) that Actor IDs are opaque
+identifiers controlled by their origin server.
+
 ### Message Blocks
 
 This project is built atop an append-only transparency log. Each Protocol Message will be processed and appended to the
@@ -109,6 +138,17 @@ Directory server until the encryption key's erasure is legally requested.
 
 Each Protocol Message **MUST** be unique. Public Key Directory servers **MUST** reject any replayed Protocol Message,
 even if it's otherwise valid.
+
+Message uniqueness is enforced through the combination of:
+
+1. **Signature uniqueness**: The `signature` field of each Protocol Message is derived from the message contents,
+   including the `recent-merkle-root` and `message.time` fields. Since the Merkle root changes after each accepted
+   message, and timestamps must be recent, identical signatures indicate replay attempts.
+2. **Merkle root freshness**: The `recent-merkle-root` field **MUST** reference a Merkle root that was valid within
+   a recent time window (see [Recent Merkle Root](#recent-merkle-root-included-in-plaintext-commitments)). Messages
+   referencing stale Merkle roots are rejected.
+3. **Signature deduplication**: Implementations **SHOULD** maintain a short-lived cache of recently accepted message
+   signatures to detect and reject duplicate submissions within the freshness window.
 
 Implementations **SHOULD** provide a distinct error message for when a unique message has already been accepted and
 processed by the system in a very recent period of time. This **MUST** be distinct from an error condition. 
@@ -444,27 +484,32 @@ defined in alphabetical order within each classification.
 
 This section seeks to outline specific risks and whether they are prevented, mitigated, addressable, or open.
 
-| Risk                                                                                                                                                                                                               | Status                  |
-|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
-| [Attackers seek to change history.](#attackers-seek-to-change-history)                                                                                                                                             | **Prevented by design** |                                                                        
-| [Attackers seek to selectively censor historical records.](#attackers-seek-to-selectively-censor-historical-records)                                                                                               | Addressable             |
-| [Attackers seek to replace public key mappings without altering the ledger.](#attackers-seek-to-replace-public-key-mappings-without-altering-the-ledger)                                                           | **Prevented by design** |
-| [Attackers seek to leverage plaintext commitment to recover encrypted records whose keys were wiped.](#attackers-seek-to-leverage-plaintext-commitment-to-recover-encrypted-records-whose-keys-were-wiped)         | **Prevented by design** |
-| [Instance administrator enrolls a public key on behalf of an un-enrolled user.](#instance-administrator-enrolls-a-public-key-on-behalf-of-an-un-enrolled-user)                                                     | _Open_                  |
-| [Instance administrator attempts to enroll a new public key for a previously enrolled user.](#instance-administrator-attempts-to-enroll-a-new-public-key-for-a-previously-enrolled-user)                           | **Prevented by design** |
-| [Instance administrator attempts to reset the public keys for a previously enrolled user.](#instance-administrator-attempts-to-reset-the-public-keys-for-a-previously-enrolled-user)                               | Addressable             |
-| [Race condition between successful BurnDown and subsequent AddKey.](#race-condition-between-successful-burndown-and-subsequent-addkey)                                                                             | _Open_                  |
-| [Hostile nation state demands their public key be added to an existing actor under a gag order.](#hostile-nation-state-demands-their-public-key-be-added-to-an-existing-actor-under-a-gag-order)                   | Mitigated               |
-| [Hostile nation state seeks to abuse Right To Be Forgotten mechanisms to cover up an unlawful intrusion.](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion) | _Open_ / Addressable    |
-| [Instance administrator loses all their signing keys.](#instance-administrator-loses-all-their-signing-keys)                                                                                                       | Mitigated               |
-| [Attacker sends spoofed messages on behalf of another server.](#attacker-sends-spoofed-messages-on-behalf-of-another-server)                                                                                       | **Prevented by design** |
-| [Attacker sends spoofed messages from a compromised Fediverse server.](#attacker-sends-spoofed-messages-from-a-compromised-fediverse-server)                                                                       | Addressable             |
-| [Cosmic ray causes a bit-flip on stored data or the result of a computation.](#cosmic-ray-causes-a-bit-flip-on-stored-data-or-the-result-of-a-computation)                                                         | _Open_                  |
-| [Malicious instance administrator attempts to censor Fireproof messages to retain control.](#malicious-instance-administrator-attempts-to-censor-fireproof-messages-to-retain-control)                             | Mitigated               |
-| [Malicious instance administrator also controls the Public Key Directory.](#malicious-instance-administrator-also-controls-the-public-key-directory)                                                               | _Open_                  |
-| [Attacker uses a decoy Public Key Directory that publishes a dishonest history.](#attacker-uses-a-decoy-public-key-directory-that-publishes-a-dishonest-history)                                                   | _Open_                  |
-| [Attacker submits contraband as auxiliary data.](#attacker-submits-contraband-as-auxiliary-data)                                                                                                                   | Addressable             |
-| [Actor Confusion Between HTTP Message Signatures and Protocol Messages](#actor-confusion-between-http-message-signatures-and-protocol-messages)                                                                    | **Prevented by design** | 
+| Risk                                                                                                                                                                                                                | Status                  |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| [Attackers seek to change history.](#attackers-seek-to-change-history)                                                                                                                                              | **Prevented by design** |                                                                        
+| [Attackers seek to selectively censor historical records.](#attackers-seek-to-selectively-censor-historical-records)                                                                                                | Addressable             |
+| [Attackers seek to replace public key mappings without altering the ledger.](#attackers-seek-to-replace-public-key-mappings-without-altering-the-ledger)                                                            | **Prevented by design** |
+| [Attackers seek to leverage plaintext commitment to recover encrypted records whose keys were wiped.](#attackers-seek-to-leverage-plaintext-commitment-to-recover-encrypted-records-whose-keys-were-wiped)          | **Prevented by design** |
+| [Instance administrator enrolls a public key on behalf of an un-enrolled user.](#instance-administrator-enrolls-a-public-key-on-behalf-of-an-un-enrolled-user)                                                      | _Open_                  |
+| [Instance administrator attempts to enroll a new public key for a previously enrolled user.](#instance-administrator-attempts-to-enroll-a-new-public-key-for-a-previously-enrolled-user)                            | **Prevented by design** |
+| [Instance administrator attempts to reset the public keys for a previously enrolled user.](#instance-administrator-attempts-to-reset-the-public-keys-for-a-previously-enrolled-user)                                | Addressable             |
+| [Race condition between successful BurnDown and subsequent AddKey.](#race-condition-between-successful-burndown-and-subsequent-addkey)                                                                              | _Open_                  |
+| [Hostile nation state demands their public key be added to an existing actor under a gag order.](#hostile-nation-state-demands-their-public-key-be-added-to-an-existing-actor-under-a-gag-order)                    | Mitigated               |
+| [Hostile nation state seeks to abuse Right To Be Forgotten mechanisms to cover up an unlawful intrusion.](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion)  | _Open_ / Addressable    |
+| [Instance administrator loses all their signing keys.](#instance-administrator-loses-all-their-signing-keys)                                                                                                        | Mitigated               |
+| [Attacker sends spoofed messages on behalf of another server.](#attacker-sends-spoofed-messages-on-behalf-of-another-server)                                                                                        | **Prevented by design** |
+| [Attacker sends spoofed messages from a compromised Fediverse server.](#attacker-sends-spoofed-messages-from-a-compromised-fediverse-server)                                                                        | Addressable             |
+| [Cosmic ray causes a bit-flip on stored data or the result of a computation.](#cosmic-ray-causes-a-bit-flip-on-stored-data-or-the-result-of-a-computation)                                                          | _Open_                  |
+| [Malicious instance administrator attempts to censor Fireproof messages to retain control.](#malicious-instance-administrator-attempts-to-censor-fireproof-messages-to-retain-control)                              | Mitigated               |
+| [Malicious instance administrator also controls the Public Key Directory.](#malicious-instance-administrator-also-controls-the-public-key-directory)                                                                | _Open_                  |
+| [Attacker uses a decoy Public Key Directory that publishes a dishonest history.](#attacker-uses-a-decoy-public-key-directory-that-publishes-a-dishonest-history)                                                    | _Open_                  |
+| [Attacker submits contraband as auxiliary data.](#attacker-submits-contraband-as-auxiliary-data)                                                                                                                    | Addressable             |
+| [Actor Confusion Between HTTP Message Signatures and Protocol Messages](#actor-confusion-between-http-message-signatures-and-protocol-messages)                                                                     | **Prevented by design** |
+| [Timing Side-Channel Attacks](#timing-side-channel-attacks)                                                                                                                                                         | Addressable             |
+| [Parallel Enrollment Race Conditions](#parallel-enrollment-race-conditions)                                                                                                                                         | Mitigated               |
+| [Witness Collusion Attacks](#witness-collusion-attacks)                                                                                                                                                             | Addressable             |
+| [DNS Rebinding Attacks](#dns-rebinding-attacks)                                                                                                                                                                     | Addressable             |
+| [Cross-PKD Consistency Verification Attacks](#cross-pkd-consistency-verification-attacks)                                                                                                                           | Addressable             |
 
 Each status is defined as follows:
 
@@ -785,6 +830,76 @@ the identity.
 
 If Bob and Troy share an account by adding two keys for one identity in the PKD and Bob and Troy have each one of the keys, it is possible for Troy to send a `RevokeKey` message for Bobs key which is signed by Troys key.
 Further can Troy send a `Fireproof` message, to make it impossible for Bob to regain the identity.
+
+#### Timing Side-Channel Attacks
+
+**Status**: Addressable.
+
+Mallory attempts to infer information about secret values (e.g., TOTP codes, revocation tokens) by measuring the time
+taken by cryptographic operations or comparisons.
+
+To address this risk, implementations **MUST** use constant-time comparison functions (e.g., `hash_equals()` in PHP,
+`crypto.timingSafeEqual()` in Node.js, `hmac.compare_digest()` in Python) for all security-sensitive comparisons.
+Cryptographic libraries used by PKD implementations **SHOULD** be verified to provide constant-time operations for
+signature verification and decryption.
+
+#### Parallel Enrollment Race Conditions
+
+**Status**: Mitigated.
+
+Mallory attempts to race two `AddKey` messages for the same un-enrolled Actor, hoping both will be accepted as
+self-signed initial enrollments.
+
+This is mitigated by the append-only nature of the Merkle tree and sequential message processing. Once the first
+`AddKey` is committed to the tree, the Actor is no longer un-enrolled, and subsequent self-signed `AddKey` messages
+**MUST** be rejected. Implementations **MUST** ensure atomic processing of Protocol Messages to prevent TOCTOU
+(time-of-check-time-of-use) vulnerabilities.
+
+#### Witness Collusion Attacks
+
+**Status**: Addressable.
+
+Multiple witnesses collude with a malicious PKD operator to present inconsistent views of the Merkle tree to different
+users, enabling targeted key substitution attacks that evade detection.
+
+This risk is addressable through:
+
+* Requiring a minimum number of independent witnesses (see [Witness Co-Signing](#witness-co-signing))
+* Ensuring witnesses are operated by independent organizations across different jurisdictions
+* Client-side configuration of witness quorum thresholds
+* Periodic third-party audits of witness independence
+
+The security threshold depends on the number of colluding witnesses. If `k` of `n` witnesses collude, users requiring
+fewer than `n - k + 1` witnesses for verification remain protected.
+
+#### DNS Rebinding Attacks
+
+**Status**: Addressable.
+
+Mallory hosts a malicious website that exploits DNS rebinding to make requests to a PKD server from within a victim's
+browser, potentially bypassing same-origin protections or exploiting internal network access.
+
+To address this risk:
+
+* PKD servers **MUST** validate the `Host` header against an allow-list of expected hostnames
+* PKD servers **SHOULD** reject requests with IP addresses in the `Host` header
+* PKD servers **MAY** implement additional protections such as requiring authentication for sensitive operations
+
+Additionally, valid HTTP responses from the PKD servers are always signed with an HTTP Message Signature.
+
+#### Cross-PKD Consistency Verification Attacks
+
+**Status**: Addressable.
+
+When users rely on multiple PKDs (either through federation or replicas), Mallory attempts to exploit inconsistencies
+between PKD views to present different public keys to different parties.
+
+This is addressable through the [Checkpoint](#checkpoint) mechanism, which cross-commits Merkle roots between PKDs.
+Clients that query multiple PKDs **SHOULD** verify that Checkpoint messages exist linking the PKDs' histories and that
+the Merkle roots are consistent with recent Checkpoints.
+
+For high-security use cases, clients **MAY** require that all queried PKDs have mutually consistent Checkpoint histories
+before trusting any public key mappings.
 
 ## Protocol Messages
 
@@ -1566,6 +1681,55 @@ Every HTTP response will include a signature over the HTTP response body, which 
 header, adhering to [RFC 9421 with EdDSA over edwards25519](https://www.rfc-editor.org/rfc/rfc9421.html#name-eddsa-using-curve-edwards25).
 Public Key Directory software **MUST NOT** support the HMAC, RSA, ECDSA, or JWS signature algorithms from RFC 9421.
 Only EdDSA and newer algorithms (e.g., post-quantum signatures in the future) may be used.
+
+#### Error Responses
+
+When an API request fails, the server **MUST** return an appropriate HTTP status code and a JSON response body with the
+following structure:
+
+| Response Field | Type   | Remarks                                         |
+|----------------|--------|-------------------------------------------------|
+| `!pkd-context` | string | Domain separation: `fedi-e2ee:v1/api/error`     |
+| `error`        | string | A machine-readable error code (see table below) |
+| `message`      | string | A human-readable error description              |
+
+Common error codes:
+
+| Error Code             | HTTP Status | Description                                               |
+|------------------------|-------------|-----------------------------------------------------------|
+| `not_found`            | 404         | The requested resource does not exist                     |
+| `invalid_request`      | 400         | The request was malformed or missing required parameters  |
+| `invalid_signature`    | 400         | The Protocol Message signature verification failed        |
+| `rate_limited`         | 429         | Too many requests; retry after the specified time         |
+| `merkle_root_stale`    | 400         | The `recent-merkle-root` is too old                       |
+| `duplicate_message`    | 409         | This exact Protocol Message was already processed         |
+| `unauthorized`         | 401         | HTTP Message Signature verification failed                |
+| `fireproof`            | 403         | Operation blocked because the Actor is Fireproof          |
+| `internal_error`       | 500         | An unexpected server error occurred                       |
+
+**Example Error Response**:
+
+```json5
+{
+  "!pkd-context": "fedi-e2ee:v1/api/error",
+  "error": "not_found",
+  "message": "No actor found with the specified ID"
+}
+```
+
+#### Rate Limiting Headers
+
+When rate limiting is in effect (see [Rate-Limiting Bad Requests](#rate-limiting-bad-requests)), responses **SHOULD**
+include the following HTTP headers:
+
+| Header              | Description                                                                                                             |
+|---------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `Retry-After`       | Seconds until the client may retry (per [RFC 7231 §7.1.3](https://datatracker.ietf.org/doc/html/rfc7231#section-7.1.3)) |
+| `X-RateLimit-Limit` | Maximum requests allowed in the current window                                                                          |
+| `X-RateLimit-Reset` | Unix timestamp when the rate limit window resets                                                                        |
+
+When a request is rejected due to rate limiting, the server **MUST** return HTTP status 429 with the `Retry-After`
+header indicating when the client may retry.
 
 #### GET api/actor/:actor_id
 
@@ -2414,6 +2578,53 @@ hashed is the same subset of the message that was previously committed to the Tr
 
 Note that `key-id` and `symmetric-keys` are deliberately excluded from the hashed message.
 
+#### Inclusion Proof Verification
+
+When the JSON REST API returns an `inclusion-proof` field, clients **SHOULD** verify the proof to ensure the Protocol
+Message is correctly included in the Merkle tree. The verification algorithm is as follows:
+
+**Inputs**:
+
+* `leaf_hash`: SHA-256 hash of the Protocol Message (as described above)
+* `proof`: Array of intermediate node hashes (base64url-encoded)
+* `leaf_index`: The index of the leaf in the tree (0-indexed)
+* `tree_size`: Total number of leaves in the tree at the time of the Merkle root
+* `expected_root`: The Merkle root to verify against
+
+**Algorithm** (per [RFC 9162 §2.1.3](https://datatracker.ietf.org/doc/html/rfc9162#section-2.1.3)):
+
+```python
+def verify_inclusion_proof(leaf_hash, proof, leaf_index, tree_size, expected_root):
+    if leaf_index >= tree_size:
+        return False
+
+    node = leaf_hash
+    idx = leaf_index
+    size = tree_size
+
+    for sibling in proof:
+        if size == 1:
+            return False  # Proof too long
+
+        if idx % 2 == 1 or idx + 1 == size:
+            # Node is right child or only child at this level
+            node = sha256(0x01 || sibling || node)
+        else:
+            # Node is left child
+            node = sha256(0x01 || node || sibling)
+
+        idx = idx // 2
+        size = (size + 1) // 2
+
+    return node == expected_root and size == 1
+```
+
+The `0x01` prefix byte provides domain separation between leaf hashes and internal node hashes, preventing second
+preimage attacks on the tree structure.
+
+Clients that do not verify inclusion proofs lose the transparency guarantees of the system and **SHOULD** display a
+warning to users.
+
 #### Witness Co-Signing
 
 To ensure the integrity and consistency of the Merkle tree across different observers, the system supports witness 
@@ -2422,8 +2633,17 @@ root. This allows clients to verify that the tree they are seeing is the same on
 community.
 
 It's not sufficient for Public Key Directory entries to merely validate that a record exists in a Merkle tree. At least
-one witness **MUST** also validate that the current state is deterministically reproducible from the history of the 
+one witness **MUST** also validate that the current state is deterministically reproducible from the history of the
 transparency log.
+
+**Minimum Witness Requirements**:
+
+* For basic operation, at least **one** independent witness **MUST** validate the transparency log.
+* For production deployments, **three or more** independent witnesses are **RECOMMENDED** to provide meaningful
+  protection against witness collusion (see [Witness Collusion](#witness-collusion-attacks)).
+* Witnesses **SHOULD** be operated by independent organizations with no shared operational control.
+* Clients **MAY** configure a minimum witness threshold for their own risk tolerance. A threshold of 2-of-N (where N ≥ 3)
+  provides reasonable protection while tolerating witness unavailability.
 
 To provide a mechanism for this requirement, PKDs are encouraged to send [`Checkpoint`](#checkpoint) Protocol Messages
 to their peers.
