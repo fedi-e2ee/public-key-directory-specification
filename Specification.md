@@ -367,7 +367,7 @@ JavaScript).
 
 Implementations **MUST NOT** truncate UNIX timestamps to 32 bits.
 
-## Gloasary
+## Glossary
 
 * **Actor ID**: The canonical HTTPS URL for a given ActivityPub user. When provided with `user@domain`, the Public Key
   Directory software (both client and server) **MUST** use WebFinger to obtain the correct URL for an Actor.
@@ -885,13 +885,13 @@ validating an `AddKey` message are as follows:
 1. Using `symmetric-keys.actor`, decrypt `message.actor` to obtain the Actor ID. If the decryption fails, return an
    error status.
 2. Using `symmetric-keys.public-key`, decrypt `message.public-key`. If the decryption fails, return an error status.
-3. If there are no other public keys for the provided Actor, use the given public key (it is self-signed) and go to 
-   step 6. If the signature is invalid, return an error status.
+3. If there are no other public keys for the provided Actor, use the given public key (it is self-signed) and go to
+   step 7. If the signature is invalid, return an error status.
 4. Otherwise, if the `key-id` is provided, select this public key for the given Actor. If there is no public key for
    this Actor with a matching `key-id`, return an error status.
-5. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor` 
+5. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
    from the Protocol Message. If they are not identical, return an error status.
-6. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one 
+6. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
 7. Validate the message signature for the given public key.
 8. If the signature is valid in step 7, process the message.
@@ -931,9 +931,9 @@ validating an `RevokeKey` message are as follows:
 3. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
 4. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
    from the Protocol Message. If they are not identical, return an error status.
-5. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public 
+5. If the `key-id` is provided, select this public key for the given Actor and proceed to step 7. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-6. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
+6. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
 7. Validate the message signature for the given public key.
 8. If the signature is valid in step 7, process the message.
@@ -974,9 +974,9 @@ validating an `MoveIdentity` message are as follows:
    abort.
 4. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals 
    `message.new-actor` from the Protocol Message. If they are not identical, return an error status.
-5. If the `key-id` is provided, select this public key for the Old Actor and proceed to step 6. If there is no public
+5. If the `key-id` is provided, select this public key for the Old Actor and proceed to step 7. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-6. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
+6. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
 7. Validate the message signature for the given public key.
 8. If the signature is valid in step 7, process the message.
@@ -1031,9 +1031,9 @@ validating an `Fireproof` message are as follows:
 2. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
    from the Protocol Message. If they are not identical, return an error status.
 3. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
-4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public
+4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 6. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-5. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
+5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
 6. Validate the message signature for the given public key.
 7. If the signature is valid in step 6, process the message.
@@ -1069,9 +1069,9 @@ validating an `UndoFireproof` message are as follows:
 2. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
 3. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
    from the Protocol Message. If they are not identical, return an error status.
-4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 5. If there is no public
+4. If the `key-id` is provided, select this public key for the given Actor and proceed to step 6. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-5. If a `key-id` was not provided, perform step 5 for each valid and trusted public key for this Actor until one
+5. If a `key-id` was not provided, perform step 6 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
 6. Validate the message signature for the given public key.
 7. If the signature is valid in step 6, process the message.
@@ -1112,9 +1112,9 @@ validating an `AddAuxData` message are as follows:
 4. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
    from the Protocol Message. If they are not identical, return an error status.
 5. If there is no prior Protocol Message with a plaintext Actor ID that matches the decrypted `message.actor`, abort.
-6. If the `key-id` is provided, select this public key for the given Actor and proceed to step 7. If there is no public
+6. If the `key-id` is provided, select this public key for the given Actor and proceed to step 8. If there is no public
    key for this Actor with a matching `key-id`, return an error status.
-7. If a `key-id` was not provided, perform step 7 for each valid and trusted public key for this Actor until one
+7. If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor until one
    succeeds. If none of them do, return an error status.
 8. Validate the message signature for the given public key.
 9. If the signature is valid in step 8, validate the contents of `message.aux-data` in accordance to the rules defined
@@ -1158,9 +1158,9 @@ validating an `RevokeAuxData` message are as follows:
 5.  If `message.aux-id` is provided, proceed to step 7.
 6.  Otherwise, if `message.aux-data` is provided, recalculate the expected `aux-id`, then proceed to step 7.
 7.  If there is no existing Auxiliary Data with a matching `aux-id` (whether provided or calculated), abort.
-8.  If the `key-id` is provided, select this public key for the given Actor and proceed to step 8. If there is no public
+8.  If the `key-id` is provided, select this public key for the given Actor and proceed to step 10. If there is no public
     key for this Actor with a matching `key-id`, return an error status.
-9.  If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor until one
+9.  If a `key-id` was not provided, perform step 10 for each valid and trusted public key for this Actor until one
     succeeds. If none of them do, return an error status.
 10. Validate the message signature for the given public key.
 11. If the signature is valid in step 10, proceed with the revocation of the Auxiliary Data for this Actor.
@@ -1227,9 +1227,9 @@ Signature from the [request to the appropriate HTTP endpoint](#post-apiburndown)
     is now required) is a correct [TOTP challenge](#totp).
 6.  Using `symmetric-keys.operator`, decrypt `message.operator` to obtain the Actor ID for the Operator. If the
     decryption fails, return an error status.
-7.  If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 8. If there is no
+7.  If the `key-id` is provided, select this public key for the Actor (Operator) and proceed to step 10. If there is no
     public key for this Actor with a matching `key-id`, return an error status.
-8.  If a `key-id` was not provided, perform step 8 for each valid and trusted public key for this Actor (Operator)
+8.  If a `key-id` was not provided, perform step 10 for each valid and trusted public key for this Actor (Operator)
     until one succeeds. If none of them do, return an error status.
 9.  Check that the domain of `operator` and `actor` match. If they do not, abort.
 10. Validate the message signature for the given public key.
@@ -2015,7 +2015,7 @@ Each entry in the `replicas` array will contain *at least* each of the following
 {
   "!pkd-context": "fedi-e2ee:v1/api/replicas",
   "time": "1731080855",
-  "extensions": [
+  "replicas": [
     {
       "id": "7k18At1PNkUmWokYbkpS5t29ZPWQASvg2dWXaFiOnac",
       "ref": "https://example.org"
@@ -2087,7 +2087,7 @@ An HTTP Message Signature **MUST** be included on the request.
   "!pkd-context": "fedi-e2ee:v1-plaintext-message",
   /* actor here refers to the one issuing the BurnDown, not the target: */
   "actor": "https://example/user/bob",
-  "message": "{\"!pkd-context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"BurNDown\",/*...*/}",
+  "message": "{\"!pkd-context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"BurnDown\",/*...*/}",
 }
 ```
 
