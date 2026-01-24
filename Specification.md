@@ -4,7 +4,7 @@ This document defines the Fediverse End-to-End Encryption Public Key Directory (
 ActivityPub-enabled directory server software, a protocol for communicating with the directory server, and integration
 with a transparent, append-only data structure (e.g., based on Merkle trees).
 
-* Current version: v0.3.0
+* Current version: v0.3.1
 * Authors: [Soatok Dreamseeker](https://github.com/soatok)
 
 ## Introduction
@@ -213,6 +213,11 @@ security vulnerabilities in our specification.
 
 In order to canonicalize multi-part inputs to a hash function or signature algorithm, we will use the strategy from
 [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition).
+
+> [!IMPORTANT]
+> **Security Property**: PAE encoding is injective—different inputs produce different outputs. This prevents signature
+> confusion attacks with multipart messages where the attacker slides bits from one part to another and retains a valid
+> signature for two distinct messages.
 
 To implement PreAuthEncode(), you first need a LE64() function that accepts an unsigned 64-bit integer and returns an
 octet sequence in little endian byte order. An example JavaScript function is included below:
@@ -442,6 +447,7 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 11. AES in Counter Mode can be used to encrypt up to 2^{36} successive bytes under the same (key, initial counter),
     and the resulting ciphertext will be indistinguishable an encryption of NUL (`0x00`) bytes.
 12. Merkle trees based on a secure hash function (assumption 4) provide a secure verifiable data structure.
+13. HMAC and HKDF can be used to provide [key commitment for AEADs](https://eprint.iacr.org/2020/1153).
 
 ### Assets
 
@@ -475,6 +481,7 @@ defined in alphabetical order within each classification.
    * **Mallory** wishes to replace one of the honest users' public keys with her own.
    * **Richard** is an instance administrator that wishes to eavesdrop on his users' private communications.
    * **Troy** is an Internet troll that wants to wreak havoc for the lulz.
+   * **Xander** has exploited a vulnerability in a Fediverse instance server and wants to compromise private messages.
    * **Yvonne** has privileged access to a Public Key Directory server.
 3. **Other Participants** do not fall into either of the previous attackers.
    * **Eugene** used to be an honest user, but now seeks to have the system forget he ever existed. When Eugene is
@@ -484,32 +491,33 @@ defined in alphabetical order within each classification.
 
 This section seeks to outline specific risks and whether they are prevented, mitigated, addressable, or open.
 
-| Risk                                                                                                                                                                                                                | Status                  |
-|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
-| [Attackers seek to change history.](#attackers-seek-to-change-history)                                                                                                                                              | **Prevented by design** |                                                                        
-| [Attackers seek to selectively censor historical records.](#attackers-seek-to-selectively-censor-historical-records)                                                                                                | Addressable             |
-| [Attackers seek to replace public key mappings without altering the ledger.](#attackers-seek-to-replace-public-key-mappings-without-altering-the-ledger)                                                            | **Prevented by design** |
-| [Attackers seek to leverage plaintext commitment to recover encrypted records whose keys were wiped.](#attackers-seek-to-leverage-plaintext-commitment-to-recover-encrypted-records-whose-keys-were-wiped)          | **Prevented by design** |
-| [Instance administrator enrolls a public key on behalf of an un-enrolled user.](#instance-administrator-enrolls-a-public-key-on-behalf-of-an-un-enrolled-user)                                                      | _Open_                  |
-| [Instance administrator attempts to enroll a new public key for a previously enrolled user.](#instance-administrator-attempts-to-enroll-a-new-public-key-for-a-previously-enrolled-user)                            | **Prevented by design** |
-| [Instance administrator attempts to reset the public keys for a previously enrolled user.](#instance-administrator-attempts-to-reset-the-public-keys-for-a-previously-enrolled-user)                                | Addressable             |
-| [Race condition between successful BurnDown and subsequent AddKey.](#race-condition-between-successful-burndown-and-subsequent-addkey)                                                                              | _Open_                  |
-| [Hostile nation state demands their public key be added to an existing actor under a gag order.](#hostile-nation-state-demands-their-public-key-be-added-to-an-existing-actor-under-a-gag-order)                    | Mitigated               |
-| [Hostile nation state seeks to abuse Right To Be Forgotten mechanisms to cover up an unlawful intrusion.](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion)  | _Open_ / Addressable    |
-| [Instance administrator loses all their signing keys.](#instance-administrator-loses-all-their-signing-keys)                                                                                                        | Mitigated               |
-| [Attacker sends spoofed messages on behalf of another server.](#attacker-sends-spoofed-messages-on-behalf-of-another-server)                                                                                        | **Prevented by design** |
-| [Attacker sends spoofed messages from a compromised Fediverse server.](#attacker-sends-spoofed-messages-from-a-compromised-fediverse-server)                                                                        | Addressable             |
-| [Cosmic ray causes a bit-flip on stored data or the result of a computation.](#cosmic-ray-causes-a-bit-flip-on-stored-data-or-the-result-of-a-computation)                                                          | _Open_                  |
-| [Malicious instance administrator attempts to censor Fireproof messages to retain control.](#malicious-instance-administrator-attempts-to-censor-fireproof-messages-to-retain-control)                              | Mitigated               |
-| [Malicious instance administrator also controls the Public Key Directory.](#malicious-instance-administrator-also-controls-the-public-key-directory)                                                                | _Open_                  |
-| [Attacker uses a decoy Public Key Directory that publishes a dishonest history.](#attacker-uses-a-decoy-public-key-directory-that-publishes-a-dishonest-history)                                                    | _Open_                  |
-| [Attacker submits contraband as auxiliary data.](#attacker-submits-contraband-as-auxiliary-data)                                                                                                                    | Addressable             |
-| [Actor Confusion Between HTTP Message Signatures and Protocol Messages](#actor-confusion-between-http-message-signatures-and-protocol-messages)                                                                     | **Prevented by design** |
-| [Timing Side-Channel Attacks](#timing-side-channel-attacks)                                                                                                                                                         | Addressable             |
-| [Parallel Enrollment Race Conditions](#parallel-enrollment-race-conditions)                                                                                                                                         | Mitigated               |
-| [Witness Collusion Attacks](#witness-collusion-attacks)                                                                                                                                                             | Addressable             |
-| [DNS Rebinding Attacks](#dns-rebinding-attacks)                                                                                                                                                                     | Addressable             |
-| [Cross-PKD Consistency Verification Attacks](#cross-pkd-consistency-verification-attacks)                                                                                                                           | Addressable             |
+| Risk                                                                                                                                                                                                               | Status                  |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| [Attackers seek to change history.](#attackers-seek-to-change-history)                                                                                                                                             | **Prevented by design** |                                                                        
+| [Attackers seek to selectively censor historical records.](#attackers-seek-to-selectively-censor-historical-records)                                                                                               | Addressable             |
+| [Attackers seek to replace public key mappings without altering the ledger.](#attackers-seek-to-replace-public-key-mappings-without-altering-the-ledger)                                                           | **Prevented by design** |
+| [Attackers seek to leverage plaintext commitment to recover encrypted records whose keys were wiped.](#attackers-seek-to-leverage-plaintext-commitment-to-recover-encrypted-records-whose-keys-were-wiped)         | **Prevented by design** |
+| [Instance administrator enrolls a public key on behalf of an un-enrolled user.](#instance-administrator-enrolls-a-public-key-on-behalf-of-an-un-enrolled-user)                                                     | _Open_                  |
+| [Instance administrator attempts to enroll a new public key for a previously enrolled user.](#instance-administrator-attempts-to-enroll-a-new-public-key-for-a-previously-enrolled-user)                           | **Prevented by design** |
+| [Instance administrator attempts to reset the public keys for a previously enrolled user.](#instance-administrator-attempts-to-reset-the-public-keys-for-a-previously-enrolled-user)                               | Addressable             |
+| [Race condition between successful BurnDown and subsequent AddKey.](#race-condition-between-successful-burndown-and-subsequent-addkey)                                                                             | _Open_                  |
+| [Hostile nation state demands their public key be added to an existing actor under a gag order.](#hostile-nation-state-demands-their-public-key-be-added-to-an-existing-actor-under-a-gag-order)                   | Mitigated               |
+| [Hostile nation state seeks to abuse Right To Be Forgotten mechanisms to cover up an unlawful intrusion.](#hostile-nation-state-seeks-to-abuse-right-to-be-forgotten-mechanisms-to-cover-up-an-unlawful-intrusion) | _Open_ / Addressable    |
+| [Instance administrator loses all their signing keys.](#instance-administrator-loses-all-their-signing-keys)                                                                                                       | Mitigated               |
+| [Attacker sends spoofed messages on behalf of another server.](#attacker-sends-spoofed-messages-on-behalf-of-another-server)                                                                                       | **Prevented by design** |
+| [Attacker sends spoofed messages from a compromised Fediverse server.](#attacker-sends-spoofed-messages-from-a-compromised-fediverse-server)                                                                       | Addressable             |
+| [Cosmic ray causes a bit-flip on stored data or the result of a computation.](#cosmic-ray-causes-a-bit-flip-on-stored-data-or-the-result-of-a-computation)                                                         | _Open_                  |
+| [Malicious instance administrator attempts to censor Fireproof messages to retain control.](#malicious-instance-administrator-attempts-to-censor-fireproof-messages-to-retain-control)                             | Mitigated               |
+| [Malicious instance administrator also controls the Public Key Directory.](#malicious-instance-administrator-also-controls-the-public-key-directory)                                                               | _Open_                  |
+| [Attacker uses a decoy Public Key Directory that publishes a dishonest history.](#attacker-uses-a-decoy-public-key-directory-that-publishes-a-dishonest-history)                                                   | _Open_                  |
+| [Attacker submits contraband as auxiliary data.](#attacker-submits-contraband-as-auxiliary-data)                                                                                                                   | Addressable             |
+| [Actor Confusion Between HTTP Message Signatures and Protocol Messages](#actor-confusion-between-http-message-signatures-and-protocol-messages)                                                                    | **Prevented by design** |
+| [Timing Side-Channel Attacks](#timing-side-channel-attacks)                                                                                                                                                        | Addressable             |
+| [Parallel Enrollment Race Conditions](#parallel-enrollment-race-conditions)                                                                                                                                        | Mitigated               |
+| [Witness Collusion Attacks](#witness-collusion-attacks)                                                                                                                                                            | Addressable             |
+| [DNS Rebinding Attacks](#dns-rebinding-attacks)                                                                                                                                                                    | Addressable             |
+| [Cross-PKD Consistency Verification Attacks](#cross-pkd-consistency-verification-attacks)                                                                                                                          | Addressable             |
+| [Attacks against the One-Time Password on BurnDown](#attacks-against-the-one-time-password-on-burndown)                                                                                                            | Mitigated               |
 
 Each status is defined as follows:
 
@@ -901,6 +909,30 @@ the Merkle roots are consistent with recent Checkpoints.
 For high-security use cases, clients **MAY** require that all queried PKDs have mutually consistent Checkpoint histories
 before trusting any public key mappings.
 
+#### Attacks against the One-Time Password on BurnDown
+
+**Status**: Mitigated. 
+
+The One-Time Password security measure is a defense-in-depth to prevent a compromised instance (Fediverse host server) 
+from being able to issue BurnDown protocol messages if the attacker is not able to further compromise the 
+administrators' secret keys. Since these one-time passwords are derived from a shared secret known only to the moderator
+team, compromising the server should not permit an attacker to issue a BurnDown. However, a sophisticated attacker may
+try some further attacks that we consider in this section of the threat model.
+
+First, an attacker may try to brute force a valid one-time password. This is partially mitigated by the fact that our
+specified OTP configuration requires [8-digit one-time passphrases with a valid window size of 30 seconds](#totp-configuration).
+This gives a search space of 100,000,000 codes to select from. But more importantly is [rate-limiting with exponential back-off](#rate-limiting-bad-requests).
+
+Another concern that may arise is an attacker squatting on the server to wait for a valid OTP to be sent so they may
+replay it for their intended victims. However, this is partially mitigated because OTP codes may only be used once.
+
+> [!NOTE]
+> In this threat, we consider [**Xander**](#actors) as the attacker. If **Xander** and **Yvonne** are in cahoots, the
+> mitigations do not apply, but the attack is detectable by transparency log auditors.
+>
+> It is important that the Public Key Directory operators (Yvonne) and Fediverse instance operators (Alice, Carol, and
+> Richard) be disinterested parties.
+
 ## Protocol Messages
 
 This section outlines the different message types that will be passed from the Fediverse Server to the Public Key
@@ -1013,12 +1045,18 @@ validating an `AddKey` message are as follows:
 
 ### RevokeKey
 
-A `RevokeKey` message marks an existing public key as untrusted. There is no undo operation for public key revocation. 
+A `RevokeKey` message marks an existing public key as untrusted. There is no undo operation for public key revocation.
 `RevokeKey` is but one mechanism for public key revocation, intended to be used by the Actor that normally possesses the
 key.
 
 Attempting to issue a `RevokeKey` **MUST** fail unless there is another public key associated with this Actor. The key
 used to sign the `RevokeKey` cannot be the same as the key being revoked.
+
+> [!IMPORTANT]
+> **Protocol Invariant**: Implementations **MUST** enforce that at least one valid (non-revoked) public key remains
+> after a `RevokeKey` operation. Revoking the last key would permanently lock out the Actor, making the account
+> unrecoverable except via [BurnDown](#burndown) (if not [Fireproof](#fireproof)). The PKD **MUST** reject any
+> `RevokeKey` message that would leave an Actor with zero valid keys.
 
 See [BurnDown](#burndown) for clearing all keys and starting over (unless [Fireproof](#fireproof) was ever issued).
 
@@ -1057,9 +1095,20 @@ validating an `RevokeKey` message are as follows:
 
 This moves all the mappings from the old Actor ID to the new Actor ID.
 
-The message **MUST** be signed by a valid secret key for the `old-actor`, whereas the HTTP Signature **MUST** come from 
+The message **MUST** be signed by a valid secret key for the `old-actor`, whereas the HTTP Signature **MUST** come from
 the new Fediverse Server instance. This grants users the ability to move their identity to a new instance, provided they
 can successfully authenticate to the new instance.
+
+> [!IMPORTANT]
+> **Dual Signature Requirement**: `MoveIdentity` requires two independent signatures for authorization:
+> 1. **Protocol Signature**: From a valid public key associated with `old-actor` (proves control of the old identity)
+> 2. **HTTP Signature**: From the new Fediverse server hosting `new-actor` (proves authentication to new instance)
+>
+> Implementations **MUST** verify both signatures independently. The protocol signature uses [PAE-based message
+> signing](#protocol-signatures), while the HTTP signature follows ActivityPub conventions. These signatures serve
+> different purposes and **MUST NOT** be conflated or allow one to substitute for the other. Failure to enforce both
+> signatures enables identity theft where an attacker with control of either the old or new instance (but not both)
+> could hijack the identity migration.
 
 This message **MUST** be rejected if there are existing public keys for the target `new-actor`.
 
@@ -1124,6 +1173,12 @@ signature from the same Actor). It does not prevent users from having no valid p
 `RevokeKeyThirdParty` against their only trusted public key.)
 
 If the user is already in Fireproof status, this message is rejected.
+
+> [!NOTE]
+> **Idempotency**: The `Fireproof` message is **not idempotent**. If an Actor is already in Fireproof status, a
+> subsequent `Fireproof` message **MUST** be rejected. This prevents redundant Merkle tree entries and ensures clear
+> state transitions. Implementations **MUST** track whether an Actor is currently in Fireproof status and reject
+> duplicate `Fireproof` messages accordingly.
 
 #### Fireproof Attributes
 
@@ -1349,6 +1404,17 @@ Signature from the [request to the appropriate HTTP endpoint](#post-apiburndown)
 9.  Check that the domain of `operator` and `actor` match. If they do not, abort.
 10. Validate the message signature for the given public key.
 11. If the signature is valid in step 10, process the message.
+
+> [!IMPORTANT]
+> **Atomicity Requirement**: When a `BurnDown` Protocol Message is accepted (i.e., the actor **MUST NOT** be Fireproof),
+> implementations **MUST** atomically perform the following operations within one transaction:
+> 
+> 1. Mark all public keys for the specified Actor as revoked
+> 2. Mark all Auxiliary Data associated with the Actor as revoked
+>
+> These operations **MUST** be performed as a single atomic transaction. Partial state (e.g., keys deleted but auxiliary
+> data remaining) creates security vulnerabilities and violates the protocol invariant that BurnDown completely resets 
+> Actor state.
 
 Note: Processing the message **SHOULD** also require a valid one-time password (OTP). See more [below](#totp).
 
@@ -1668,7 +1734,17 @@ Additionally, the HTTP Signature on the HTTP request body **MUST** also match th
 Per [RFC 6238, Section 5.2](https://datatracker.ietf.org/doc/html/rfc6238#section-5.2), each one-time password will have
 a time-window size of 30 seconds, and a maximum of 2 previous windows will be accepted.
 
-When enrolling, two successive one-time passwords are necessary (both (t) and (t-1) for any given time window, t). 
+When enrolling, two successive one-time passwords are necessary (both (t) and (t-1) for any given time window, t).
+
+> [!IMPORTANT]
+> **One-Time Use Requirement**: Each TOTP code **MUST** be accepted for verification only once. Implementations
+> **MUST** track which TOTP codes have been successfully used within the valid time window (current, t-1, and t-2)
+> and reject any attempt to reuse the same code, even if it remains within the 90-second validity window (3 × 30
+> seconds). This prevents replay attacks where an attacker captures a valid TOTP code and reuses it before expiration.
+> The tracking state for used codes **MAY** be cleared after the code's time window has fully expired (i.e., after
+> 90 seconds from first use).
+>
+> One way to accomplish this is to cache the timestamp window with a cache TTL for t+2 windows.
 
 During validation, only one valid window is accepted.
 
@@ -3076,9 +3152,32 @@ Plaintext messages will be formatted as follows:
 All implementations of cryptographic primitives (i.e., AES) must be resistant to side-channel attacks and use the
 strictest possible validation criteria.
 
-For randomness and entropy, the Operating System's Cryptographic Random Number Generator must be used. On Linux systems,
-the `getrandom(2)` syscall or `/dev/urandom` device is acceptable. Userspace random number generators (e.g., OpenSSL's
-`RAND_bytes()`) **MUST NOT** be used.
+#### Entropy and Randomness
+
+For randomness and entropy, the Operating System's Cryptographic Pseudo-Random Number Generator (CSPRNG) **MUST** be 
+used. All cryptographic random values (nonces, keys, salts, IKM) **MUST** be generated using:
+
+* **Linux (kernel 4.17 and newer)**: `getrandom(buf, len, 0)` syscall or `/dev/urandom` device
+* **macOS/BSD**: `arc4random_buf(buf, len)` or `getentropy(buf, len)`
+* **Windows**: `BCryptGenRandom(BCRYPT_RNG_ALG_HANDLE, buf, len, 0)` or `RtlGenRandom(buf, len)`
+* **JavaScript (browser)**: `crypto.getRandomValues(buf)`
+* **JavaScript (Node.js)**: `crypto.randomBytes(len)` or `crypto.getRandomValues(buf)`
+
+Implementations **MUST NOT** use:
+
+* `Math.random()` or similar non-cryptographic PRNGs
+* Unseeded or predictably-seeded PRNGs (e.g., `srand(time(NULL))`)
+* Custom RNG implementations without expert cryptographic review
+* Userspace libraries that may have weak entropy (e.g., OpenSSL's `RAND_bytes()`, which is not fork-safe)
+
+**Entropy Requirements**: Input Key Material (IKM) generation **MUST** use at least 256 bits of entropy from the OS 
+CSPRNG. Nonces and salts **SHOULD** use at least 128 bits of entropy.
+
+**Error Handling**: If the CSRNG fails or is unavailable (e.g., on early boot with insufficient entropy), 
+implementations **MUST** abort the cryptographic operation and return an error. Implementations **MUST NOT** fall back
+to weak or predictable random number generation.
+
+#### Cryptographic Algorithms
 
 For AES, this means only supporting hardware acceleration or constant-time, bitsliced software implementations.
 
@@ -3087,6 +3186,8 @@ For Ed25519, this means rejecting low-order public keys or non-canonical signatu
 For Argon2id, this means that at least one of the rounds must use data-independent memory addresses. It's acceptable if
 one or more rounds uses data-dependent memory addresses to improve GPU attack resistance.
 
+#### Encoding Codecs
+
 When base64url-encoding a non-secret value, there is no expectation of constant-time behavior. However, if the data
 being encoded or decoded is a secret (e.g., plaintext or cryptography key), the codec **MUST** be implemented in
 constant-time.
@@ -3094,6 +3195,8 @@ constant-time.
 > An example of constant-time base64url encoding is available in [PHP](https://github.com/paragonie/constant_time_encoding/blob/master/src/Base64UrlSafe.php).
 > The linked class extends the behavior of [this class](https://github.com/paragonie/constant_time_encoding/blob/master/src/Base64.php),
 > but it should be easy to see how the pieces fit together.
+
+#### Miscellaneous
 
 When comparing cryptographic outputs, a constant-time comparison **MUST** always be used.
 
