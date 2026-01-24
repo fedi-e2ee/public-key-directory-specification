@@ -215,7 +215,7 @@ In order to canonicalize multi-part inputs to a hash function or signature algor
 [PASETO's PAE()](https://github.com/paseto-standard/paseto-spec/blob/master/docs/01-Protocol-Versions/Common.md#pae-definition).
 
 > [!IMPORTANT]
-> **Security Property**: PAE encoding is injective—different inputs produce different outputs. This prevents signature
+> **Security Property**: PAE encoding is injective: different inputs produce different outputs. This prevents signature
 > confusion attacks with multipart messages where the attacker slides bits from one part to another and retains a valid
 > signature for two distinct messages.
 
