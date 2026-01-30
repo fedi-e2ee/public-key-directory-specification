@@ -13,6 +13,8 @@ class TestCase
     private MerkleTreeState $merkleTree;
     /** @var array<string, array{ed25519: array, x25519: array}> */
     private array $identities = [];
+    /** @var array<string, array<int, array{ed25519: array, x25519: array}>> */
+    private array $additionalKeys = [];
     /** @var array<string, array{fireproof: bool, public-keys: array, aux-data: array}> */
     private array $actorState = [];
     /** @var TestStep[] */
@@ -54,6 +56,34 @@ class TestCase
             ];
         }
         return $this->identities[$actor];
+    }
+
+    /**
+     * @throws SodiumException
+     * @return array{ed25519: array, x25519: array}
+     */
+    public function getAdditionalKey(string $actor, int $keyIndex = 1): array
+    {
+        if (!isset($this->additionalKeys[$actor][$keyIndex])) {
+            $keyId = $this->seed . ':identity:' . $actor . ':key:' . $keyIndex;
+            $this->additionalKeys[$actor][$keyIndex] = [
+                'ed25519' => DeterministicKeyDerivation::deriveEd25519Keypair(
+                    $keyId
+                ),
+                'x25519' => DeterministicKeyDerivation::deriveX25519Keypair(
+                    $keyId
+                )
+            ];
+        }
+        return $this->additionalKeys[$actor][$keyIndex];
+    }
+
+    public function getActorKeyCount(string $actor): int
+    {
+        $count = isset($this->actorState[$actor]['public-keys'])
+            ? count($this->actorState[$actor]['public-keys'])
+            : 0;
+        return $count;
     }
 
     /**
@@ -149,6 +179,24 @@ class TestCase
     }
 
     /**
+     * @return array<string, array{ed25519: array, x25519: array}|array<string, array>>
+     */
+    private function mergeAllIdentityKeys(): array
+    {
+        $result = [];
+        foreach ($this->identities as $actor => $primaryKey) {
+            $result[$actor] = $primaryKey;
+            // Add any additional keys as indexed entries
+            if (isset($this->additionalKeys[$actor])) {
+                foreach ($this->additionalKeys[$actor] as $index => $additionalKey) {
+                    $result[$actor . ':key:' . $index] = $additionalKey;
+                }
+            }
+        }
+        return $result;
+    }
+
+    /**
      * Convert to output array.
      *
      * @return array<string, mixed>
@@ -159,7 +207,7 @@ class TestCase
             'name' => $this->name,
             'seed' => $this->seed,
             'server-keys' => $this->serverKeys,
-            'identities' => $this->identities,
+            'identities' => $this->mergeAllIdentityKeys(),
             'steps' => array_map(fn(TestStep $s) => $s->toArray(), $this->steps),
             'final-mapping' => [
                 'actors' => $this->actorState,

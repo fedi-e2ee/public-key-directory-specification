@@ -34,6 +34,9 @@ class StepBuilder
     /**
      * Build an AddKey step.
      *
+     * When selfSigned is true, the new key signs for itself (only valid for first key).
+     * When selfSigned is false, an existing key signs for a new/different key.
+     *
      * @throws RandomException
      * @throws SodiumException
      */
@@ -44,8 +47,20 @@ class StepBuilder
         string $expectedError = ''
     ): TestStep {
         $identity = $this->testCase->getIdentity($actor);
-        $publicKey = 'ed25519:' . $identity['ed25519']['public-key'];
-        $signingKey = $identity['ed25519']['secret-key'];
+
+        if ($selfSigned) {
+            // Self-signed: the new key is the same as the signing key
+            $publicKey = 'ed25519:' . $identity['ed25519']['public-key'];
+            $signingKey = $identity['ed25519']['secret-key'];
+        } else {
+            // Not self-signed: existing key signs for a new/different key
+            // Sign with the primary identity key
+            $signingKey = $identity['ed25519']['secret-key'];
+            // Generate a new additional key for this actor
+            $keyCount = $this->testCase->getActorKeyCount($actor);
+            $additionalKey = $this->testCase->getAdditionalKey($actor, $keyCount);
+            $publicKey = 'ed25519:' . $additionalKey['ed25519']['public-key'];
+        }
 
         $message = $this->buildMessage('AddKey', [
             'actor' => $actor,
