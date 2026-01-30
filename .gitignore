@@ -1,2 +1,8 @@
+/.idea
 /test-code/vendor
 /test-code/composer.lock
+/vectorgen/vendor
+/vectorgen/composer.lock
+/vectorgen/output
+!/vectorgen/output/*.json
+/composer.phar
