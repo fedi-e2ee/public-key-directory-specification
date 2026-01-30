@@ -1,0 +1,31 @@
+{
+  "name": "fedi-e2ee/pkd-specification",
+  "description": "Test vector generator for Public Key Directory specification",
+  "type": "project",
+  "license": "ISC",
+  "authors": [
+    {
+      "name": "Soatok Dreamseeker",
+      "email": "soatok.dhole@gmail.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "FediE2EE\\PKD\\VectorGen\\": "src/"
+    }
+  },
+  "require": {
+    "php": "^8.2",
+    "ext-json": "*",
+    "ext-mbstring": "*",
+    "ext-sodium": "*",
+    "paragonie/constant_time_encoding": "^2|^3",
+    "paragonie/hpke": "^0|^1",
+    "fedi-e2ee/pkd-crypto": "^0.29"
+  },
+  "config": {
+    "allow-plugins": {
+      "php-http/discovery": true
+    }
+  }
+}
