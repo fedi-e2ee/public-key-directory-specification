@@ -4,7 +4,7 @@ This document defines the Fediverse End-to-End Encryption Public Key Directory (
 ActivityPub-enabled directory server software, a protocol for communicating with the directory server, and integration
 with a transparent, append-only data structure (e.g., based on Merkle trees).
 
-* Current version: v0.3.1
+* Current version: v0.4.0
 * Authors: [Soatok Dreamseeker](https://github.com/soatok)
 
 ## Introduction
@@ -1525,8 +1525,33 @@ client-side for no more than 24 hours. Public Key Directories are not required t
 When encryption is used, the Protocol Message **MUST** be serialized as a JSON string and then encrypted according to
 the specific HPKE cipher suite advertised by the Public Key Directory, using the given public key.
 
-Users **MAY** pad the plaintext before encryption with additional whitespace to their desired length, but **SHOULD** 
-keep their plaintext JSON blobs smaller than 16 MiB (16,777,216 bytes).
+##### Plaintext Padding for Length Hiding
+
+Before HPKE encryption, implementations **MAY** add an optional `padding` field to the signed message JSON. This field:
+
+1. **MUST** contain random bytes encoded as unpadded base64url
+2. **MUST NOT** be covered by the Protocol Message signature (it is added after signing)
+3. **SHOULD** be used to pad the total plaintext length to a multiple of 1024 bytes (1 KiB)
+4. **MUST NOT** cause the total plaintext to exceed 16 MiB (16,777,216 bytes)
+
+The purpose of this padding is to hide the true length of Protocol Messages from network observers, preventing traffic
+analysis attacks that could reveal information about message types or content lengths.
+
+Example padded message structure before HPKE encryption:
+
+```json5
+{
+  "!pkd-context": "https://github.com/fedi-e2ee/public-key-directory/v1",
+  "action": "AddKey",
+  "message": { /* ... */ },
+  "recent-merkle-root": "pkd-mr-v1:...",
+  "signature": "base64url-signature",
+  // Padding added AFTER signature, not covered by signature:
+  "padding": "AAAAAAAAAAAAAAAAAAAAAAAAAAAA..."  // Random bytes, base64url-encoded
+}
+```
+
+Public Key Directories **MUST** ignore the `padding` field when validating signatures and processing messages.
 
 When encrypting, the AAD parameter of the HPKE encryption **MUST** be set to the Server Encapsulation Key Identifier.
 See [HPKE Rules for Encrypted Protocol Messages](#hpke-rules-for-encrypted-protocol-messages) for details.
@@ -1543,8 +1568,10 @@ Ensure the AAD parameter is set to the Server Encapsulation Key Identifier.
 
 Decryption failures count as rejections and incur a [rate-limiting penalty](#rate-limiting-bad-requests).
 
-The result of a successful decryption **MUST** be a string that corresponds to a JSON-encoded Protocol Message. This
-JSON blob **MAY** have additional whitespace appended to it.
+The result of a successful decryption **MUST** be a string that corresponds to a JSON-encoded Protocol Message.
+
+If the decrypted JSON contains a `padding` field, it **MUST** be ignored. The `padding` field is not covered by the
+Protocol Message signature and exists solely for length hiding.
 
 ### HPKE Rules for Encrypted Protocol Messages
 
