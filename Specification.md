@@ -1379,7 +1379,6 @@ This allows a user to issue a self-signed `AddKey` and start over.
 * `symmetric-keys` -- **map**
     * `actor` -- **string (Cryptography key)** (required): The key used to encrypt `message.actor`.
     * `operator` -- **string (Cryptography key)** (required): The key used to encrypt `message.operator`.
-    * `public-key` -- **string (Cryptography key)** (required): The key used to encrypt `message.public-key`.
 
 #### BurnDown Validation Steps
 
