@@ -2,8 +2,14 @@
 declare(strict_types=1);
 namespace FediE2EE\PKD\VectorGen;
 
+use FediE2EE\PKD\Crypto\Protocol\HPKEAdapter;
 use FediE2EE\PKD\Crypto\SymmetricKey;
+use JsonException;
 use ParagonIE\ConstantTime\Base64UrlSafe;
+use ParagonIE\HPKE\Factory;
+use ParagonIE\HPKE\HPKEException;
+use ParagonIE\HPKE\KEM\DHKEM\Curve;
+use ParagonIE\HPKE\KEM\DHKEM\EncapsKey;
 use Random\RandomException;
 use SodiumException;
 use function hash,
@@ -158,6 +164,7 @@ class StepBuilder
         $signingKey = $identity['ed25519']['secret-key'];
 
         // BurnDown is NOT encrypted with HPKE
+        // BurnDown is NOT HPKE-wrapped but fields are attribute-encrypted
         $message = $this->buildMessage('BurnDown', [
             'actor' => $target,
             'operator' => $operator,
@@ -381,10 +388,11 @@ class StepBuilder
      * Create HPKE-wrapped message with padding for length hiding.
      *
      * @param array<string, mixed> $signedMessage
+     * @throws JsonException
+     * @throws HPKEException
      */
     private function wrapWithHpke(array $signedMessage): string
     {
-        // Add padding to reach 1 KiB boundary (padding is NOT signed)
         $paddedMessage = $this->addPadding($signedMessage);
 
         $plaintext = json_encode(
@@ -392,17 +400,21 @@ class StepBuilder
             JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         );
 
-        // For test vectors, we use a deterministic "encryption"
-        // Real HPKE is randomized, so we document this as placeholder
-        $serverPubKey = $this->testCase->serverKeys['hpke-encaps-key'];
-        $aad = $this->calculateKeyId($serverPubKey);
-
-        // Deterministic placeholder for test vectors
-        $ciphertext = Base64UrlSafe::encodeUnpadded(
-            hash('sha256', $plaintext . $serverPubKey, true) . $plaintext
+        $hpke = Factory::init(
+            'DHKEM(X25519, HKDF-SHA256),'
+            . ' HKDF-SHA256, ChaCha20Poly1305'
+        );
+        $encapsKey = new EncapsKey(
+            Curve::X25519,
+            Base64UrlSafe::decodeNoPadding(
+                $this->testCase->serverKeys['hpke-encaps-key']
+            )
         );
 
-        return 'hpke:' . $ciphertext;
+        return (new HPKEAdapter($hpke))->seal(
+            encapsKey: $encapsKey,
+            plaintext: $plaintext,
+        );
     }
 
     /**
