@@ -2,17 +2,15 @@
 declare(strict_types=1);
 namespace FediE2EE\PKD\VectorGen;
 
+use FediE2EE\PKD\Crypto\SymmetricKey;
 use ParagonIE\ConstantTime\Base64UrlSafe;
-use ParagonIE\HPKE\HPKE;
-use ParagonIE\HPKE\KEM\DHKEM\EncapsKey;
 use Random\RandomException;
 use SodiumException;
-
-use function hash;
-use function hash_hmac;
-use function json_encode;
-use function sodium_crypto_sign_detached;
-
+use function hash,
+    hash_hmac,
+    json_encode,
+    sodium_crypto_sign_detached,
+    substr;
 use const JSON_THROW_ON_ERROR;
 use const JSON_UNESCAPED_SLASHES;
 
@@ -27,9 +25,12 @@ class StepBuilder
         'fedi-e2ee/public-key-directory:v1:key-id';
 
     private int $stepCounter = 0;
+    private DeterministicVersion1 $attrEncryption;
 
     public function __construct(private readonly TestCase $testCase)
-    {}
+    {
+        $this->attrEncryption = new DeterministicVersion1();
+    }
 
     /**
      * Build an AddKey step.
@@ -285,9 +286,14 @@ class StepBuilder
     /**
      * Build the message structure with encrypted fields.
      *
+     * Uses Version1 attribute encryption from pkd-crypto.
+     *
      * @param array<string, string> $fields
      * @param string[] $encryptedFields
      * @return array<string, mixed>
+     *
+     * @throws RandomException
+     * @throws SodiumException
      */
     private function buildMessage(
         string $action,
@@ -296,15 +302,37 @@ class StepBuilder
     ): array {
         $message = [];
         $symmetricKeys = [];
+        $merkleRoot = $this->testCase->getRecentMerkleRoot();
 
         foreach ($fields as $key => $value) {
             if (in_array($key, $encryptedFields, true)) {
-                $symKey = $this->testCase->deriveSymmetricKey(
-                    $key,
-                    $this->stepCounter
+                $rawKey = DeterministicKeyDerivation::deriveSymmetricKey(
+                    $this->testCase->seed
+                        . ':step:' . $this->stepCounter
+                        . ':' . $key,
+                    $key
                 );
-                $message[$key] = $this->encryptAttribute($value, $symKey);
-                $symmetricKeys[$key] = $symKey;
+                $symKey = new SymmetricKey($rawKey);
+                $r = substr(
+                    DeterministicKeyDerivation::deriveSeed(
+                        $this->testCase->seed
+                            . ':attr-enc-random:'
+                            . $this->stepCounter
+                            . ':' . $key
+                    ),
+                    0,
+                    32
+                );
+                $this->attrEncryption->setRandomBytes($r);
+                $ciphertext = $this->attrEncryption->encryptAttribute(
+                    $key, $value, $symKey, $merkleRoot
+                );
+                $message[$key] = Base64UrlSafe::encodeUnpadded(
+                    $ciphertext
+                );
+                $symmetricKeys[$key] = Base64UrlSafe::encodeUnpadded(
+                    $rawKey
+                );
             } else {
                 $message[$key] = $value;
             }
@@ -314,21 +342,9 @@ class StepBuilder
             '!pkd-context' => self::PKD_CONTEXT,
             'action' => $action,
             'message' => $message,
-            'recent-merkle-root' => $this->testCase->getRecentMerkleRoot(),
+            'recent-merkle-root' => $merkleRoot,
             'symmetric-keys' => $symmetricKeys
         ];
-    }
-
-    /**
-     * Simplified attribute encryption for test vectors.
-     */
-    private function encryptAttribute(string $plaintext, string $key): string
-    {
-        // Simplified encryption for test vectors
-        // Real implementations use the full algorithm from spec
-        return Base64UrlSafe::encodeUnpadded(
-            $plaintext . '::encrypted-with::' . $key
-        );
     }
 
     /**
