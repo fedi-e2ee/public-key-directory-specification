@@ -21,7 +21,7 @@
     "ext-sodium": "*",
     "paragonie/constant_time_encoding": "^2|^3",
     "paragonie/hpke": "^0|^1",
-    "fedi-e2ee/pkd-crypto": "^0.35"
+    "fedi-e2ee/pkd-crypto": "^0.36"
   },
   "config": {
     "allow-plugins": {

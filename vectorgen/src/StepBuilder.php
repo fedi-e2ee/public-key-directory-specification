@@ -163,12 +163,11 @@ class StepBuilder
         $identity = $this->testCase->getIdentity($operator);
         $signingKey = $identity['ed25519']['secret-key'];
 
-        // BurnDown is NOT encrypted with HPKE
-        // BurnDown is NOT HPKE-wrapped but fields are attribute-encrypted
+        // BurnDown is NOT HPKE-wrapped but fields are attribute-encrypted.
+        // otp is a top-level field, NOT inside the message map.
         $message = $this->buildMessage('BurnDown', [
             'actor' => $target,
             'operator' => $operator,
-            'otp' => $otp,
             'time' => (string) $this->getTimestamp()
         ], ['actor', 'operator']);
 
@@ -186,7 +185,8 @@ class StepBuilder
                     'fireproof' => false
                 ]);
             },
-            skipHpke: true
+            skipHpke: true,
+            extraTopLevel: ['otp' => $otp]
         );
     }
 
@@ -510,6 +510,11 @@ class StepBuilder
      * @param array<string, mixed> $message
      * @throws SodiumException
      */
+    /**
+     * @param array<string, mixed> $extraTopLevel Fields added to
+     *   the transmitted JSON but excluded from the Merkle leaf
+     *   (e.g. BurnDown otp).
+     */
     private function buildStep(
         array $message,
         string $signingKey,
@@ -517,31 +522,33 @@ class StepBuilder
         string $expectedError,
         string $description,
         callable $onSuccess,
-        bool $skipHpke = false
+        bool $skipHpke = false,
+        array $extraTopLevel = []
     ): TestStep {
         $this->stepCounter++;
 
         $merkleRootBefore = $this->testCase->getCurrentMerkleRoot();
 
-        // Sign the message
+        // Sign the message (extra top-level fields are NOT signed)
         $signedMessage = $message;
         $signedMessage['signature'] = $this->signMessage($message, $signingKey);
-
-        // Create JSON representations
-        $protocolMessageJson = json_encode(
-            $message,
-            JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
-        );
-        $signedMessageJson = json_encode(
-            $signedMessage,
-            JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
-        );
 
         // HPKE wrap (unless it's BurnDown)
         $hpkeWrapped = $skipHpke ? '' : $this->wrapWithHpke($signedMessage);
 
-        // Create merkle leaf
+        // Create merkle leaf (before adding extra top-level fields)
         $merkleLeaf = $this->createMerkleLeaf($signedMessage);
+
+        // Add extra top-level fields to the transmitted JSON
+        // representations (e.g. otp), but NOT to the Merkle leaf.
+        $protocolMessageJson = json_encode(
+            $message + $extraTopLevel,
+            JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+        );
+        $signedMessageJson = json_encode(
+            $signedMessage + $extraTopLevel,
+            JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+        );
 
         // If success, apply state changes and update merkle tree
         if (!$expectFail) {
