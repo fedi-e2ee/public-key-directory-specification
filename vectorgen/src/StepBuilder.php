@@ -344,14 +344,18 @@ class StepBuilder
                 $message[$key] = $value;
             }
         }
+        ksort($message);
+        ksort($symmetricKeys);
 
-        return [
+        $outer = [
             '!pkd-context' => self::PKD_CONTEXT,
             'action' => $action,
             'message' => $message,
             'recent-merkle-root' => $merkleRoot,
             'symmetric-keys' => $symmetricKeys
         ];
+        ksort($outer);
+        return $outer;
     }
 
     /**
@@ -532,6 +536,7 @@ class StepBuilder
         // Sign the message (extra top-level fields are NOT signed)
         $signedMessage = $message;
         $signedMessage['signature'] = $this->signMessage($message, $signingKey);
+        ksort($signedMessage);
 
         // HPKE wrap (unless it's BurnDown)
         $hpkeWrapped = $skipHpke ? '' : $this->wrapWithHpke($signedMessage);
@@ -541,12 +546,16 @@ class StepBuilder
 
         // Add extra top-level fields to the transmitted JSON
         // representations (e.g. otp), but NOT to the Merkle leaf.
+        $protocolMessage = $message + $extraTopLevel;
+        ksort($protocolMessage);
         $protocolMessageJson = json_encode(
-            $message + $extraTopLevel,
+            $protocolMessage,
             JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         );
+        $transmitSigned = $signedMessage + $extraTopLevel;
+        ksort($transmitSigned);
         $signedMessageJson = json_encode(
-            $signedMessage + $extraTopLevel,
+            $transmitSigned,
             JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         );
 

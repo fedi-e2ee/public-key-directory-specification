@@ -302,7 +302,7 @@ try {
     ];
 
     $output = [
-            'version' => '0.6.2',
+            'version' => '0.7.0',
             'specification' => 'https://github.com/fedi-e2ee/public-key-directory-specification',
             'generated' => date('c'),
             'description' => 'Complete test vectors for PKD specification. ' .
