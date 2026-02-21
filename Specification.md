@@ -2877,9 +2877,9 @@ We additionally include the Merkle root of a recent accepted Protocol Message wh
 root is selected **MUST** be stored alongside the ciphertext. By "recent", we strictly mean the following:
 
 1. Clients are **RECOMMENDED** to use the Merkle root of the most recent Protocol Message.
-2. If there are N accepted messages in the ledger, the selected Merkle root **SHOULD** be no more than log_2(N)^2
-   messages old (rounded up to the nearest whole number). Public Key Directories **MUST NOT** reject messages newer than
-   this threshold on basis of staleness.
+2. If there are N accepted messages in the ledger, the selected Merkle root **SHOULD** be no more than 
+   $2 log_{2}(N)^{2}$ messages old (rounded up to the nearest whole number). Public Key Directories **MUST NOT** reject
+   messages newer than this threshold on basis of staleness.
 3. To tolerate large transaction volumes in a short window of time, the chosen Merkle root **MUST** be at least in the 
    most recent N/2 messages (for N currently accepted Protocol Messages), rounded down. Public Key Directories **MAY** 
    reject these messages due to staleness, especially if the Directory isn't experiencing significant throughput, or if 
