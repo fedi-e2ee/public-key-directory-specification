@@ -4,7 +4,7 @@ This document defines the Fediverse End-to-End Encryption Public Key Directory (
 ActivityPub-enabled directory server software, a protocol for communicating with the directory server, and integration
 with a transparent, append-only data structure (e.g., based on Merkle trees).
 
-* Current version: v0.4.0
+* Current version: v0.7.1
 * Authors: [Soatok Dreamseeker](https://github.com/soatok)
 
 ## Introduction

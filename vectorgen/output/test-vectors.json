@@ -1,5 +1,5 @@
 {
-    "version": "0.7.0",
+    "version": "0.7.1",
     "specification": "https://github.com/fedi-e2ee/public-key-directory-specification",
     "generated": "2026-02-15T22:19:55+00:00",
     "description": "Complete test vectors for PKD specification. Includes both acceptance tests and rejection tests.",
