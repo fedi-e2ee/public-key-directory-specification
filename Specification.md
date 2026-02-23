@@ -2145,6 +2145,8 @@ An HTTP 200 OK response will contain the following response fields:
 |---------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------|
 | `!pkd-context`      | string                      | Domain separation                                                                                                                  |
 | `created`           | string                      | [Timestamp](#timestamps)                                                                                                           |
+| `dir-publickeyhash` | string                      | Base64url-encoded hash of the public key used to sign this entry in the Merkle Tree                                                |
+| `dir-signature`     | string                      | Base64url-encoded signature of the encrypted-message by the Public Key Directory                                                   |
 | `encrypted-message` | string                      | Protocol message [with encrypted attributes](#encrypting-message-attributes-to-enable-crypto-shredding) (committed to Merkle tree) |
 | `inclusion-proof`   | string[]                    | The intermediate nodes on the path needed to validate this Protocol Message's Merkle root.                                         |
 | `message`           | map \| null                 | Decrypted protocol message (or null)                                                                                               |
@@ -2163,6 +2165,8 @@ permitted to persist.
 {
   "!pkd-context": "fedi-e2ee:v1/api/history/view",
   "created": "1730905988",
+  "dir-publicheyhash": "fuzEz1CmW_JkUGv6FKOfpQzZ4nMVQnjpPCVvxzE2e5A",
+  "dir-signature": "yy4C45MQi067fTbLsyFS1QTQSwqD-44F3ihytwyk734rrE_4FmWtv_Y8x8v38GnJVSCVxwJcMtC6mFzGk7FQAg",
   "encrypted-message": "{\"!pkd-context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
   "inclusion-proof": ["w3N3BU44g4MLC-sDGSzr1nJO9jmZfh_yq1bhpLjjWmo", "MMh4YxMTJLUW5m-6TuyfVhL3bxPF5fnXKbajEVJeO_s", "5Oagf2KpIxEschB1bjyUCG9E8ap_7chIQFHyU4yJy1I"],
   "message": {
