@@ -939,7 +939,7 @@ replay it for their intended victims. However, this is partially mitigated becau
 **Status**: Open.
 
 Suppose Dave ([defined above](#actors)) is an honest user on Richard's instance with a public key enrolled with 
-Fireproof enabled. Suppose Dave has a \[cyber\]-stalker, Henry, that obtains David's secret key (e.g., by compromising
+Fireproof enabled. Suppose Dave has a \[cyber-\]stalker, Henry, that obtains David's secret key (e.g., by compromising
 Dave's device).
 
 Henry can then generate a revocation for the pilfered secret key, issue a `RevokeKeyThirdParty` to revoke Dave's public
