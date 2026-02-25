@@ -518,6 +518,7 @@ This section seeks to outline specific risks and whether they are prevented, mit
 | [DNS Rebinding Attacks](#dns-rebinding-attacks)                                                                                                                                                                    | Addressable             |
 | [Cross-PKD Consistency Verification Attacks](#cross-pkd-consistency-verification-attacks)                                                                                                                          | Addressable             |
 | [Attacks against the One-Time Password on BurnDown](#attacks-against-the-one-time-password-on-burndown)                                                                                                            | Mitigated               |
+| [Permanent lockout via `RevokeKeyThirdParty` + `Fireproof` + hostile instance](#permanent-lockout-via-revokekeythirdparty--fireproof--hostile-instance)                                                            | Open                    |
 
 Each status is defined as follows:
 
@@ -932,6 +933,34 @@ replay it for their intended victims. However, this is partially mitigated becau
 >
 > It is important that the Public Key Directory operators (Yvonne) and Fediverse instance operators (Alice, Carol, and
 > Richard) be disinterested parties.
+
+#### Permanent lockout via `RevokeKeyThirdParty` + `Fireproof` + hostile instance
+
+**Status**: Open.
+
+Suppose Dave ([defined above](#actors)) is an honest user on Richard's instance with a public key enrolled with 
+Fireproof enabled. Suppose Dave has a \[cyber\]-stalker, Henry, that obtains David's secret key (e.g., by compromising
+Dave's device).
+
+Henry can then generate a revocation for the pilfered secret key, issue a `RevokeKeyThirdParty` to revoke Dave's public
+key. This requires no HTTP Message Signature and no instance involvement, as the `RevokeKeyThirdParty` mechanism is
+intended for independent third-party security researchers to disarm compromised credentials.
+
+At this point, Dave's set of trusted keys is now empty. Fireproof status is preserved, but there are no acceptable 
+keys for Dave. At this point, the colluding malicious duo (Henry and Richard) has two options available to them:
+
+1. If the PKD spec is updated to allow re-enrollment at this point, they can enroll an `AddKey` with a public key
+   controlled by the attackers, thereby allowing Dave to be impersonated.
+2. With or without that update, silently refuse to sign/forward protocol messages from Dave, thereby locking him out of
+   the Public Key Directory.
+
+This is a contrived scenario, but it is considered an open risk: If you compromise one of a user's secret keys, you are
+assumed to have the same level of access as the legitimate user, and therefore it's game over. The extra twist of a
+malicious instance admin colluding with the attacker adds a bit of nuisance potential, but once the secret keys were
+obtained by Henry, the PKD protocol cannot protect Dave any longer.
+
+Fediverse users should address this through social trust mechanisms (discouraging Richards from being trusted, providing
+regular users ways to audit and complain about abuse, etc.) rather than a purely technical solution.
 
 ## Protocol Messages
 
