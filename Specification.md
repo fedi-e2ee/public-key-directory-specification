@@ -951,8 +951,8 @@ keys for Dave. At this point, the colluding malicious duo (Henry and Richard) ha
 
 1. If the PKD spec is updated to allow re-enrollment at this point, they can enroll an `AddKey` with a public key
    controlled by the attackers, thereby allowing Dave to be impersonated.
-2. With or without that update, silently refuse to sign/forward protocol messages from Dave, thereby locking him out of
-   the Public Key Directory.
+2. With or without that update, Richard may silently refuse to sign/forward protocol messages from Dave, thereby
+   locking him out of the Public Key Directory.
 
 This is a contrived scenario, but it is considered an open risk: If you compromise one of a user's secret keys, you are
 assumed to have the same level of access as the legitimate user, and therefore it's game over. The extra twist of a
