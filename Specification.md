@@ -528,7 +528,7 @@ This section seeks to outline specific risks and whether they are prevented, mit
 | [Cross-PKD Consistency Verification Attacks](#cross-pkd-consistency-verification-attacks)                                                                                                                          | Addressable             |
 | [Attacks against the One-Time Password on BurnDown](#attacks-against-the-one-time-password-on-burndown)                                                                                                            | Mitigated               |
 | [Permanent lockout via `RevokeKeyThirdParty` + `Fireproof` + hostile instance](#permanent-lockout-via-revokekeythirdparty--fireproof--hostile-instance)                                                            | Open                    |
-| [An adversary with a cryptography-relevant quantum computer wants to forge protocol messages](#an-adversary-with-a-cryptography-relevant-quantum-computer-wants-to-forge-protocol-message)                         | Addressable             |
+| [An adversary with a cryptography-relevant quantum computer wants to forge protocol messages](#an-adversary-with-a-cryptography-relevant-quantum-computer-wants-to-forge-protocol-messages)                        | Addressable             |
 
 Each status is defined as follows:
 
