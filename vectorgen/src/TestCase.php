@@ -3,7 +3,6 @@ declare(strict_types=1);
 namespace FediE2EE\PKD\VectorGen;
 
 use ParagonIE\ConstantTime\Base64UrlSafe;
-use SodiumException;
 
 /**
  * A complete test case with server keys, steps, and final state.
@@ -11,9 +10,9 @@ use SodiumException;
 class TestCase
 {
     private MerkleTreeState $merkleTree;
-    /** @var array<string, array{ed25519: array, x25519: array}> */
+    /** @var array<string, array{mldsa44: array, xwing: array}> */
     private array $identities = [];
-    /** @var array<string, array<int, array{ed25519: array, x25519: array}>> */
+    /** @var array<string, array<int, array{mldsa44: array, xwing: array}>> */
     private array $additionalKeys = [];
     /** @var array<string, array{fireproof: bool, public-keys: array, aux-data: array}> */
     private array $actorState = [];
@@ -34,20 +33,15 @@ class TestCase
     /**
      * Get or create identity for an actor.
      *
-     * @throws SodiumException
-     * @return array{ed25519: array, x25519: array}
+     * @return array{mldsa44: array, xwing: array}
      */
     public function getIdentity(string $actor): array
     {
         if (!isset($this->identities[$actor])) {
             $testCaseId = $this->seed . ':identity:' . $actor;
             $this->identities[$actor] = [
-                'ed25519' => DeterministicKeyDerivation::deriveEd25519Keypair(
-                    $testCaseId
-                ),
-                'x25519' => DeterministicKeyDerivation::deriveX25519Keypair(
-                    $testCaseId
-                )
+                'mldsa44' => DeterministicKeyDerivation::deriveMlDsa44Keypair($testCaseId),
+                'xwing' => DeterministicKeyDerivation::deriveXWingKeypair($testCaseId),
             ];
             $this->actorState[$actor] = [
                 'fireproof' => false,
@@ -59,20 +53,15 @@ class TestCase
     }
 
     /**
-     * @throws SodiumException
-     * @return array{ed25519: array, x25519: array}
+     * @return array{mldsa44: array, xwing: array}
      */
     public function getAdditionalKey(string $actor, int $keyIndex = 1): array
     {
         if (!isset($this->additionalKeys[$actor][$keyIndex])) {
             $keyId = $this->seed . ':identity:' . $actor . ':key:' . $keyIndex;
             $this->additionalKeys[$actor][$keyIndex] = [
-                'ed25519' => DeterministicKeyDerivation::deriveEd25519Keypair(
-                    $keyId
-                ),
-                'x25519' => DeterministicKeyDerivation::deriveX25519Keypair(
-                    $keyId
-                )
+                'mldsa44' => DeterministicKeyDerivation::deriveMlDsa44Keypair($keyId),
+                'xwing' => DeterministicKeyDerivation::deriveXWingKeypair($keyId),
             ];
         }
         return $this->additionalKeys[$actor][$keyIndex];
@@ -80,10 +69,9 @@ class TestCase
 
     public function getActorKeyCount(string $actor): int
     {
-        $count = isset($this->actorState[$actor]['public-keys'])
+        return isset($this->actorState[$actor]['public-keys'])
             ? count($this->actorState[$actor]['public-keys'])
             : 0;
-        return $count;
     }
 
     /**
@@ -127,7 +115,6 @@ class TestCase
     public function addStep(TestStep $step): void
     {
         $this->steps[] = $step;
-        // Note: Leaf was already added via addLeafToMerkleTree() in StepBuilder
     }
 
     /**
@@ -179,7 +166,7 @@ class TestCase
     }
 
     /**
-     * @return array<string, array{ed25519: array, x25519: array}|array<string, array>>
+     * @return array<string, array{mldsa44: array, xwing: array}|array<string, array>>
      */
     private function mergeAllIdentityKeys(): array
     {
@@ -208,13 +195,19 @@ class TestCase
             'seed' => $this->seed,
             'server-keys' => $this->serverKeys,
             'identities' => $this->mergeAllIdentityKeys(),
-            'steps' => array_map(fn(TestStep $s) => $s->toArray(), $this->steps),
+            'steps' => array_map(
+                fn(TestStep $s) => $s->toArray(),
+                $this->steps
+            ),
             'final-mapping' => [
                 'actors' => $this->actorState,
                 'merkle-tree' => [
-                    'root' => $this->merkleTree->getCurrentRoot(),
-                    'leaf-count' => $this->merkleTree->getLeafCount(),
-                    'leaves' => $this->merkleTree->getLeaves()
+                    'root' =>
+                        $this->merkleTree->getCurrentRoot(),
+                    'leaf-count' =>
+                        $this->merkleTree->getLeafCount(),
+                    'leaves' =>
+                        $this->merkleTree->getLeaves(),
                 ]
             ]
         ];
