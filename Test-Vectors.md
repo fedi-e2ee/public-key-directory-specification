@@ -20,21 +20,25 @@ Where PAE is defined as (per PASETO):
 PAE(pieces) = LE64(len(pieces)) || LE64(len(pieces[0])) || pieces[0] || ... || LE64(len(pieces[n])) || pieces[n]
 ```
 
-### Ed25519 Key Derivation
+### ML-DSA-44 Key Derivation
 
 ```text
-seed = HMAC-SHA512("pkd-vectorgen-v1", PAE("ed25519", test_case_id))
-secret_key = seed[0:32]  // First 32 bytes as seed
-public_key = Ed25519.PublicKeyFromSeed(secret_key)
+ikm = HMAC-SHA512(REPO_URL, test_case_id)
+seed = HKDF-Expand(SHA512, ikm, PAE("mldsa44", test_case_id), 32)
+(secret_key, public_key) = ML-DSA-44.KeyGen_from_seed(seed)
 ```
 
-### X25519 Key Derivation
+The secret key is the 32-byte seed. The public key is 1312 bytes.
+
+### X-Wing Key Derivation (for HPKE)
 
 ```text
-seed = HMAC-SHA512("pkd-vectorgen-v1", PAE("x25519", test_case_id))
-secret_key = seed[0:32] with clamping
-public_key = X25519.ScalarMultBase(secret_key)
+ikm = HMAC-SHA512(REPO_URL, test_case_id)
+seed = HKDF-Expand(SHA512, ikm, PAE("xwing", test_case_id), 32)
+(decaps_key, encaps_key) = X-Wing.KeyGen_from_seed(seed)
 ```
+
+The decapsulation key (seed) is 32 bytes. The encapsulation key is 1216 bytes.
 
 ### Symmetric Key Derivation
 

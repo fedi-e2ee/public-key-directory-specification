@@ -54,10 +54,13 @@ The Transparency Log is an append-only data structure that stores information in
 compatible format. It stores the following information:
 
 * SHA-256 hash of some data
-* Ed25519 signature of the SHA256 hash
-* SHA-256 hash of the Ed25519 public key
+* ML-DSA-44 signature of the SHA-256 hash
+* SHA-256 hash of the ML-DSA-44 public key
 
-Each leaf should, therefore, only require 128 bytes of real storage.
+Each leaf should, therefore, only require 2484 bytes of real storage (32 + 2420 + 32).
+
+> [!NOTE]
+> SHA-256 is specific to version 1 of this protocol. Future versions **MAY** change the hash algorithm.
 
 ## Roles
 
