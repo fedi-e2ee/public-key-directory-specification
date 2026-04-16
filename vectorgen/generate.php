@@ -15,29 +15,30 @@ require_once __DIR__ . '/vendor/autoload.php';
 /**
  * Generate deterministic server keys for a test case.
  *
+ * Server signing keys use ML-DSA-44.
+ * Server HPKE keys use X-Wing KEM.
+ *
  * @return array{hpke-decaps-key: string, hpke-encaps-key: string, sign-secret-key: string, sign-public-key: string}
- * @throws SodiumException
  */
 function generateServerKeys(string $seed): array
 {
-    $ed25519 = DeterministicKeyDerivation::deriveEd25519Keypair(
-        $seed . ':server:ed25519'
+    $mldsa44 = DeterministicKeyDerivation::deriveMlDsa44Keypair(
+        $seed . ':server:mldsa44'
     );
-    $x25519 = DeterministicKeyDerivation::deriveX25519Keypair(
-        $seed . ':server:x25519'
+    $xwing = DeterministicKeyDerivation::deriveXWingKeypair(
+        $seed . ':server:xwing'
     );
 
     return [
-        'hpke-decaps-key' => $x25519['secret-key'],
-        'hpke-encaps-key' => $x25519['public-key'],
-        'sign-secret-key' => $ed25519['secret-key'],
-        'sign-public-key' => $ed25519['public-key']
+        'hpke-decaps-key' => $xwing['secret-key'],
+        'hpke-encaps-key' => $xwing['public-key'],
+        'sign-secret-key' => $mldsa44['secret-key'],
+        'sign-public-key' => $mldsa44['public-key']
     ];
 }
 
 /**
  * Test Case 1: Basic enrollment and fireproof flow
- * @throws SodiumException
  */
 function testBasicFlow(): TestCase
 {
@@ -49,11 +50,17 @@ function testBasicFlow(): TestCase
     );
     $builder = new StepBuilder($tc);
     // Alice enrolls (self-signed)
-    $builder->addKey('https://example.com/users/alice', selfSigned: true);
+    $builder->addKey(
+        'https://example.com/users/alice',
+        selfSigned: true
+    );
     // Alice becomes fireproof
     $builder->fireproof('https://example.com/users/alice');
     // Bob enrolls (self-signed)
-    $builder->addKey('https://example.com/users/bob', selfSigned: true);
+    $builder->addKey(
+        'https://example.com/users/bob',
+        selfSigned: true
+    );
     // Bob becomes fireproof
     $builder->fireproof('https://example.com/users/bob');
 
@@ -62,7 +69,6 @@ function testBasicFlow(): TestCase
 
 /**
  * Test Case 2: BurnDown blocked by Fireproof
- * @throws SodiumException
  */
 function testFireproofBlocksBurndown(): TestCase
 {
@@ -74,10 +80,16 @@ function testFireproofBlocksBurndown(): TestCase
     );
     $builder = new StepBuilder($tc);
     // Alice enrolls and becomes fireproof
-    $builder->addKey('https://example.com/users/alice', selfSigned: true);
+    $builder->addKey(
+        'https://example.com/users/alice',
+        selfSigned: true
+    );
     $builder->fireproof('https://example.com/users/alice');
     // Bob enrolls (to be the operator)
-    $builder->addKey('https://example.com/users/bob', selfSigned: true);
+    $builder->addKey(
+        'https://example.com/users/bob',
+        selfSigned: true
+    );
     // Bob tries to BurnDown Alice - MUST FAIL
     $builder->burnDown(
         operator: 'https://example.com/users/bob',
@@ -91,7 +103,6 @@ function testFireproofBlocksBurndown(): TestCase
 
 /**
  * Test Case 3: Cannot self-sign AddKey when keys exist
- * @throws SodiumException
  */
 function testCannotSelfSignWithExistingKeys(): TestCase
 {
@@ -103,7 +114,10 @@ function testCannotSelfSignWithExistingKeys(): TestCase
     );
     $builder = new StepBuilder($tc);
     // Alice enrolls (self-signed) - succeeds
-    $builder->addKey('https://example.com/users/alice', selfSigned: true);
+    $builder->addKey(
+        'https://example.com/users/alice',
+        selfSigned: true
+    );
     // Alice tries another self-signed AddKey - MUST FAIL
     $builder->addKey(
         'https://example.com/users/alice',
@@ -117,7 +131,6 @@ function testCannotSelfSignWithExistingKeys(): TestCase
 
 /**
  * Test Case 4: Cannot double Fireproof
- * @throws SodiumException
  */
 function testCannotDoubleFireproof(): TestCase
 {
@@ -129,7 +142,10 @@ function testCannotDoubleFireproof(): TestCase
     );
     $builder = new StepBuilder($tc);
     // Alice enrolls
-    $builder->addKey('https://example.com/users/alice', selfSigned: true);
+    $builder->addKey(
+        'https://example.com/users/alice',
+        selfSigned: true
+    );
     // Alice becomes fireproof
     $builder->fireproof('https://example.com/users/alice');
     // Alice tries to Fireproof again - MUST FAIL
@@ -143,7 +159,6 @@ function testCannotDoubleFireproof(): TestCase
 
 /**
  * Test Case 5: Cannot UndoFireproof when not Fireproof
- * @throws SodiumException
  */
 function testCannotUndoFireproofWhenNotFireproof(): TestCase
 {
@@ -155,7 +170,10 @@ function testCannotUndoFireproofWhenNotFireproof(): TestCase
     );
     $builder = new StepBuilder($tc);
     // Alice enrolls (not fireproof)
-    $builder->addKey('https://example.com/users/alice', selfSigned: true);
+    $builder->addKey(
+        'https://example.com/users/alice',
+        selfSigned: true
+    );
     // MUST FAIL
     $builder->undoFireproof(
         'https://example.com/users/alice',
@@ -167,7 +185,6 @@ function testCannotUndoFireproofWhenNotFireproof(): TestCase
 
 /**
  * Test Case 6: BurnDown cross-domain blocked
- * @throws SodiumException
  */
 function testBurndownCrossDomainBlocked(): TestCase
 {
@@ -178,8 +195,14 @@ function testBurndownCrossDomainBlocked(): TestCase
         $seed
     );
     $builder = new StepBuilder($tc);
-    $builder->addKey('https://example.com/users/alice', selfSigned: true);
-    $builder->addKey('https://evil.com/users/mallory', selfSigned: true);
+    $builder->addKey(
+        'https://example.com/users/alice',
+        selfSigned: true
+    );
+    $builder->addKey(
+        'https://evil.com/users/mallory',
+        selfSigned: true
+    );
     $builder->burnDown(
         operator: 'https://evil.com/users/mallory',
         target: 'https://example.com/users/alice',
@@ -192,7 +215,6 @@ function testBurndownCrossDomainBlocked(): TestCase
 
 /**
  * Test Case 7: Complete protocol message flow
- * @throws SodiumException
  */
 function testCompleteProtocolFlow(): TestCase
 {
@@ -223,7 +245,6 @@ function testCompleteProtocolFlow(): TestCase
 
 /**
  * Test Case 8: Operations on non-existent actor
- * @throws SodiumException
  */
 function testOperationsOnNonExistentActor(): TestCase
 {
@@ -246,7 +267,6 @@ function testOperationsOnNonExistentActor(): TestCase
 
 /**
  * Test Case 9: Successful BurnDown (non-fireproof actor)
- * @throws SodiumException
  */
 function testSuccessfulBurndown(): TestCase
 {
@@ -257,8 +277,14 @@ function testSuccessfulBurndown(): TestCase
         $seed
     );
     $builder = new StepBuilder($tc);
-    $builder->addKey('https://example.com/users/alice', selfSigned: true);
-    $builder->addKey('https://example.com/users/bob', selfSigned: true);
+    $builder->addKey(
+        'https://example.com/users/alice',
+        selfSigned: true
+    );
+    $builder->addKey(
+        'https://example.com/users/bob',
+        selfSigned: true
+    );
     $builder->burnDown(
         operator: 'https://example.com/users/alice',
         target: 'https://example.com/users/bob',
@@ -269,7 +295,6 @@ function testSuccessfulBurndown(): TestCase
 
 /**
  * Test Case 10: Key management lifecycle
- * @throws SodiumException
  */
 function testKeyManagementLifecycle(): TestCase
 {
@@ -289,40 +314,53 @@ function testKeyManagementLifecycle(): TestCase
 
 try {
     $testCases = [
-            testBasicFlow(),
-            testFireproofBlocksBurndown(),
-            testCannotSelfSignWithExistingKeys(),
-            testCannotDoubleFireproof(),
-            testCannotUndoFireproofWhenNotFireproof(),
-            testBurndownCrossDomainBlocked(),
-            testCompleteProtocolFlow(),
-            testOperationsOnNonExistentActor(),
-            testSuccessfulBurndown(),
-            testKeyManagementLifecycle(),
+        testBasicFlow(),
+        testFireproofBlocksBurndown(),
+        testCannotSelfSignWithExistingKeys(),
+        testCannotDoubleFireproof(),
+        testCannotUndoFireproofWhenNotFireproof(),
+        testBurndownCrossDomainBlocked(),
+        testCompleteProtocolFlow(),
+        testOperationsOnNonExistentActor(),
+        testSuccessfulBurndown(),
+        testKeyManagementLifecycle(),
     ];
 
     $output = [
-            'version' => '0.7.1',
-            'specification' => 'https://github.com/fedi-e2ee/public-key-directory-specification',
-            'generated' => date('c'),
-            'description' => 'Complete test vectors for PKD specification. ' .
-                    'Includes both acceptance tests and rejection tests.',
-            'step-field-semantics' => [
-                    'merkle-root-before' => 'Merkle root before processing this step',
-                    'merkle-root-after' => 'Merkle root after acceptance; equals merkle-root-before if rejected',
-                    'expect-fail' => 'If true, this step MUST be rejected by implementations',
-                    'protocol-message' => 'Unsigned protocol message with symmetric keys for encrypted fields',
-                    'signed-message' => 'Protocol message with Ed25519 signature appended',
-                    'hpke-wrapped-message' => 'Signed message with padding, HPKE-encrypted (empty for BurnDown)',
-                    'merkle-leaf' => 'Data committed to Merkle tree: hash || server_sig || server_pk_hash',
-                    'expected-error' => 'Error description (only present when expect-fail is true)',
-                    'description' => 'Human-readable description of the step'
-            ],
-            'test-cases' => array_map(fn(TestCase $tc) => $tc->toArray(), $testCases)
+        'version' => '0.8.0',
+        'specification' => 'https://github.com/fedi-e2ee/public-key-directory-specification',
+        'generated' => date('c'),
+        'description' => 'Complete test vectors for PKD specification. ' .
+            'Includes both acceptance tests and rejection tests.',
+        'algorithms' => [
+            'signing' => 'ML-DSA-44 (FIPS 204)',
+            'hpke-kem' => 'X-Wing (mlkem768x25519)',
+            'hpke-kdf' => 'HKDF-SHA256',
+            'hpke-aead' => 'ChaCha20Poly1305',
+            'http-signatures' => 'Ed25519 or ML-DSA-44',
+        ],
+        'step-field-semantics' => [
+            'merkle-root-before' => 'Merkle root before processing this step',
+            'merkle-root-after' => 'Merkle root after acceptance; equals merkle-root-before if rejected',
+            'expect-fail' => 'If true, this step MUST be rejected',
+            'protocol-message' => 'Unsigned protocol message with symmetric keys for encrypted fields',
+            'signed-message' => 'Protocol message with ML-DSA-44 signature',
+            'hpke-wrapped-message' => 'Signed message with padding, X-Wing HPKE-encrypted (empty for BurnDown)',
+            'merkle-leaf' => 'Data committed to Merkle tree: hash || server_sig || server_pk_hash',
+            'expected-error' => 'Error description (only present when expect-fail is true)',
+            'description' => 'Human-readable description of the step',
+        ],
+        'test-cases' => array_map(
+            fn(TestCase $tc) => $tc->toArray(),
+            $testCases
+        ),
     ];
 
-    echo json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
-} catch (SodiumException $e) {
-    echo $e->getMessage();
+    echo json_encode(
+        $output,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+    ) . PHP_EOL;
+} catch (Throwable $e) {
+    fwrite(STDERR, $e->getMessage() . PHP_EOL);
     exit(1);
 }

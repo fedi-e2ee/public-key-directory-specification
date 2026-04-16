@@ -3,14 +3,13 @@ declare(strict_types=1);
 
 namespace FediE2EE\PKD\VectorGen;
 
+use FediE2EE\PKD\Crypto\Enums\SigningAlgorithm;
+use FediE2EE\PKD\Crypto\SecretKey;
 use ParagonIE\ConstantTime\{Base64UrlSafe, Binary};
-use SodiumException;
+use ParagonIE\PQCrypto\Compat;
 
 use function hash_hmac;
 use function hash_hkdf;
-use function sodium_crypto_sign_seed_keypair;
-use function sodium_crypto_sign_publickey;
-use function sodium_crypto_sign_secretkey;
 
 /**
  * Deterministic key derivation for test vectors.
@@ -60,12 +59,11 @@ class DeterministicKeyDerivation
     }
 
     /**
-     * Derive Ed25519 keypair from test case ID.
+     * Derive ML-DSA-44 keypair from test case ID.
      *
-     * @throws SodiumException
      * @return array{secret-key: string, public-key: string}
      */
-    public static function deriveEd25519Keypair(
+    public static function deriveMlDsa44Keypair(
         string $testCaseId
     ): array {
         $ikm = self::deriveSeed($testCaseId);
@@ -73,41 +71,47 @@ class DeterministicKeyDerivation
             'sha512',
             $ikm,
             32,
-            self::pae(['ed25519', $testCaseId])
+            self::pae(['mldsa44', $testCaseId])
         );
 
-        $keypair = sodium_crypto_sign_seed_keypair($seed);
-        $secretKey = sodium_crypto_sign_secretkey($keypair);
-        $publicKey = sodium_crypto_sign_publickey($keypair);
+        $sk = new SecretKey($seed, SigningAlgorithm::MLDSA44);
+        $pk = $sk->getPublicKey();
 
         return [
-            'secret-key' => Base64UrlSafe::encodeUnpadded($secretKey),
-            'public-key' => Base64UrlSafe::encodeUnpadded($publicKey)
+            'secret-key' => Base64UrlSafe::encodeUnpadded(
+                $sk->getBytes()
+            ),
+            'public-key' => Base64UrlSafe::encodeUnpadded(
+                $pk->getBytes()
+            ),
         ];
     }
 
     /**
-     * Derive X25519 keypair (for HPKE) from test case ID.
+     * Derive X-Wing keypair (for HPKE) from test case ID.
      *
-     * @throws SodiumException
      * @return array{secret-key: string, public-key: string}
      */
-    public static function deriveX25519Keypair(
+    public static function deriveXWingKeypair(
         string $testCaseId
     ): array {
         $ikm = self::deriveSeed($testCaseId);
-        $secretKey = hash_hkdf(
+        $seed = hash_hkdf(
             'sha512',
             $ikm,
             32,
-            self::pae(['x25519', $testCaseId])
+            self::pae(['xwing', $testCaseId])
         );
 
-        $publicKey = sodium_crypto_scalarmult_base($secretKey);
+        [$dk, $ek] = Compat::xwing_seed_keypair($seed);
 
         return [
-            'secret-key' => Base64UrlSafe::encodeUnpadded($secretKey),
-            'public-key' => Base64UrlSafe::encodeUnpadded($publicKey)
+            'secret-key' => Base64UrlSafe::encodeUnpadded(
+                $dk->bytes()
+            ),
+            'public-key' => Base64UrlSafe::encodeUnpadded(
+                $ek->bytes()
+            ),
         ];
     }
 

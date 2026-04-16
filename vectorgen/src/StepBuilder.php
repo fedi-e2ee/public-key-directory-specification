@@ -2,20 +2,24 @@
 declare(strict_types=1);
 namespace FediE2EE\PKD\VectorGen;
 
+use FediE2EE\PKD\Crypto\Enums\SigningAlgorithm;
+use FediE2EE\PKD\Crypto\Exceptions\CryptoException;
 use FediE2EE\PKD\Crypto\Protocol\HPKEAdapter;
+use FediE2EE\PKD\Crypto\SecretKey;
 use FediE2EE\PKD\Crypto\SymmetricKey;
 use JsonException;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use ParagonIE\HPKE\Factory;
 use ParagonIE\HPKE\HPKEException;
-use ParagonIE\HPKE\KEM\DHKEM\Curve;
-use ParagonIE\HPKE\KEM\DHKEM\EncapsKey;
+use ParagonIE\HPKE\KEM\PQKEM\Algorithm;
+use ParagonIE\HPKE\KEM\PQKEM\EncapsKey;
+use ParagonIE\PQCrypto\Exception\MLDSAInternalException;
+use ParagonIE\PQCrypto\Exception\PQCryptoCompatException;
 use Random\RandomException;
 use SodiumException;
 use function hash,
     hash_hmac,
     json_encode,
-    sodium_crypto_sign_detached,
     substr;
 use const JSON_THROW_ON_ERROR;
 use const JSON_UNESCAPED_SLASHES;
@@ -44,8 +48,8 @@ class StepBuilder
      * When selfSigned is true, the new key signs for itself (only valid for first key).
      * When selfSigned is false, an existing key signs for a new/different key.
      *
+     * @throws JsonException
      * @throws RandomException
-     * @throws SodiumException
      */
     public function addKey(
         string $actor,
@@ -56,17 +60,16 @@ class StepBuilder
         $identity = $this->testCase->getIdentity($actor);
 
         if ($selfSigned) {
-            // Self-signed: the new key is the same as the signing key
-            $publicKey = 'ed25519:' . $identity['ed25519']['public-key'];
-            $signingKey = $identity['ed25519']['secret-key'];
+            $publicKey = 'mldsa44:' . $identity['mldsa44']['public-key'];
+            $signingKey = $identity['mldsa44']['secret-key'];
         } else {
-            // Not self-signed: existing key signs for a new/different key
-            // Sign with the primary identity key
-            $signingKey = $identity['ed25519']['secret-key'];
-            // Generate a new additional key for this actor
+            $signingKey = $identity['mldsa44']['secret-key'];
             $keyCount = $this->testCase->getActorKeyCount($actor);
-            $additionalKey = $this->testCase->getAdditionalKey($actor, $keyCount);
-            $publicKey = 'ed25519:' . $additionalKey['ed25519']['public-key'];
+            $additionalKey = $this->testCase->getAdditionalKey(
+                $actor,
+                $keyCount
+            );
+            $publicKey = 'mldsa44:' . $additionalKey['mldsa44']['public-key'];
         }
 
         $message = $this->buildMessage('AddKey', [
@@ -80,10 +83,18 @@ class StepBuilder
             $signingKey,
             $expectFail,
             $expectedError,
-            $selfSigned ? "AddKey (self-signed) for {$actor}" : "AddKey for {$actor}",
+            $selfSigned
+                ? "AddKey (self-signed) for {$actor}"
+                : "AddKey for {$actor}",
             function () use ($actor, $publicKey) {
-                $keyId = Base64UrlSafe::encodeUnpadded(random_bytes(32));
-                $this->testCase->addActorKey($actor, $keyId, $publicKey);
+                $keyId = Base64UrlSafe::encodeUnpadded(
+                    random_bytes(32)
+                );
+                $this->testCase->addActorKey(
+                    $actor,
+                    $keyId,
+                    $publicKey
+                );
             }
         );
     }
@@ -91,7 +102,8 @@ class StepBuilder
     /**
      * Build a Fireproof step.
      *
-     * @throws SodiumException
+     * @throws JsonException
+     * @throws RandomException
      */
     public function fireproof(
         string $actor,
@@ -99,7 +111,7 @@ class StepBuilder
         string $expectedError = ''
     ): TestStep {
         $identity = $this->testCase->getIdentity($actor);
-        $signingKey = $identity['ed25519']['secret-key'];
+        $signingKey = $identity['mldsa44']['secret-key'];
 
         $message = $this->buildMessage('Fireproof', [
             'actor' => $actor,
@@ -121,7 +133,8 @@ class StepBuilder
     /**
      * Build an UndoFireproof step.
      *
-     * @throws SodiumException
+     * @throws JsonException
+     * @throws RandomException
      */
     public function undoFireproof(
         string $actor,
@@ -129,7 +142,7 @@ class StepBuilder
         string $expectedError = ''
     ): TestStep {
         $identity = $this->testCase->getIdentity($actor);
-        $signingKey = $identity['ed25519']['secret-key'];
+        $signingKey = $identity['mldsa44']['secret-key'];
 
         $message = $this->buildMessage('UndoFireproof', [
             'actor' => $actor,
@@ -151,7 +164,8 @@ class StepBuilder
     /**
      * Build a BurnDown step.
      *
-     * @throws SodiumException
+     * @throws JsonException
+     * @throws RandomException
      */
     public function burnDown(
         string $operator,
@@ -161,10 +175,8 @@ class StepBuilder
         string $expectedError = ''
     ): TestStep {
         $identity = $this->testCase->getIdentity($operator);
-        $signingKey = $identity['ed25519']['secret-key'];
+        $signingKey = $identity['mldsa44']['secret-key'];
 
-        // BurnDown is NOT HPKE-wrapped but fields are attribute-encrypted.
-        // otp is a top-level field, NOT inside the message map.
         $message = $this->buildMessage('BurnDown', [
             'actor' => $target,
             'operator' => $operator,
@@ -178,7 +190,6 @@ class StepBuilder
             $expectedError,
             "BurnDown {$target} by {$operator}",
             function () use ($target) {
-                // Clear all keys and aux-data for target
                 $this->testCase->updateActorState($target, [
                     'public-keys' => [],
                     'aux-data' => [],
@@ -193,7 +204,8 @@ class StepBuilder
     /**
      * Build an AddAuxData step.
      *
-     * @throws SodiumException
+     * @throws JsonException
+     * @throws RandomException
      */
     public function addAuxData(
         string $actor,
@@ -203,7 +215,7 @@ class StepBuilder
         string $expectedError = ''
     ): TestStep {
         $identity = $this->testCase->getIdentity($actor);
-        $signingKey = $identity['ed25519']['secret-key'];
+        $signingKey = $identity['mldsa44']['secret-key'];
 
         $message = $this->buildMessage('AddAuxData', [
             'actor' => $actor,
@@ -219,7 +231,6 @@ class StepBuilder
             $expectedError,
             "AddAuxData ({$auxType}) for {$actor}",
             function () use ($actor, $auxType, $auxData) {
-                // Track aux data in actor state
             }
         );
     }
@@ -227,7 +238,8 @@ class StepBuilder
     /**
      * Build a RevokeAuxData step.
      *
-     * @throws SodiumException
+     * @throws JsonException
+     * @throws RandomException
      */
     public function revokeAuxData(
         string $actor,
@@ -237,7 +249,7 @@ class StepBuilder
         string $expectedError = ''
     ): TestStep {
         $identity = $this->testCase->getIdentity($actor);
-        $signingKey = $identity['ed25519']['secret-key'];
+        $signingKey = $identity['mldsa44']['secret-key'];
 
         $message = $this->buildMessage('RevokeAuxData', [
             'actor' => $actor,
@@ -253,7 +265,6 @@ class StepBuilder
             $expectedError,
             "RevokeAuxData ({$auxType}) for {$actor}",
             function () {
-                // Track revocation in actor state
             }
         );
     }
@@ -261,7 +272,8 @@ class StepBuilder
     /**
      * Build a RevokeKey step.
      *
-     * @throws SodiumException
+     * @throws JsonException
+     * @throws RandomException
      */
     public function revokeKey(
         string $actor,
@@ -270,7 +282,7 @@ class StepBuilder
         string $expectedError = ''
     ): TestStep {
         $identity = $this->testCase->getIdentity($actor);
-        $signingKey = $identity['ed25519']['secret-key'];
+        $signingKey = $identity['mldsa44']['secret-key'];
 
         $message = $this->buildMessage('RevokeKey', [
             'actor' => $actor,
@@ -285,7 +297,6 @@ class StepBuilder
             $expectedError,
             "RevokeKey for {$actor}",
             function () use ($actor, $publicKeyToRevoke) {
-                // Find and revoke the key
             }
         );
     }
@@ -293,12 +304,11 @@ class StepBuilder
     /**
      * Build the message structure with encrypted fields.
      *
-     * Uses Version1 attribute encryption from pkd-crypto.
-     *
      * @param array<string, string> $fields
      * @param string[] $encryptedFields
      * @return array<string, mixed>
      *
+     * @throws CryptoException
      * @throws RandomException
      * @throws SodiumException
      */
@@ -331,15 +341,9 @@ class StepBuilder
                     32
                 );
                 $this->attrEncryption->setRandomBytes($r);
-                $ciphertext = $this->attrEncryption->encryptAttribute(
-                    $key, $value, $symKey, $merkleRoot
-                );
-                $message[$key] = Base64UrlSafe::encodeUnpadded(
-                    $ciphertext
-                );
-                $symmetricKeys[$key] = Base64UrlSafe::encodeUnpadded(
-                    $rawKey
-                );
+                $ciphertext = $this->attrEncryption->encryptAttribute($key, $value, $symKey, $merkleRoot);
+                $message[$key] = Base64UrlSafe::encodeUnpadded($ciphertext);
+                $symmetricKeys[$key] = Base64UrlSafe::encodeUnpadded($rawKey);
             } else {
                 $message[$key] = $value;
             }
@@ -359,9 +363,15 @@ class StepBuilder
     }
 
     /**
-     * Sign a protocol message.
+     * Sign a protocol message using ML-DSA-44.
      *
      * @param array<string, mixed> $message
+     *
+     * @throws CryptoException
+     * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
+     * @throws RandomException
      * @throws SodiumException
      */
     private function signMessage(array $message, string $secretKey): string
@@ -380,16 +390,17 @@ class StepBuilder
             $message['recent-merkle-root']
         ]);
 
-        $signature = sodium_crypto_sign_detached(
-            $pae,
-            Base64UrlSafe::decode($secretKey)
+        $sk = new SecretKey(
+            Base64UrlSafe::decodeNoPadding($secretKey),
+            SigningAlgorithm::MLDSA44
         );
+        $signature = $sk->sign($pae);
 
         return Base64UrlSafe::encodeUnpadded($signature);
     }
 
     /**
-     * Create HPKE-wrapped message with padding for length hiding.
+     * Create HPKE-wrapped message using X-Wing KEM.
      *
      * @param array<string, mixed> $signedMessage
      * @throws JsonException
@@ -405,11 +416,10 @@ class StepBuilder
         );
 
         $hpke = Factory::init(
-            'DHKEM(X25519, HKDF-SHA256),'
-            . ' HKDF-SHA256, ChaCha20Poly1305'
+            'X-Wing, HKDF-SHA256, ChaCha20Poly1305'
         );
         $encapsKey = new EncapsKey(
-            Curve::X25519,
+            Algorithm::XWing,
             Base64UrlSafe::decodeNoPadding(
                 $this->testCase->serverKeys['hpke-encaps-key']
             )
@@ -424,11 +434,12 @@ class StepBuilder
     /**
      * Add padding field to reach 1 KiB boundary.
      *
-     * Padding is NOT covered by the signature - it's added after signing.
-     * For test vectors, we use repeated 'A' characters (decodes to NUL bytes).
+     * Padding is NOT covered by the signature.
      *
      * @param array<string, mixed> $signedMessage
      * @return array<string, mixed>
+     *
+     * @throws JsonException
      */
     private function addPadding(array $signedMessage): array
     {
@@ -475,9 +486,16 @@ class StepBuilder
     }
 
     /**
-     * Create Merkle leaf data (what gets committed to the tree).
+     * Create Merkle leaf data using ML-DSA-44 server signature.
      *
-     * @param array<string, mixed> $signedMessage
+     * Per spec: leaf = hash(message) || server_sig || hash(server_pk)
+     *
+     * @throws CryptoException
+     * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
+     * @throws RandomException
+     * @throws SodiumException
      */
     private function createMerkleLeaf(array $signedMessage): string
     {
@@ -488,36 +506,30 @@ class StepBuilder
         );
 
         $messageHash = hash('sha256', $messageJson, true);
-        $serverSecretKey = Base64UrlSafe::decode(
-            $this->testCase->serverKeys['sign-secret-key']
+
+        $serverSk = new SecretKey(
+            Base64UrlSafe::decodeNoPadding($this->testCase->serverKeys['sign-secret-key']),
+            SigningAlgorithm::MLDSA44
         );
-        $serverSignature = sodium_crypto_sign_detached(
-            $messageHash,
-            $serverSecretKey
-        );
+        $serverSignature = $serverSk->sign($messageHash);
         $serverPkHash = hash(
             'sha256',
-            Base64UrlSafe::decode(
-                $this->testCase->serverKeys['sign-public-key']
-            ),
+            Base64UrlSafe::decodeNoPadding($this->testCase->serverKeys['sign-public-key']),
             true
         );
-
         return Base64UrlSafe::encodeUnpadded(
             $messageHash . $serverSignature . $serverPkHash
         );
     }
 
     /**
-     * Build a complete test step.
-     *
-     * @param array<string, mixed> $message
+     * @throws CryptoException
+     * @throws HPKEException
+     * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
+     * @throws RandomException
      * @throws SodiumException
-     */
-    /**
-     * @param array<string, mixed> $extraTopLevel Fields added to
-     *   the transmitted JSON but excluded from the Merkle leaf
-     *   (e.g. BurnDown otp).
      */
     private function buildStep(
         array $message,
@@ -538,8 +550,9 @@ class StepBuilder
         $signedMessage['signature'] = $this->signMessage($message, $signingKey);
         ksort($signedMessage);
 
-        // HPKE wrap (unless it's BurnDown)
-        $hpkeWrapped = $skipHpke ? '' : $this->wrapWithHpke($signedMessage);
+        $hpkeWrapped = $skipHpke
+            ? ''
+            : $this->wrapWithHpke($signedMessage);
 
         // Create merkle leaf (before adding extra top-level fields)
         $merkleLeaf = $this->createMerkleLeaf($signedMessage);
