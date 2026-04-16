@@ -4,7 +4,7 @@ This document defines the Fediverse End-to-End Encryption Public Key Directory (
 ActivityPub-enabled directory server software, a protocol for communicating with the directory server, and integration
 with a transparent, append-only data structure (e.g., based on Merkle trees).
 
-* Current version: v0.7.1
+* Current version: v0.8.0
 * Authors: [Soatok Dreamseeker](https://github.com/soatok)
 
 ## Introduction
@@ -158,7 +158,11 @@ processed by the system in a very recent period of time. This **MUST** be distin
 Each public key will be encoded as an unpadded [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) 
 string prefixed by the cryptography protocol name followed by a colon.
 
-For example: `ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM`
+For example:
+
+```
+mldsa44:W1PmQysRS473F_c2PSTaLE1_zADh4Z3i_XclrZAfSLPXcZrXHjGSQ-81Y2smOqG19YkRquBLByhSp0IgD5yJ-VdMSAurEY_cqGSFemBogTkQTL73kSOipVI45bareFTnOYHxKhWYVCyr8c1Ba8Fp-vhhXaOD5eqvJhxjjzfZuvYbJTtvK6mj8J--PxVIBLcVPrkpcgJdUqNHOkLOj3mSm6ZaQtPtkTgXuUtknM7fN6NmcE-Va3Q4mIrfTA7WM6mNFR9PEwkcwSzkzXsP2M1S02C1TGYsXGd0KCc8Ci2bWwCF7LwWE0MLHTecrvJzDHvVrDcVXWDCxMHRtKC6IDx-BAjxq1LDOApvu04IU8kpRnGxEg7-DFQ-KW6pxNVF3fAIj8IaROfRVAlYpRAhym8vQpqlhp4T7MD8TKojbu_NwvOwBKTpoe1WfmPjayfV98F7E4aE7V6asqyh_UuPBEaCTrIrIwRuN7elVfp07Oz1fR6NFMkRfw7VChReP0bP9L60pdX4SEXkN4kDSuebh9Dyg18Cl2EkS8gC781w7C7l_ByFscKwKcbFo5Lp7uiuT1cW1g6n26rvtc41uaxC6DfNctWJlWXhLj22X9qTmYmCjHMjywk0AUV6kJAyPBBwvFV8XcHHY6bu4vAyPNriz07uzEbfn3Uxc8Mjg5jlwJZ63PQ22OIwvJtHM8koenbb-6kW9hUA1MMa5AQycJm9M3-9O5K5ub0gGPWeK8rS24Vir9oW7X_X_ZZSbi53dZUpygvHwbrWQClJrXJTBfteB6w5ySXnoL1fw8wWJZr0ecNI4a8xyR1YdtGB4O1k0flVv3-3qrxe2nLVpYqP-cJ40wBBIaVwK-roShRvQlSnaeWhO2gf-tJfEu8EJDDLLjHTgosEMIEER3yFSfSbqb1uovWKLjZLQBDyZHpyeBbF7if3DUWGbdH7Z2e636aVFNFzLbBwIkVp0KKZWRfJI8gdtEcrPToh4AKEcqayQAvrd_D8JtxJCu7iVlXRjWK72TrYL1DN931KbtIx0nFjs5WFFS3gb51-wyw_qLKjCqGbIA17xoizR2L6BwFBZDawQQPQnytFoApMXKomQgcJOdhA1WlCLn5vQvT1RZMnRo1K_ZsLYw4rGdL9vZrjQP26K2_3aKuAwSIz-arg208mkIDf52LjZX1RmZXPv-fMPnPzvoGdjBoGte303kniqFCUXQ2A-tFr_YwaRi57Cn8VkVA5anOFRLHPGqpWXu3h3lStvUiZ9yEAXfZ1xWEJjYxTNlkRq7RUkVcxOygQV_GTKedh3lb3rXaI0CpyAzZZy2K-XVUr3vKNWyCkKFlZTSC62HxKSfyvL6COqvZ4UEWVt59emnTFjPIHv3J26EfBG08ePqeSwyotQzJPgOT92el98oiqvE6wnTLgCukhy_DlHhLybVmB2Lj1JWm9qhEfQdzfiiv66OVzp08jr4XlFgA1od8a85UgR12xKgzzKwb5iENZmURJKjpiJ_ujJYkmgYF00yJCTmQqlblVAxYvb760cDHFgtdhVLporThy7yS2iUzTTae0ADW6XXJbP7KRU_G-OQ6WHUAE4roCbFk7Rdv0Cg5gAtZlwjg0cCIiZxjUq1qYvIuLGZiQY1N-2lXv6A5d01RN4J9OGedLZfdrGHWiG-JbaucZOTAwDAxspzHpe_JiAhwbqxQ5MFrXXtZX5g6_N2KujU_XsqOYCOT2hSGr-z5Jvr4_8LjkqPQy3b0M1bYJ-QLzDw`
+```
 
 ### Merkle Root Encoding
 
@@ -295,7 +299,7 @@ Where:
  * `REVOCATION_CONSTANT` is a domain-separated constant for revoking an existing key. Its current value is
    the `0xFE` byte repeated 32 times followed by `revoke-public-key`.
  * `Sign(sk, m)` performs the digital signature algorithm corresponding to the current protocol version.
-   (Currently, Ed25519.)
+   (Currently, ML-DSA-44.)
 
 These values **MAY** be encrypted and stored in case of emergency. There is no temporal or random component to the 
 message format, so they can be issued at any time.
@@ -436,18 +440,23 @@ the risks; both the risks that this system is designed to mitigate and the ones 
 5.  HMAC, used with a SHA-2 family hash function, offers PRF security congruent to the size of the hash function.
 6.  AES is a secure block cipher (which can be modeled as a secure permutation) that offers a security level congruent
     to the length of its key.
-7.  EdDSA, as defined over the Edwards25519 curve, provides strong existential forgery under chosen message attack
-    (SUF-CMA) security, at a security level in excess of 120 bits.
+7.  ML-DSA-44 ([FIPS 204](https://doi.org/10.6028/NIST.FIPS.204)) provides strong existential forgery under chosen
+    message attack (SUF-CMA) security. 
+    * EdDSA over Edwards25519 provides SUF-CMA security at a security level in excess of 120 bits; it is only used for
+      [RFC 9421 HTTP Message Signatures](#json-rest-api).
 8.  Argon2id is a secure, memory-hard password-based key derivation function.
 9.  HKDF with HMAC and a SHA-2 family hash function, with a static salt and variable info parameters, provides KDF
     security (which is a stronger notion than PRF security that makes no assumptions about the distribution of IKM bits).
-10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated as 
-    [DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, ChaCha20Poly1305](#hpke-cipher-suites)--provides IND-CCA2 security against
-    adversaries not in possession of the X25519 secret key.
+10. [HPKE (RFC 9180)](https://datatracker.ietf.org/doc/rfc9180/)--when instantiated with the
+    [MLKEM768-X25519, HKDF-SHA256, ChaCha20Poly1305](#hpke-cipher-suites)--provides IND-CCA2 security against adversaries
+    not in possession of the decapsulation key.
 11. AES in Counter Mode can be used to encrypt up to 2^{36} successive bytes under the same (key, initial counter),
     and the resulting ciphertext will be indistinguishable an encryption of NUL (`0x00`) bytes.
 12. Merkle trees based on a secure hash function (assumption 4) provide a secure verifiable data structure.
 13. HMAC and HKDF can be used to provide [key commitment for AEADs](https://eprint.iacr.org/2020/1153).
+14. The Module-LWE problem is computationally hard (for ML-KEM-768, used within X-Wing).
+15. MLKEM768-X25519 (a.k.a. X-Wing, from [draft-connolly-cfrg-xwing-kem](https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem/))
+    provides IND-CCA2 security as a hybrid KEM combining ML-KEM-768 and X25519.
 
 ### Assets
 
@@ -519,6 +528,7 @@ This section seeks to outline specific risks and whether they are prevented, mit
 | [Cross-PKD Consistency Verification Attacks](#cross-pkd-consistency-verification-attacks)                                                                                                                          | Addressable             |
 | [Attacks against the One-Time Password on BurnDown](#attacks-against-the-one-time-password-on-burndown)                                                                                                            | Mitigated               |
 | [Permanent lockout via `RevokeKeyThirdParty` + `Fireproof` + hostile instance](#permanent-lockout-via-revokekeythirdparty--fireproof--hostile-instance)                                                            | Open                    |
+| [An adversary with a cryptography-relevant quantum computer wants to forge protocol messages](#an-adversary-with-a-cryptography-relevant-quantum-computer-wants-to-forge-protocol-message)                         | Addressable             |
 
 Each status is defined as follows:
 
@@ -961,6 +971,20 @@ obtained by Henry, the PKD protocol cannot protect Dave any longer.
 
 Fediverse users should address this through social trust mechanisms (discouraging Richards from being trusted, providing
 regular users ways to audit and complain about abuse, etc.) rather than a purely technical solution.
+
+#### An adversary with a cryptography-relevant quantum computer wants to forge protocol messages
+
+**Status**: Addressable.
+
+This one is mostly mitigated, but with caveats.
+
+Since version 0.8.0 of this specification, the Public Key Directory uses ML-DSA-44 which is secure even against quantum
+adversaries. Additionally, we use ML-KEM-768 and X-Wing (which combines ML-KEM-768 and X25519) as HPKE KEMs for 
+encrypting protocol messages such that the instance processing messages cannot read their contents.
+
+**However**, due to compatibility reasons, HTTP Message Signatures still permit Ed25519. This means the communication
+between the Fediverse instance and the directory service is still a weak leak against quantum computers. We plan to drop
+Ed25519 support as soon as is reasonably practical and close this hole. 
 
 ## Protocol Messages
 
@@ -1809,9 +1833,10 @@ This section documents the JSON REST API available over HTTPS. Response bodies w
 If applicable, HTTP request bodies are also expected to be JSON.
 
 Every HTTP response will include a signature over the HTTP response body, which will be sent as an additional HTTP
-header, adhering to [RFC 9421 with EdDSA over edwards25519](https://www.rfc-editor.org/rfc/rfc9421.html#name-eddsa-using-curve-edwards25).
+header, adhering to [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421.html).
 Public Key Directory software **MUST NOT** support the HMAC, RSA, ECDSA, or JWS signature algorithms from RFC 9421.
-Only EdDSA and newer algorithms (e.g., post-quantum signatures in the future) may be used.
+Only [EdDSA over edwards25519](https://www.rfc-editor.org/rfc/rfc9421.html#name-eddsa-using-curve-edwards25) and
+ML-DSA-44 may be used for HTTP Message Signatures.
 
 #### Error Responses
 
@@ -1932,21 +1957,21 @@ Only non-revoked public keys will be included in this list.
       "key-id": "foo",
       "inclusion-proof": ["yWF2i5NqdyB9s0nEGnNQpoxSOcIwySMCch5xTOJurwE", "b67xzsl8mtyMGphDa-DNJEyrM0lWIgp94W36svRxjW4", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
       "merkle-root": "pkd-mr-v1:rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
-      "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM"
+      "public-key": "mldsa44:W1PmQysRS473F_c2PSTaLE1_zADh4Z3i_XclrZAfSLPXcZrXHjGSQ-81Y2smOqG19YkRquBLByhSp0IgD5yJ-VdMSAurEY_cqGSFemBogTkQTL73kSOipVI45bareFTnOYHxKhWYVCyr8c1Ba8Fp-vhhXaOD5eqvJhxjjzfZuvYbJTtvK6mj8J--PxVIBLcVPrkpcgJdUqNHOkLOj3mSm6ZaQtPtkTgXuUtknM7fN6NmcE-Va3Q4mIrfTA7WM6mNFR9PEwkcwSzkzXsP2M1S02C1TGYsXGd0KCc8Ci2bWwCF7LwWE0MLHTecrvJzDHvVrDcVXWDCxMHRtKC6IDx-BAjxq1LDOApvu04IU8kpRnGxEg7-DFQ-KW6pxNVF3fAIj8IaROfRVAlYpRAhym8vQpqlhp4T7MD8TKojbu_NwvOwBKTpoe1WfmPjayfV98F7E4aE7V6asqyh_UuPBEaCTrIrIwRuN7elVfp07Oz1fR6NFMkRfw7VChReP0bP9L60pdX4SEXkN4kDSuebh9Dyg18Cl2EkS8gC781w7C7l_ByFscKwKcbFo5Lp7uiuT1cW1g6n26rvtc41uaxC6DfNctWJlWXhLj22X9qTmYmCjHMjywk0AUV6kJAyPBBwvFV8XcHHY6bu4vAyPNriz07uzEbfn3Uxc8Mjg5jlwJZ63PQ22OIwvJtHM8koenbb-6kW9hUA1MMa5AQycJm9M3-9O5K5ub0gGPWeK8rS24Vir9oW7X_X_ZZSbi53dZUpygvHwbrWQClJrXJTBfteB6w5ySXnoL1fw8wWJZr0ecNI4a8xyR1YdtGB4O1k0flVv3-3qrxe2nLVpYqP-cJ40wBBIaVwK-roShRvQlSnaeWhO2gf-tJfEu8EJDDLLjHTgosEMIEER3yFSfSbqb1uovWKLjZLQBDyZHpyeBbF7if3DUWGbdH7Z2e636aVFNFzLbBwIkVp0KKZWRfJI8gdtEcrPToh4AKEcqayQAvrd_D8JtxJCu7iVlXRjWK72TrYL1DN931KbtIx0nFjs5WFFS3gb51-wyw_qLKjCqGbIA17xoizR2L6BwFBZDawQQPQnytFoApMXKomQgcJOdhA1WlCLn5vQvT1RZMnRo1K_ZsLYw4rGdL9vZrjQP26K2_3aKuAwSIz-arg208mkIDf52LjZX1RmZXPv-fMPnPzvoGdjBoGte303kniqFCUXQ2A-tFr_YwaRi57Cn8VkVA5anOFRLHPGqpWXu3h3lStvUiZ9yEAXfZ1xWEJjYxTNlkRq7RUkVcxOygQV_GTKedh3lb3rXaI0CpyAzZZy2K-XVUr3vKNWyCkKFlZTSC62HxKSfyvL6COqvZ4UEWVt59emnTFjPIHv3J26EfBG08ePqeSwyotQzJPgOT92el98oiqvE6wnTLgCukhy_DlHhLybVmB2Lj1JWm9qhEfQdzfiiv66OVzp08jr4XlFgA1od8a85UgR12xKgzzKwb5iENZmURJKjpiJ_ujJYkmgYF00yJCTmQqlblVAxYvb760cDHFgtdhVLporThy7yS2iUzTTae0ADW6XXJbP7KRU_G-OQ6WHUAE4roCbFk7Rdv0Cg5gAtZlwjg0cCIiZxjUq1qYvIuLGZiQY1N-2lXv6A5d01RN4J9OGedLZfdrGHWiG-JbaucZOTAwDAxspzHpe_JiAhwbqxQ5MFrXXtZX5g6_N2KujU_XsqOYCOT2hSGr-z5Jvr4_8LjkqPQy3b0M1bYJ-QLzDw"
     },
     {
       "created": "1722603182",
       "key-id": "bar",
       "inclusion-proof": ["-h8Ld1pCvMEopujWQ3dcAW3D6_dgdnwfazlRfSSRXUM", "b67xzsl8mtyMGphDa-DNJEyrM0lWIgp94W36svRxjW4", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
       "merkle-root": "pkd-mr-v1:p0n-vBu3mEx6BxnFKe6DDknwKUR8U42i8y_0VmEReg4",
-      "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLN"
+      "public-key": "mldsa44:Ei--AxSI5R0HLBvSs2JV2B_zv7BICF5ZBj1hFVyunWM8FQgy150jC-29uAyVL8rzThg_XVGntqaIMllpoPaEYhTlwFaPsoP9Pgek2EoTm2PM1JwXyLrMNlaNvoyg34jfhKhkHCBJ1kLiGGBIVteSUyRTtWhdkUe97u4C2sxptadntt_m3Tn0Y0GcsKorMwQ84xz9TdmerYG_YalXdOKWF01WbmjyNKM1pdbfg05ah5zLKVY5w0a6wYyYUkIgFL6UUunZ6RlnbGv_YMeKosppX_yToR-oWXl_v0PRmfLRbpcb7Nh47cdhbmpjR2rBhOqigT-oHkESiigPtS7PUGJ-DZS0Uwk3E_juSZYl2IKJunqDyLPP-VKZ0F60pElg5AF4kgwL8EfeEe0fcVRUPIjcQ5nX2eOny7Akeb_bpIvJj_t7qv0otiEBmMKhAkkk6tUStWPiVRQfRSrnThIbVNua5GGHA95_L3rNhk6GwxQNEjVYr2vr94oY4rhl3YVBWunR5b4DBCu_sPWB2d95H-t8V_8CVIPSF_d7mbPe3EMJzfB0HfTwOlpiybrlk2eVUXu54UdNvYNXLsTB6LPWhQU1MEcGRSGWEKrBAkPjq30csiQJYZ5PXCEdYdnXsrk0Th9nJlDkMQ9Joxq5Y1eDP59tBK77qPwXPWjeySzEapJmZTR4KZ1jn35gghROeb5ItcObbRhs-oYBoTfiPgvaxFn27pEgNG275f2xvJHRTywqjKpEgrXXrL24udySWyAYI0hlxfSkrvP52_t4BmzH0NISF3GvO1ymKERoL__AEkM-Hil353w1aHepwweN3cpSRjr7FUFQAyIeOo4c37ZlupUDvyY2xVE8EBoH3CRJuHQ1WdgYy8NeqW0Lb2MR6om6sH0eNkllxmCilSG_gq-WuQn-pNczvf413cetP3LV6t6DY4QXqFTVNb8nG-IMWwbTs2AJRKHEjvG3XN1onH4jEmy9b6om7UkpvTOA2kIQrtDHgkSMHDRkJwGpZ1WtyMNTQ0qnK1q9JHB0KJnOccDlOAqa1R4gRR3ekBYSTRzS0mvzoX6bQfHBTXv6u8JekShBJeRJ2PiBxOw3BpLJcYJvWljHAaDJPiSLLCjrReSbSC8fcunkhjUzVHdFlrlLpNPecll5HvECffb5FVOIBbSTlDNHHE3L8RLNouScI5PJpLr9f9UBtHiTTPC0cGwZWsgSC3hx_u_95Ecm57I9P4jv__Eje7RPak8Gzap2EWWiwQoXfnE40E7gVojz2fOz8I7N7lC6r0ZKQvoPg2jiPID5FTxKi_RMu6JzFPS7EMCWLblheTjXZO_9oQbkPXv2-xaiA6CDfIpde-L7XZQJHZ1C4ubopJzY9vSrw-yE7EeBtjSlenxmjumLI7Vl-oqmB7eupuWMof48mbOqcU8hluOFqADTbz3uog-tq3XDiI3tjsE-IBxvgASOv2kR9UeIB4NrtHrQMLMiWo0rnfMIWfSY0LEt8p00wrlaxz0cB5IVRDmaCd2wt0rwSWflQCGYR5MTNZ-sQWIOa96UKDd6ikd91suY3iA2De_yS_vi7VFpraMBQj_Z09ttwolZ7Nl4CeIaNnJZt0C7gXpwhLawd536B1BLDtMqChl3fIPI4-yfRMDsdd5wOb85amep81u4CORPdrNIWRpXh60mFIbRFRL3XfHVpVL37RfWdP8YGPmhpVXdEYej987yrNPP3PlG9oSt-q864Wex3OE5P3_zljz3clOE5g"
     },
     {
       "created": "1730902833",
       "key-id": "baz",
       "inclusion-proof": ["bqtD85NcSflBq0XGVuTwtvnoZ7AZcZYdUm7V8ScF1LI", "1ftW_n_zhfgCwenBdTaRJDEETmluqD3OPRN7hK8Jnvo", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
       "merkle-root": "pkd-mr-v1:HlRR_f1fFrRGu7Mczkdi41po07iP9JYjCp1GBb2y_nk",
-      "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLO"
+      "public-key": "mldsa44:1cLJJUlghEcfEr_vii6CzsC27LExgh8jJUTRXVL9MdrS7ifvBvYOIuKUD3_OOpx-S0PprEtcX-K1FwCQwL7wQHX3hQvZO60w7NzyE-o6Oz3tlndq4G0QchpxwS9gEH1xWtd5sg4LSQ9OaBv2JRwEHgnP1oQe96PxwNmRD_PiYOchoa_-AHtUn0KlTAV9zwzn1mpMS5WGUobPd0Bg0ZWs3KIMgmePkMcklajYGtOY4Not2ZQFxDMbfnLUx-KflZP3fZmyBgbm5mEaET6C3Dh5yVk-UgnwV6DPsUTS6eh3tMp5x4Ii5OOldmTrf3nyIzfMCm40yGonEIBQDmT6IPQTmg0Ma1hr1KwxZxoRqdhJP1WJXeQi9K4VqgRb9Bvu1WReyILbrvtRFqgU0KLwJyIxWy1e6D-mo79gFNilugPUNcQMLOXY4GYk3xaoxGfs7esd3NS4jpCAMVIHLQHZbve7YunCOuEDqkv0G0f_hsCD7YI2-ejMgdek-C9HoOpkf8rPpkNma5XK-rc4PVmF5HfcwPSSG0O3VKM4_2G0rep4tf85JljdMrCJcbLi03SlrcJTcaM1T4wdhP4-p1jAQElFKDsWC5GHem9ovnPPFx6FDOtPkAMDK7N9f2slZNIXNGUF8w92i-7V7TBN-mhyrnSqjSPXVeU4TmGlaYwHQ9mGDJk-ZG9ujjDwl7_g2011SaK_IFFHh8z9OleJQhy80bN7lxOgzttasPS0YLQsFL9G2LVfgwwhukXWz0-zSwfByO1e7X_Hq01fwtIZ5Zmwbl2GUSwRIgsbGne0wGsfXS5n7YrqdVtwt6BPpEioMqpHajCZ3wCZ_XRlQj2IbJZ2Y6Ibn7krK_ZeYBZdh_f7cJJlzh8M0KfY2DbIFmA_qMHquwP6amfmJD0-Lji-ShCk--TIBZTIbdNd7Dy3IxjpQTD94yQB_QxYpJgMoMxUjQu6cB4A1JAE9gOghZrPpW_Qv6M0Rppp3F3eXZdOvqUjiN-uIrWsuGwIVkB5h1-j1N4qVt2l7QV6AHId1-TZWYL1bMiFXIZPvvpk6xUr-zDjn_P0RyRK3zkfPgggr9ueT7c-73mxMW_0iKQb9ihnvUKVZsg6X9ea-WttGJ9AiemFCqbWvQdnVoJDxParc-LYunta3YixfGTqDejieILVLhZo-Bh5WQkLrvbufDeQeclMggnDvi8TMYpdZTHO8VWSoLF38Y80W-MwD8S9apBT8xDPWFf9eDn4Gpd--vXbjfMx6ZqpZFrXJo6-jVrdZ3LKkoRV_bdIq2uPRmm5xHLZ_SMrTUaE8W2heJbsqyX_xPCq3GTH5otSCnLLjBlsuJakMRnTTtftprxhcCYzvGGB3ZGEtl5NvKQ6ozSXCjXOgHktGX0IyMGsgZvJR9WkW7ZNFRtD0A_mhjyyc_TqfC68SJbTQRtbU3YOYO5-R-_5i0cEtqMrsBvUgIGQF0tdN-sduX4F4QX-V-Fd6V9JP0og54NRb1FITa-B9diueVgPvYHCo8QA2kuD5g_98IWj5Oy8cA0E6Mga9SEOchH-Hvc5cosVs4DD7nIksCrkSYCNuarh85UkHZTrR-_jxWQNUAWagNssMYQ5yWso-nVNjlN70TSW08qBBpnQ_7n8ki54_8KCPBC2Zv0dl5SmQyt1EpNKVXOmyJN4tTjhXHWv3HZ913zwy4Id-RBzWeiiIS2Z6cLHwc1KD6otvurWKcqTAqZicNYrmFgMYPR_9a76WPDvbVfLook3gA"
     }
   ]
 }
@@ -1985,7 +2010,7 @@ The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/actor
   "inclusion-proof": ["yWF2i5NqdyB9s0nEGnNQpoxSOcIwySMCch5xTOJurwE", "b67xzsl8mtyMGphDa-DNJEyrM0lWIgp94W36svRxjW4", "omGuBQqThwTt-hAFM7Pk_4Yx_21YNe8f8zX_Lxo9dpc"],
   "key-id": "foo",
   "merkle-root": "pkd-mr-v1:rZgQvJn16wkOuNq3ejHqC0zDkuQ-3GBpCR0YP6Xy5yQ",
-  "public-key": "ed25519:Tm2XBvb0mAb4ldVubCzvz0HMTczR8VGF44sv478VFLM",
+  "public-key": "mldsa44:1_V6YK9uoawioJfLut6lTBwI3YwqhAwlLDzYCJIQ-J1UPtMh_c3TKKsKIyEt_d_gXAVUZSVMDrB9KknunK67OAesgG9NRpzZ3Nr-nvny6CMI4Sn3Jfz3UurDZ1cXbu6mC6b9litnzpikf6sz3QbGA4m-UFQstQ-KBmpaDlnNDfsKlj6bswJLOvVgJU-HVkuIu1eMqPL9sBc7Iq5iVqnLvjiN2aAp4i8wYDkd3o9V88gyPT_wGETrDrPSKdaUWxO_EfsKXenWrzmLpO4uW1iKqPZ3HC8u7ll3ej9qVvOOt9ArDxU0ak5bDHrMbWll0Q4qK63QwJzH6ugEDT1gF_RGaxbzbLlDUrXsmpF5CF_ZC-oDBX-iq3qsNLHg7MA1Woks5Z_P5u1fV8MySwtiUay2vCBa7yGCPjPSJXd_s08TWw7r0PRliD_uYE_yaHuCdSlGWupONEMd7p4We8eTimZZHrUze5fDEVWQ9-HLCAYfrns5ZHQtcY2Edx91tTNzmja6Rj_FxKtHtYCBbgQoQsV3fBq6aehfinhQ0Q8XAScb6j323UWO_wKGhVlx5g7suD1x7SJNsmD5-EfBLvW6vixKVSQQyPMcdxJv5_5r1NmXmapFS-q2xtrqJjgs_SkRQ62Be_FPI27AAu4-LjJVr5VxQiNDTiKfsbNMYTRE8beWZxz_lHohvI1K6Fp06AvQI78MV0-hpksOIjaE_PfsiRlOSw1HFiamWmMZPqbf22gq6kuCFOUAVbQ_PrIXxXftcbPmmGty3EWtuqXMYTzAx1kHuJYZJKCQYL7yATePtIM21Ah36aIpiPDaf9LF3havLAhkSsZOob3psQc39a1KH2RYC0LOTuhW1ViutVNWCxSN5K84SHM4mbqDTfo-ObKdn5-YAnqomJFVlEb5lsctXJXIXWM8fnPJTuAJY0UL63SvxWZV9ETgB48QKowePZGfzKY338bP-sDO_ozmtCkKIlld2h5wsVGJBHupjoUqdMx8ZRTWegEBnCZDwNQesKLpy2wNhLqqdYmmFKVwHPyeFZGOdSoFc6HoSzOgW4Rzc6y4-W0gMXs72LZeagrcZW9zkTN3GQngREfK-cX-Qeqi1QWnzwzYa-T1uSJJawjVpb3wqQM104YmN1YTvICEd7uhmktc4fv0_-EBV3OhXR0F59FsKkKkb3WwmGpQGjUb41DxsS_K8q1C9gApeqYak63EQ-EITE9ts_FJM8y255Ygyye6omO3Sy6QnHxhdbvUJpaQjqM1BpmLJA4tRnUh1nAHWL0ta2K-rHuLjbDNTdRT_a6jsRO1mA7H3k1-K8Qj-DnI7RV90O56O2Fwo7jxqnr0ovmSJ5H4lm3sTMGKR9gXmgL3EtagcHYXG6jzmqpgUGM1pvTe1cA0woriH9B18lhM1mUPW2qCmjJbCdTqTrqPIRuwYxxUQpve5jnhYIVm7hgU8MKPavSlHNHsaSsQOEkhRYTSw5YtMk3UX9PDbuhtN0-SAeLw6_30AaviJTMC57Pwxm0SXtuiTy7R0w4X4KEnHpYkeD0aUuem6cvl9iDCX5prPIldPtpAHfJGEGfXdb1AMzMG-xdR3JZ7KADVN50p5C6I1aGghuaqKjt11OMbJdissxoMZt31lD62VaW2sEws3pbYBIiI-r8_vStIIxzH2ukaMZxph7radY5N9u91iRZmAA9r9UmDuR-SwhaXiE6otlG-HxMoWwqn1guOpMajf0lFL7LZr-UhDILG3_dVr9lkqg",
   "revoked": null,
   "revoke-root": null
 }
@@ -2150,12 +2175,12 @@ This API response will only include encrypted messages. To view the plaintext, y
 {
   "!pkd-context": "fedi-e2ee:v1/api/history/since",
   "created": "1730905988",
-  "encrypted-message": "{\"!pkd-context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
+  "encrypted-message": "{\"!pkd-context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"PvbedmmfaWZd9PXzjHe0xp9YlxS0U9eN80JFWSbHtINtF33jiWX84OKSkbdOlVHlx-ruVvlNHqz3W5mT_Ji0AurHhybKVuUD5ghH3jGgoiROzQiNhwrt-sMoT_ZL1zHjUQYnrmw1MOyUekt9ZIHrVy8H6ArLBK1hYvrZkHOTMEFeVl2Fbn7nr7SprDvsQb4MPxyy_OA7x8UKe94yd0Z5rvS5Lxn5MfAACt34xsPxAVv3eCVhhedFxaYfJOfs9L9NFh61GDdlkRFK1qvzz3XqWOpMhZeszrzvGwaYnQaFG43qkt9v65hG3jXPgjfq3x6kInOEoPQo4iAGxvMkGGuKNZHwkBCL95hWSWShhv94uJX817Dk9Vldx7aLpl_RGXZV-T-BcMJEhHWFR49qkDXCibRXEgGVfQ1EP1bunD0hVgNnC_pDIOeMRryuMarejwZVkuar5vFgEaVRXveQBZftygNirsdWOc5EfmktBLT5IDklKhZiA71KiHlTTMA0KDnRLKlHFKzOcfMGq20V-mY6YNExH5jN1eVe2xXuU0o5e26koaLf3zsdRmdhLaUZ_NzawsLBUXLL99LkFVKxLWuGuuC9x815k760l4v3JTYx1PgqjCLkI70lyhR9t32cqLYl6BiSD22Fol2WD6pCLKXJLESxYc7O0yTcTfIo4eU2o0sW-1NHNwmCSWU2Lm1-hDIba6pdIPcy0LAc6jO3XncnPIx5uMxcld4wkzao8CaB7PTFlz80KGD_MWMnetcdlrIx3HsUkhq1lOuL6ruso9Jfc3zSGwZcBlAjX795fA0doY2Gb38BDIqu8vK9MKf0FgABntP5SMeMF4pk5lfmoUWv2qq3RL9yQOLB7luCeMceSjudeDvozwQaLGUTuIN_aa5vozaWwlkEJCrDlzzC87gS8pfXjR_xnbihy18OrivoXSgwtDtJJpr09RTwcrvwj0VJyc6r35xn1hlBZua2XYXmYaJml8UjckTejWrAmKUhjOE86ZCzu_1FNd_E-Hc0EA5OFRFDSuU41NRsI8H3usnDmnWE0d237rIr2J0yud8QKOzw_4-OC_xzymhS5uMk9qmlNEMMjwxz3Ru8rtAPqT2pGoU2_dQzV73rlEGUQOLhSvePrwwDKz6s6JqaFLoDdo-duyBTeCp17w6bh_bEWtl1Ytv1wWClgvtDLl5aPY2BQ5Qy3PBARVtTNCjQJ5enyxTEoEYO3l_acFQj3YmLe2yXZYg3oPyxAS74T8hW4d1lba-raXGB5NDXTbNcgFx-9DUBC6MTU6pDLlTchnFYKHcLwJaOLwOfIhshJhkw3BG1VKt-cCtp9Mo36CWEAWFjgbA9sKnVHWOIIP6gUb4XOHbW_mhavzmYHs_SLoN8cycAFi5HJn9vU3I0zHiWQ_2WbobMeB5Xx2615Jf4zucADiIz96oZZXtt_afM8x5ropkNOxEVIYKAAXuzFv41pIaOM0lS2VbDhKCLjtUYgyyDLoxePoEjGc-Ei2My8kLDNpM7yk_2JCNs8YECKfGC3iEpnIVT-NUA2Ui5eirA2mmFmeJORGG1BAnCYXOVBDdjXD2YB3-N2wfAGD8R8b7xmDCE6Yhlp3lpkYynQwgGnnRfkNZXLy8Z-2YaL5CuguSNduQYx7BTo2-yQSCCeLkJ1lKeSoUA2skKmp3Q4ToOpVvs5ynN_QRWngtIrJgPuZrZW6m4beLqqJ95SfB_RCLQ6_bQlLkNfNFNNv-rT8IB0YXUTPULaLzW5Mu6Z8J82r_SdN51moNtLi_RxS9AK5vRr3FkOLFH7xD0EK_WPrgVOdXzsLXojqGzzuJRxWgC2erwDECrih6yahmkrKgEcWnYHLYEjoqPEFf7FmX4G_OjqQCUPmYIl0nHiv3mPN09PWjVKbmovTYjCl1s3OqywvJgh0Nq1bKe2qcI4LggkspjKY_IYhLkXTCgyH0GJLRGBy7fHeLjkRQ8g1be-AFTpvHWt0liZHg3TqxJNntIpsSErjWtLB7nk8YhtElCkmuDMPyQs9Tq5RrYu1QYUDio12OCCRIbHpLY5_ZnymvGeYvl7ZZvbNNZaU99EFtKRkflLIlNV2f0a2vq0FzckJ1l6A9UkGz7gKgeiVwfYYBgYK7Uny10H-OnU2J7dK16AGHWh6fwwIb37Lb4poTnouWSlAN083kpOPjivhsJtz_YbCcg0Bkg4O7gW3OfKXhnzFAJ8uM2RIIMKUwKQxB5idfAXUbpi0XwxProemxOVLOH2qTI06F_xQLVuGcwgcyMqJaAdEZ6N9ipPUhys8sktNgaj6YeaFMiTLu-Y6hqD5CGtHSBloGK3ImV4F4fBL7-H1vjwShRtvMsiB2Kn9wF4I0KhllKe1bLHA6rKyjEY5XhdwDZhhMge9jvAdpTDAjkrm79bAHWI63pW_2c7Jd0Dd4RPotOQHBtKkIpbqy-X9cSRPUkpSo4JKcH1yeVfIEuSVVwhUeoHRlf3eKW-oEJ8sLwo5ZBEzD-HR6J1zBOQem2dH6tDCf7nmz9x2XUSFeljUdBjt0DC-X8gg5x6AkBJixZclby0I0vjVGJ76vQQVCoI1jXchxxutHtHtl1Mti7pEh0gq09mgX0DYkFXCz0Zfuqhu4ZF70I8zNICwIWe0YnfxnNFkvjrnh2JBZDLRSiJJqBvp819SHJmD16uUQWtA1_OhtXuR-o5eo86gwxG4v21BTUcQA7jsh0rdEWajNEK78W_5fNrMX6uQ_GTP8IBXVc6af7viQw14z7JYaCl4O3J2VUe5MxVSH1btSJqD30wG7Et68SeZymXGbnuECEncz8DOZbHq1qc8bi9MRR60o_6w5ro5PivEjCcsintT49jnFA507QtTJ7oX41RqAKY5lF9B7e17KHl-R_GBfQ_B2U74jc92E9cHPiWDIrOmeFNcs3fRNcfTg59dZRdvBOoxGOBoUkQwfmkY4GqLuU_NmUdwC2RUEHNGNThNTiC5ySspi8fizVgGJ2J8M4aYzalN1Ug82GrLLEeRsRc2NqiguYIsTKnLohxXhcIYDhA7KKw_5-Ve-fITZzcWsPky8WWR9kDrZWR1mvg3T2uBxSe5bVHp1ma4NCsKhlVInlnNsK3W_auMV322DnAtwKJjZQXWuPmKy-xBASJzI7PUxcdn-Kj6HwJEhRWGBpenuCjJGewNHU5-7z9xAoOENtbm9-grvHyNj0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsZLDo\"}",
   "message": {
     "!pkd-context": "https://github.com/fedi-e2ee/public-key-directory/v1",
     "action": "AddAuxData",
     "recent-merkle-root": "pkd-mr-v1:ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
-    "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
+    "signature": "gKpNznpxU-gZ_j1xulur6IxW1YCj1-GrpCB7AWHChOI1Om1eBzVIY3j3zO3jV-aef_ST5r4uhScWD_nfoYcUNKGMeiRchs3o6Xdz2HQXI0xh_uneVvAaTIcGHZ5XxqVk9LZQP60aBqP-jEA3k0qMR3QYSY9ytKA1y6573GeUDAS1om_24u8-no5_qHDxJQDA9Nww_I7qMq4UA6ZnNK6QKX0wQMqhiPD9yhrKMuEtX1n8X9PxRFtIh6qxT1dYwft82C-atGgvgqKZVG2qhMItfmFuv2_XUUQ3BQ9vPGtIUAI82B1M1ije6jYu22s0nAgPIqOw1qnoGixS-ULwH7GwZAuDxkg0N8eMPg-r5Df7sawQAmPQSm8Q_YrkWAV6fkqkQuzxTa5P3Z44EnevVh660U9nxDx29cDfQaUCGhaDDgxvY6IhhflC6yfvX107E1hTgQ-Gryh6UWnG2DRXfTPYpzKnfKCceZEVHXAmR95AohO5XUTRj2nDfjUNuamGeM59YnVr0RqNpvwXzJUO4MarnpQWTOVcG6d8jOmnSVhkEjt7HNLJXB80LX0FGFuh0Dsu0iO60Zp9VdTdr4GS2y6-KLKCs3V_nfQBijXslkbjmqjR06arjCt2qhY4pemZ9MVO-R_sNsfvifLsKAdrSqzUpL0mz55TIExSOUAd0I8aa8IpAxNOnPmBIojpEPTETVmtsB5mbnIuR_q0GOSClQBJy6-d-UJkNyBgTZKTq0RV45CTZgFvKcguofTevkp__v2x8YMTs_xX-htxOexin6z2bsbbDEEDMU7hpkzL_lVTmPZV-LPqPipz1MhZLmc2-Bdf6eDVKaEp8JCQVjKPBZAd8n7aJocDst4TxGjevCyM-IRkjDLJsgMfDDieoRIqHAUz3vFMSlzZVaXjrp5WDnNS1rAUpXDmEayzm8-0qXqkoGHUqLbKuMJPgNt1impYGETOtPKzJACvb6_sId8ihMYp2xQa9HGhImlt_IMrYege5hFiIQJ8wBvm6qKyv-rzOCwsN67ND2laa9-M0qJyb1nfg8qeUgVL-MaNqEkxb4bboaax-Yc7MREyIITmlfl_LWCntLgVu_NzmY2H7UXw8flHkQns9dmIANORyqlC2dyOc7kmCWxd-nX0a9lUT3Jw6SGk_LjYiJQJKhD406fMQKcEYEaZtZuGkLip6GifdOF17QunpOpfpfgN1BQRS7WYqz7EjSSXbFzamhN9Ai--eLcQccvF4HPT4KDSgB02RsvU21ac7tQKASOer_bez4HFn-gnHfb6bo53TLWN-8y8KBP2sUYf6qQYIELxS8cGHOswlzXUrtW56zINx2dol6WGk1pkKQjE38Mowjul26vcPeQ2kFHzTbdbXY3D9GnNychRsXL4Jou_kAVtcyHR6HMouQymq6b8PTZmrZkf_L-0G7yPN4eTOh5aqiBBA7HnFamaDJv5RabtY4D0dC0idsL031lvawhbRwj5KEuzbV5MVG9hXyITX5vALcC5L7GC-Q8y6Kq8jmMlsiHfST2xBOtJVn8HktGconZfQzmhK7qg6oyOrw9PP_xn0KEoN6M9ntiqN9B674LuuDuR39lO8hRaGSSQDKNBS9CbjqRepZmjnUDwDAwHUixyrgMFro46i4w8CUu5SXs8YC_iAU6FE4WFb2bSl-HFwT3MWd7gCx99GWJUWvOxl6O6dxfXA2MBuOayGazSBHdTOnTHh3ZtfHFUtLpK5LoOCxlaFIs79sAg8sxwET08JGmzIHHMCUYgF0bPbvuvg_DPsZSo1aJoqHdQAK8W8fU_4AK2N24OWd6MagRHqNV1GgHUTiUbLG9bgiIaY1bg8Uv6hCLvIuzeDFOXsJGP8B6-OoJtcpKOyQZ7btrzL4KTla1k_kD1StWBWTZQDBwHpa-G_zdP31Lrb4DbL-QBV9TDUrT9T27Sr71-bFB4vNHdI37-dnkrE9ABNr5EVFBsJ03NjKvSrbEu5mz2wP16ZaDAtb_H1Wae0HB4xtNsPYneifzT2AlzngFQgGSS5dXRQNB3Xy0eXLBAhIuhSbxzhW9dXcIcmtr_vbQTAArygDj3N8vhD-ZpujiTHdtvyy3z4Q_7-XEI5R8LG4td4yxSkx-CsYW2a6V_TCPsYMhjdpPhAm3NC33J3MD4K3MHiU-uHtMQzBQQy4StZ1HkHe_LBBNx-2Lkse4kX53bMhP89Pf6LRcVl_LXB6g7ogGxgs_4RGtvQfzVM5lQBgEKwrVBAcWrDV9zlPj2RC6ISjWAPVEBlY6e2WMtrjwO8qGaOW8slKP43XczYX5T8jpNyUCK5GzUVeFjdr7xcX2ghjy8EysxWte4PgSSXD4YXcghxTrDwZG_WM8bGyJGLhQ6qdSbinxPx6xUJcMVOyxzzIjd6CQR--qb5krAupTpz0tLIQJYVEyGOL4WT2XNRxUxxvUl3iAh_1BXECd4BW_Es931ZaRCv9dngnXKGGYRJucScjKDoJa9Q-Y-kq8gVF_IlJw63eaZZNMgwt4b_G5oQswxVnaAe7EOFMxkdAsLj9hB6lHtBcDLxXCVkNcy-U4t8MpRUyeAFMU-QD1a_R-RT0ylWtIVS2smD8fXX0wzF-xMbER_-rg4arlDVD_opbjJdydqstpdU-GkwakKow8qkf8bmigIY8qdG_COUOQhbaCkdvD_rlc6rCULufEWEX1Zf-ZqbJXtfI3p58trOrXKKLKjY0dDFK1sec0psyD0tMKl4VPduq7oWZFoDzKK6onF-cTY9mksoyoiKlr2sfP8qVZm2sX2k-cwRtyM78JicXU1zPRbPZORRZYlPKumrftlgeJSu7mk3Dd_SNGjluxaq5kptGN26JGQTs6dlmWrqwWmk6dp_E2tAb1l9nMNkepQyjfIly6kWoUoRntTsj079-cyqb2QpgyC4_gYTx7sJUEFbiAL0Y3gTcwOfdMtuZY2gfPImJh6U07orpBMPt_5LqAqvcN84jjROhG6owesXVCWe-kmcQWu6ag1GIpKnH8_V6eFWtKTQumMMFgANUBHGx0aXMqsT-13TWJ1VZcyfgLTG15iIMhowS5QsZW9wdxzwodX7S0lrAmnKrVlGkO_Kyslls2MqArHZrDsrK5Q0_ufoe8GDA1jZmd3h5CVwNziAwwTITQ1Nz1FTG2JlcLeTFJWW11wgpWXvMLb6PASFxgvNkBDUlRWXm1vjJWaqcPH2-Lz-QAAAAAAAAAAAAAAAAAAAA0cKkE"
   },
   "merkle-root": "pkd-mr-v1:Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc"
 }
@@ -2196,7 +2221,7 @@ permitted to persist.
   "created": "1730905988",
   "dir-publicheyhash": "fuzEz1CmW_JkUGv6FKOfpQzZ4nMVQnjpPCVvxzE2e5A",
   "dir-signature": "yy4C45MQi067fTbLsyFS1QTQSwqD-44F3ihytwyk734rrE_4FmWtv_Y8x8v38GnJVSCVxwJcMtC6mFzGk7FQAg",
-  "encrypted-message": "{\"!pkd-context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg\"}",
+  "encrypted-message": "{\"!pkd-context\":\"https://github.com/fedi-e2ee/public-key-directory/v1\",\"action\":\"AddAuxData\",\"message\":{\"aux-type\":\"ATPXFWGIhyAXzCn7P-Uf2Y5KG28Yk6rg-qjsrhj0dRpTDw5mofhwnWx0ApiYHfwNZ0tDyNrRqBX3lLailS5sdvRpUkwIgwkojB-EzKg3vKzQibxUcBRcZTMoW05DYj9araX3Prs\",\"aux-id\":\"AVVV8gY_bVH7E4BJc4vdWngzSLbOBZCEpq4qQdqozqTfI2mSRHK1bg3NtUQ6oZt34XEdGo8LttPO4hpQeroaotDBzU8PNIjDZercEdjh5Jb5rEBageABiJxlD7zxp31J6nWKnY2_ZEUMWGm5RYjZ9I94UxkrKx2zH1CtYwv2cMw8-7PPst3wIArhUUw\",\"aux-data\":\"ATkdBpiXZa3Va3d4FYrh-q_-NLcTMLPhuIsujD19laqtA9uYvTZtKsPYo88p6GOOodsGe9Vkk3C_-BFIeVIH1bPBU2q3M_ggEjZ-HC1JyWrKFg92fUQDTxcP4Rf8Ow1lsBoyy9YSxwUXisbIjN4qnvkL7KiXXRk\",\"time\":\"1730908981\"},\"recent-merkle-root\":\"ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA\",\"signature\":\"wjnRd_eiO07qrD_Mk-tKEYS34ECLNYKJtqvxmF8cjd7_BMfkO-XpDDiGmKkrhVbENvUjIiyzzHPzT9fQ8un_jkkBXv4SmAfetkXTUdHgEdYZ2xNYVsk53wjxBlzi3qwJbHakTcHky4O0Srp7uxVkf-lOgGGbIs7LoTqSDMQeSzxayaTIF577DlGsR9CTMusmXM7Km5mUyQvTaoEbZO1KXggx70zpVB1dPIqfJdIyPmEWxmrApYbssjWa7q3d4b_siqCOx0rbcVx4iWAZC4R9muQBaL3JZ6hP_6ojzS1G7eAINcc7sNivIg3MS6hSz1FzjvG-2PCnrAdNjoQKnNcc34gq4EXFnsVHQ3EZfk0utSi8O5jmwdP6XB63cPQza6Vz3q0m3wKu5tmVznwwj-LC9j9HjCC6EahT4AIxr-yGLVBKiefK8hB11U1gKjXVn7QFEDRo2H535NLN8PocETrtV4jFSrl7qHrmRi6uMlxLy8KXPIw1XVTuJ8eVoVP0il-SCQg7y7idyJg5o6vqhblhIEp-Zwz3d7ecYI8VIIkXBAjzu4gK2u5jb9av49Dv2sf87UxKL90VC8MiWjZiC53odxU866n3L8svjZYFEILUZTzlRkoG11Bjdhdx8rpqcq6RRGCXxQTOGxcyoJ2oUveEIxTZsWpSIJ4qW2MmSvhypwXV82e1xAGvNAMUQNZrvjNbweaPyImHi_Txf0AY1nNiiykhz7avwxix_u8fxrAdWoBJIM2nLo3JZsZ6nEfBpqUEU2nXBNpmhDZubVOG1xeSUsQljmxTErCIRuKJsIn3m-I-LCBl90gut5go2MS08evPV1qef4SWvkib7Ui6dqRT54x5BBZ9dwhqfhsHGBd-3dRNTfjHt_h2vfIEvOjlt_BIlPPZ4kTJI9YO-kk_uY4eSxv6hkONO9yYb7IhG1fpJ70cGJ4613H3r83fTbw_BgSkkl1S3grlU_Ket5v_ZbfxaPkUv5SPHzSy3Jkdtb6S1Nxnt51H-67ER9v55zpGDmBuYNsc7jjJWe1ZwclVPpguYfFEiTIcYbUxFXNyiUlh5_0xpISegK_702ZTpwTn4xKI4elFOI-QYv-CzZmPSg99G6hG6ofms2_xGHs0Cy2UBNWJSuyxN2fSKXOThIPq84MQzGmktRnaFpt7fZHoY6q9P9CJbZdHlmH1kpsl3TSAH8fGKhlcLK9FEutRpMGcN8ZNYGhcNu9aqCz7MB0E7IXBgokfPMMC0qaz5KpGw5S8se02AEISgrJ82MjL6p0v95EAVIJvHMZOzthVGlT_4RAgAlu5mPB9ILqPKASZqZ4oWqJ8BgV6WCvj4OP17yAyu-Mn57G5K5lrnFPWOS1a4DRA7r7G_v0V-P6jSsu_v5qTIC2N3hYwGNGJYyDDzPZkYkNngMaV8FM_FUp_H0_LYjMtftKLsazqVSDjIGP7qsSMl3JlKoah70Tstg2zLf_5ux5DebzDHL_G7cObYfkprh8LtYyo5ER4dN8JEUvivFCdAn_BqfmisLtXlyqfWrBzKEnPE3RS0pcq13beayucvcvCdCxTKMbXAovx0RD2MXcOkLfoVGr_-37E_FqHs5Isuc0UBWTryYTlJ2Lz4xs6S3Acts0OUAow6FlxFlRk1Y85S9inR1tf_O12TskMMesbWZgJiMaVWhIL2IQ-bfFaAZshSMm1xr8OG0kX3rXHeFZVjrqeT9boQE_jGALMnbktbf0s5lb4GrWmP7e-_B1XrGgCBsu7x-c4llPJ1K8CtEUyvlDZtPkhvtKFpy5_eeCvVuwjmrvgoTxFxng9--NP3vCceYkQaNjio1UJPiUI34HYmGASz8JR2uFtoXs9WKdAcc6NIGzEFGIZ0AEUo-XvPbVRZVmhTfx1XWIfWoKZ65QVgMgUxoD6SaGrMp0ZCQY4lAgfRdgIa5O1XkzA1r6ADSN-fsEwV1LOg_A1oZg5fPwGWoiJAZdnPG0uCEicsMM_R3epFMgRtkbq6dbdjQyxvz18TJC6q5ScmPNJCV50zEpKIDdZHCVOW9fuYYMg1xayRdelJYrUjMvwSArUBD1qW-22Bul8zOTVFDTCXupMAqv4maU_MY5zLFQOm6zp5KGqg54TCU7ncvKaikIFFVMCgMh6TxEjWAAQ6JP7QYrE83OfZlhf3kFa5OMwr67iw92h1FH40J6fKgJSnamTQtZmNbIM-GAbGFoxz9UuJD7rNpLs_cqhUPi5DNcLX7M1j15MuV4JCs_EsSGfGuHIh4u2eit1m7WnVlAJN5UqK8ptX8ppyxlRBC0ncnJ0yIaWE4v4j2kD8Ap8VDBY9IDhB4-sTDhK6r2Fm4oczHXpB3ZGCTWWn9b_vRQHghDCQMzR8ZHmV-45wQI_bRCBjzZl-iRaw-Q351MPwoJJIVMG70si_kSXpPJIHj8W0MRc2KpNb5zc3QcsGs_VEJ3wvkbncIa6ih_1QPgGrbYvHYkHgZg_ku7UbUbGU3xcIxTBIdOc0Shwifh_sd-0OR5hftaRs9UIHqfqLSLx4zUmqQkCCV8imxN45PfLNhgrBWoRylnn7jNkehihrbaGb-6oCzYdTtrnjelYbZZ45lL4pKQqoywg5PV2vadNHoXv4bQwg7o4lJSs6bRNzMhutOEVMpbunvYw99GNerDWz118xXfZdKoGvxEMdkYdFn6LXyNgCsod7zDqe_l-j4Xb8g2n9LICf7WpRlslM6VTOX993zYwfCL55_oAVuQfEoo4_f8jh2mA-GECuzU4nboKntaf0Kr8VY5id4iD4ud00XHAFtMyYjT7alAmC4V0uuUNXg-R0vlkq01pX5o6XvCVQtY6IhJbYjjQgiK_fZawRlx6_XS8mN9Z5eHSRDp3H0BM0eLkkQfhryuFZkDub1md4uTv0Ee3Fh09tgX5Qc9X6vExzqQaQqBoVIesl_jfYNXCJztx6bZYsDUl4ZVbpy7cPxwxhm_b7Tz-GVUW2t-uS5sVBRdEidPKxdo_V8xuy58lC1AQhbsPbYok6szX9UxZOBpM6WqPp1XAmFWcNZb3G190CrecW2BbeWQMtccErRVtl7_a_gDrB8EkAiwTklx7iDoSXnog2gUnJYlxwkAzm_pVrtuxQmJDidgpHKALDRYaS1thd3-qrsHH0d31FiYsPEportPV1_P6_wYPICQpOj5NUV9ufpCWmJmaqbu_ws7h7_IGDxdeZGV4i6m4uuHv-wAAAAAAAAAAAAAAABAdNkQ\"}",
   "inclusion-proof": ["w3N3BU44g4MLC-sDGSzr1nJO9jmZfh_yq1bhpLjjWmo", "MMh4YxMTJLUW5m-6TuyfVhL3bxPF5fnXKbajEVJeO_s", "5Oagf2KpIxEschB1bjyUCG9E8ap_7chIQFHyU4yJy1I"],
   "message": {
     "!pkd-context": "https://github.com/fedi-e2ee/public-key-directory/v1",
@@ -2208,7 +2233,7 @@ permitted to persist.
       "time": "1730908981"
     },
     "recent-merkle-root": "pkd-mr-v1:ukjCV9E7aCAVKmobj_nvn-1AwTi6Ju21GsVHewiQdBA",
-    "signature": "BlFdZqQIG6in0q4pCcK2HEng2iAKbL6R4Fhsst3WYYKV1aubg30RkPFI5HNATREa00Lc_IXPbsUZZcTW3W9JBg"
+    "signature": "5Z54GznrkHCay1anC53UyamHKxNZhtH58bRCuY_IKocS6ayQXIC_fmyy34-fM_Q_E-bE-rrwFS1vyxdmEnrmRnhuPQJQm9lya1slLgbTcPrVXPM0961XfDE-Bz7diASW1aXAxVZAWIlu5tn7yjoa4gHSGpvYfrSFI55hP1OAfNIaCZ6LxFKpXyB3ESRnzLsHGjqTO2q-heWC8yJJvQILFWyysjyxJKlF8rTP6Qav-VVRE8B9rJES2fWgvQNPfKERXbhoAxIG9NKizC4tA51mdagWVT_dM0xFrG7BklkjM-00QyMmB-GYlFcVUGH6VT_mWRkIgXHHiM5BYyAzgrhoLTU0uJXHQFuDRRv6iUtmJ5-EAIxZwKAc1lYqZzOAjHLNPL50njmnbXq6JIy9gBj8BnKGRTZ0cmJKXn-mTZHaXcWr30LyYf8B8rNsCJFf9O7DB01VfawuC5GiYwrRJROERlPAJWN_KgqvOXprGgFhFhLMCQfg8C7jpZzcG2INZaK4OdBGrvJS7bdQddzvQ8A9V3BzX0pZDxTF2KtIIoAHqLbcsjzxHurb40NVtj2GdGgeVKoiYUIUjcJHg16B0HYQ-MVHeEEKUfQzKa03IxJ8UqW_SiE7syFqFRHM_5ofbyXhwTXT3mivPrC01RIexm-2NSFDRkBGpLuBNmUtsY0Dx7n_TCrU8bNDIqZ0Gmz6NwVdNsqJ-y2KiFyAwRw97bSDm8Opk_lmcL4SYLx2oxCU0coQ7YUcOiPxugjbYsrtsSq2u91MNoSRLB3N_LeQiYeL3aKDCUg039-dxSzGAFLtVbyVI9B6pu5-5Kiw-hjZfpb462lGZpv9kYOBHGNdzwJpLsXGu0bdNuRXx3ZZA-IubiD3nZzOoCe1VGDFZPkRGCLkBkJ3JIzhlzbk6pz56ZEB0rVluOVU_D-NJwi0FO2J_OoRCFKT9pIJtoUGzvcYO3BeXJzaMr5X3TEmtdiWdSGpmOGp1_MAH18ikYE8XiM4QLVZSpoqz39fq9Vn6d9pTd-iAIc4JbF3mppkJHR3HW9uEVNIJbeCuRfpNLHEjGnl6InpPH-nirWwuILSfKgf5g-OTTxUulnG9ZPVmDDMfC4au78PwcXimbP4SKmBwPYW5g9uDVe6H7irSrqSBdR4op0gkCb09i80JVCW3Vqw17rlCvhaL-Vews2MT49n6F-XxOG-dBAdGPQp6FjPW0LTyHmSFjpni2YkhFgESvyEabZYSbArCWpH69jDBUW8nv_0xOYokW9RWY9cEascjStpspMxN2FFRYWgW8Tua-JRgnNsDYuwPG8YIkM92hVuE_B1aK2LgSJdy7oXSlwc90vR5p62rKmWVC2XmAz7IMogL-gFsnkcNQmdFe9VcNVeY4JoWRX5EflvtXNAzCPXVS0mytY0SyAxyH3OMnxg3PJYqQEexFJtmLcEytKPYkgp4d6ui2EQ2oAypgcqFqiHj0gVpoqMg-FLEqLow-MBkHNhq7ZCPXny6Aj9ZFxSrHH6IMpkAYQRHz2CBP25X3d8ApRbo9_8-yPSVJZAL_QvuKBKdAt-3hXxrylUX0j65K6qD5p8SQGCiajOZVlFc__3V4h0JYNNVbXxq2JsRZG_hVPJGEKr9em3Es6NW-GF2uk-3sv89wYp5I2slrdMciUojxHqpXupbuC7qG47MmMCg6gRXI6rhxfwLDGWfVumProyWhnEP1LFN_2gJ6VsMMoVa6mpJUUpcRbDTKru0xndnWoFDFMWmqaCvxypha9-qh6C9K5TlZFBS1kE4oq6tU9kxSdButp7oKsM6rVDh2DRMTB3-W_KrJtSWGMWrBkD5i73WiRb1-hSbwBdde7ynl22CL2jEfYFfOANxoAwV2u2VeNc3MszFQhQ1sLAgHgkyEaCQ1aWcfwn27SzJw634CFlOflJMDoriMraH0QUprYpjBaO6Qo5xkCsprTXg_J4vz1-XIVvibDveM9b3pZublFud4eBRJg8sgzUvP_y-NveV6Y7K8LcG7roXhUtzjx15h6_jgE_9ecrvnO3use4qlmwsb3KUBDZWndrIUtqVEfP3gf5GbjU7adKWK2AhRiOwd_rmLlZn5aRg6INadWMJBIas_12f9CoO5UR_cbB7VA_xEQvP_nVxateZ3t1PhpETQs62PYYNgaXnmldmlmxJW48U1lgVax7gUfHzlHqM5nL9YHOkekgrTQwHhRBt7cAvWXJ1XGBqSZj7ImVNWaCZCKzeDOGxoWtLmw5Hj8cWkJ5KAR1kYc18VWD7IijJ5U-S0BdTLUx_9acM58gdjZ_0l2No6FRB8y-0LB_lgbf778ySCthUca8Ylg-GFi-AG7cQ5kvNBzXsagOkApyqufJsw1CKhxfYbC8VpLJat673juJZjWCBO6JbdiJWxsgf1hvhrqI5ZZf_SPc4e9ztiJciomRXMCBJjvseJXnkh6PDzwEfx9DGkX9nqElazEmmc1NrzC8P7FViPC7vz_yRS7CbUcSDLf_ks4agfeU3iRAFnJT2nzMN6-gmDZ2PtQMKOWD5mLVCFm4N_yxtiu-RT_6IcpwTNNUYN1YpkOVUbPo6AjN_yxHfWkyLTcXcyFstMlEyC7c9KiblMeAYNzPcjADJ7_lfAyX0N4tlhLaM3NZi14e5uIR5IT0T7GTeX0ZQA8vQ5weVPh34wU515_keU2Cr-iK8CavoVXuMuF9qqWVFLz9dG7AdDX-Q18K8qOOxnpSoJrdoKYWdXPXK_x63YzNo-tz14902Bz7u6z4hxS3LQm-as15gn2Fb2DTSTC8ZGxVQDxPrO8nAi1XM8AnOVS5P5u89lEb8Ff5VJIea61NFQ7Mnu4-E6SB2EKcQHwO-0SZiSn0fuSZBGa4ZPeZCfYT0kGW6FSaX75WQnIGqWg7N6MrHVnzIpusPQw1u2neDNV5DnzWswt7pYlmhtKio9qGgfQe4mT1AtXHATLNaAflUD70vwnOkRO_7_S4wfast0Pk6xmhrtYqQ3hHVAJwS5S3cmXfQynweT0SiADEwDCIFJQ_gVabGhil9u_WtOi8rtXeSgkrWgAjUaguSEhFLuef6BJIypRg_94jmJO53mJp1C9a2nUTVK1kNsD3NXXQxW5rNaYj2iR7-cMeJCwvYGxvfqHc6RYhNFVkg4-yvsDBy9TW2OHkFh5SVFhphtPW-A0iK0pvd3yLkba8y_P2-_8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAscJjY"
   },
   "merkle-root": "pkd-mr-v1:Io01AlF_FeRiJounhQjty3tsxEKHekPVTd7r_3BHpXc",
   "rewrapped-keys": {
@@ -2284,7 +2309,7 @@ The `!pkd-context` field will be set to the ASCII string `fedi-e2ee:v1/api/info`
   "current-time": "1730909831",
   "actor": "pubkeydir@pkd.soatok.com",
   "burndown-enabled": false,
-  "public-key": "ed25519:jbiRHmufss66fF3uAW4g21CEPiKlgXgwUxE3s-V-5Gc",
+  "public-key": "mldsa44:9qbpSqCbRaxZIAG1L3mfo0tZ_pbnWYzUl975rugVU5ZKvnkWrwkrJOV_PnEXSztzlWESGZ3bDg8xuWVB8u7hMuWh5omhcC9f1DhSnLdneYastGssyGiyn46J-eHbcWV6p6MEQ8oN5O_MbHSlcVz_khvsrYyVN81VaNC_tg7DCwWUjqchjGHf6IZvlVsm3buXkzeH5GmpDzN7rDHIQ-Z_yz_o_EONwQDnwE71zjJ3Yd_JenhL5kvEi1v9os-SgR53QcyDG6C0CGR7DjOxNT2avGI42q_qIc7o6lFqmDJM3IwgZvrd44cnlnhEqLPCHOxOsefRuAK3ntURGX4iZoemulIkQ5nDZF74jrxIp1NeKGohrJlyt4T_apZkJlO6RfZVR6gh__5vnm2DY1N84lwPQohH7w_B6_uzGqi1tP65uCXq3eNIfHC06cY5GlM1KRzmkoM64tPybCrKWH2dGMWFZ1sS2fAD1MbC4H9Y1AJmuE0-OS8JA9h-nxdcANk_0cqT88sGuq8VeW9O9PN0jJ5Bt0wmescG5WfG2Xh7RfKMvcHTFjwTE__Li_ar5l47x6P3tyknNAfcVOxvAkraP6Q0-H3N_xCI3IFAs-DdCG-0K3LotxInvluBrOrFfZIy3EtLUHzRp9SPU0JOrMtPae28sgTXH5DCdjzXwtONDVuR1wiZpgMEbgdpEZ6W_suC9MA7SWjeYJcy3C_LE2coJYLnARnhf_yEdXiXizgw2WjQw1I-on0mBF6U83SpVYQsbXjYh8ksmbXxRJ06dTN_7JexNTvlTrb0eWxc5IfBHynftzj0DdqSiGveyjkQfYZbmqV5X_xN6dymBnGXMfrn1-Viohj6F57s_wOZm49SHWUxdg6ZWrdvoGq3D857yXVGm3fHDVWM2ZLYHSIpnKgFPMLwF1BuMNEpQfDCF3FcoyjycpTOVhpfOm8N_ykKSp6QhAytJmQ0h1wLl61a7FI-ILr9g6pjl7JuObg2NelPt5fZInN8MjDlaQTTuiZCi1GjftNmSwnMv368h9F4haaAdD9OJnsADdlN48b7dUqPN-wo2lZ6X_3CWGaENJag9nhg1SXwdQIp-EPaqHYet30QsWh8LH3BxPfM9vY4hGm8BkLXWScncOg0CXOypoIPCbDT03_jvII32gScw7nn7vD_PCMLuwTOieid9cmZxJSBBsw7SDO8jlcYGsgRpuI-cpoXEGgEF-caNH_-CewmnuxcY1qShQbtDtqLVrz7lllFDmekRhtUnJo3tHaYk7gXl3XuyB1OSNFMuuk7fs_G_MrReydzWkC28LUudJXb80HDkZY4LJy0TkuCiPeZ0CVG2Xd9EdQgws6k_Q3ev0KdbYyrTbnfwPzKluiFSSjDZaf3UkLh0GwVGyYrinAH9jbrH4w6v1VMxK4e1i0ZCrQxJDJ6OhUE75D69KlV1_dL_wW3HZhluHtH4EYYbjMYmzvY6ZC7EMgMmoTP-1DIG8NUoiQgb4O-g_22sF2pX-zrYacFTfLCCueRgAy4DbwHmRFuWtuezx7pmnD03s5n4p1MYkEm2i7H_j3bgovG_jo6oyHG_0IcifBl3yG_1REdhQyL1_vlxEk_DemT9_zmgPNAC5EFbq0JbgxlCN30n92COdgyPyrPo2pJ3fRdM1xUCeZoLnmbN3Fc4Dcm0bt6ohABYWqNOyQPWSExuWS29KbZj4NP4Qi_P8KZZMlkS9KqwjbuCdPMfVrJeKRQy34Fy0PR-FmfFkF30Q",
 }
 ```
 
@@ -2370,8 +2395,8 @@ The `hpke-ciphersuite` string will refer to an [HPKE cipher suite](#hpke-cipher-
 {
   "!pkd-context": "fedi-e2ee:v1/api/server-public-key",
   "current-time": "1730909831",
-  "hpke-ciphersuite": "DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, ChaCha20Poly1305",
-  "hpke-public-key": "3NtzCdMS1nuAVGHQStL-2evsgYz_LCuEzLeXXlrX7tM"
+  "hpke-ciphersuite": "X-Wing, HKDF-SHA256, ChaCha20Poly1305",
+  "hpke-public-key": "base64url-encoded-1216-byte-X-Wing-encapsulation-key"
 }
 ```
 
@@ -2580,11 +2605,16 @@ Example request body:
 ```json5
 {
   "witness": "https://example.com",
-  "cosigned": "{\"!pkd-context\":\"fedi-e2ee-v1:cosignature\",\"current-time\":\"1765655318\",\"hostname\":\"http://pkd.example.com\",\"merkle-root\":\"pkd-mr-v1:Hy3Qtg_8f0iccceOFaO9qlT8sY5cH0OociI3ZUtXgjg\",\"signature\":\"6j9e_kZ3rOeliInHIRHo07Q6LbhZ1FLYXzqJZKg7EB1lk15x290eCp78LJBhcYAG8VWHE0K4p1U2f03o-SwxBw\"}"
+  "cosigned": "{\"!pkd-context\":\"fedi-e2ee-v1:cosignature\",\"current-time\":\"1765655318\",\"hostname\":\"http://pkd.example.com\",\"merkle-root\":\"pkd-mr-v1:Hy3Qtg_8f0iccceOFaO9qlT8sY5cH0OociI3ZUtXgjg\",\"signature\":\"EnYOLIf1jCJRuoEyzMJfufRVBuZUGMDiqwLK3rMJCaGCOXJaWwsQgRFAJgx8jXl3NmTy29bOYi8J5Nxn0EDnMTgemZ8VrVM2RtqS0IfG-5o3_UBf9ObpI5Y3fG98M4sSPPWQf8FkwelGy8ZXa3CxpSuzsin0fYUnJox5eA0kbMScO2cvSc5oIBvwKtep4nxzI3haM6ESMIcR5KaScD6PITAsepMGZawcm7lwu03rqDhleItWaMIUUpEnvbWBIPsVme0QU5Kz-Tz0kfYv04TB7iZiNJ164m5txK90Fh9d_DEPYQZoUnv4OTrHsd-7h2wl4y__AQrnG6UhvFpmwukHvJcq3u7TmWXpXp2YnXX3sgqUdSkmmvCeYis2qJG0axo1ihuM6FmGTwJIenzLMCWKSzX011-g3m_BtP4CWLezcicENB0XEUtHugIYYtCESPm0HTvl_DYTpWkIgBkQzlVg3pFZTCqbYh7rb-DWFTBxKT6FV5hVkeN5uTHk62zQAgWKqrM8nxuVVUrR5E03YDI-DcQDauyBBsGhwb4b9Zvc4Ptm3Bimwr_hkYFkkrkKl0lvoB1-WT7yOJbZZ4Ck_Au-mP7znHoFCSUi564CLSPblDjPznm_G3I7YZF4nrOX6wo9A2P6Yw26qLc2jxactYnHmoVgG_0IjHaE2uGOqe4yiuQ9_rC3Ln758xRXMGw9YMyFysjW2orHCbtd8_OEX829NjJl3Oza6b17XpOf5XMZ4JzuIWoa_0kTHd6SDdLaB8K_ApQeCDsb6ivghPhjYWsCZr6TMPDWTnrMxfnMTx9hZBoLgiY1ZIeZYLn7tryqQOipNJh_BEzIXL-EDxqLKs_kHz6MD3C2mZPPp1-w5OIQnEMMpVSJ5PSoabHjUuAnl1CiyRDFOrL5dQUEpzWJ38FBHG9wTuFL_cjYhKP-p0LGkWUrEVdZknXHpUHeZW4uSgoMeUELXcZyxGI5kAAPbVtiU-f_oqrZksd7THiFveBdwu-dtBFyU1NBwZzc8Mne4VAnDfEyG4vgJ7aTAh-2AWJvML-Pk0tM6L_j8ch0iyHQ8MphSTrzXuOYh1YslK6FycjZbKHba5Rhn5fKesB9dcLmKufnAjHNyq9fEzSZABVyH8-UQunm0BNXrhieVKlxt4LCka-Z2Lcz4q9aNjS0D2Sv8alCdatis7up0GVrnk9qvQe64bGsgQb2iEqEIMh34dS-PRXvP4UeAbIgAQODsU_IovPoM7RFx7eBdaR_aQUF8zZRxFbjfUvTQTWQG7wJQQ9bSESpa2_rLYTUYl3NGRvD348jpJcfZ-WzPIkpPBjvYpihF9GgHzUwA5lLIcwcXv1AjdNnL-Q_mqdYEi4covdNDVHKqZjgc0-CxZs0SUQW9ed9w3WvSOOzNuONznExT1NRf6kUwZqBDO-JRyl0dCNt9WhCyleC7ogq-3tN9wboMGwsJlS1SyZ36zQFNIdhq8TKM6ZiKvqfOGO8v5-V6BEZLCcuwS3z7Cy1ZsVCmqBve6a46Ul-vrK6IAWW4x80gh4IA369FIw_H3QZHyejLombkIs7fJ_gSSvxB0TNjZXVghythUiEv7o0lqJIDYrHs0E9eW_Q1IP1HcKIjCxw3VBRATM-iQhmGqGR14FMlzBxEp2D1tJgUfNk03p8YdW0uBZ5otGLhIMNRjBQhIB4KrjI9mMuBAAf9Oxm0dkHAPepDQwU2lNS1qsta9oRrBLxDrF0-Z6uncKx0Bo76aEQJjikblwksgsE3HQuzCeRgKw5DHJ-IKqBfRgpaiFlVv3f4iAzJV_m8ttPPZMsxc0Gsi_rcs2Eb-kz9Om-0dAABK6QexUSmsp-21Ze2Mq2-1OKZXynqviqEHlULscJetok_nj5n-ZpEMcdoTYtgU3RUyIWtRV_06jf5SedI5AQAVa3eEV6N0tZUBxNvBi1dhvraztsPr-1WAWxs6uYLO1Xp24MeGr3mPB8nyItW1fV3MPRvasZbMM8fiIVNfdLgC1jams0S_zMxcg5EVxsFEyxbsyWkvSBxUNE5UDQSKi2nTAWZy66Pey1DUTJxIKAtsaIO_7hXTJzapx5IVEII8tFzfYAkvk0HkDoYhpaXACVnDx_caLSlYVhd6esyPip39lEvRy14Dezq7mkcn5vyHA8yPouDU-6QhPJrzFcLcZ-m2nKHltW6MNCh5xWRLQPmqiODi267m37ScJB2gfwJT8MAbW6vOKVkTty4_xXu34MKUhUE3u9ahuZbb-eVFHgIbS6coc1othb7jLSr-2FAgvhC_CQxvUfG55bE-wZI37_AMAN33vWbkjJAp-r9Ybi1EYitv5WPfN-KfGjPJoOUmPpRWklKTg1WHKMKaxsDOLxYqaVhtpeRBxbJfPW4qIZ-aAYYGLfmV4xWspJDxFigj3kX9i4cAK6v8oPyBUUKQ1fVf21SFhyizhTeCR_Ciah5q5-IwY8NDA6UVOY0iHOsUGxB3xsM_bZoc5Oa4MM-U7DgqhqO0eiDE7IX_HRBFuDxB9fDZxUmfREHd1Nf098sWrIqgvwzsIhF7kQep2fFjt9wuZfFPwEYShzl0sf2AkPU_ytstPiwaDgns2AO4OFtf83-7ZrLmO_k-_-_wFqvEsNwB0X31syV9_NgHXsyqkHMTkzUvNoIrc9jOl6rVLhSP1fGGdZYKWBvjmCT0BA5VH3g8xnxSqsIO9vOKDGUwSfAwiiOYeO07gkDAhDgtW58bxsZK3fZ7okMRLPQ9Ls04lIow6KnewVK6tzkxLglqbnsh4_gUruqzJYTd3_Ehf2lfdcSgB4R09mefk8X_20Mg2dzdI-oasONYoAocBS0gyEl1m4sEE6Wtw4-uoedn-CDCnmjrrUWGN--9mbZdPjhCG2ninVbEppNhGv-3F1kQg1qlAmRkjqWP2Pl7nIUA8tyeEZHt4eBe1uN9Hgo1cYehRPTJtKAY18Xcek7OS3rMM7hExmaxY_h0Xcdf6ON_qFYzJ2IyZtFeMENQNG_6smMCL1ogRmnPIe50_Dkg4VZwF10gT6lsdn_PzqOWoT5NlAbCJ3p7VvQOdpGJgRTGJoXv5PUeC30IWmW37sLn4pqYWuVAhRKNvb6ZfsRqiWnSjr7C3-dLTxP7oUFhgfIiYyZGZ7fJaeoKXM2N3n8fT-BREfLThAUV9nam6AhY-wucrN0eHk6_H4BRYgOXSDh8UYPVl2epeYo6isrbq7x8jg-AAAAAAAAAAAABYuNkc\"}"
 }
 ```
 
-The public key used in this example was `ed25519:lNd1773FMPh5b94XcAWjXVNFtHMq5im1Zp1sbXS7l6w`.
+The public key used in this example: 
+
+```
+mldsa44:DI6Kmmwhsfp_xoLQYNFUhwsCkO-ms6FBUn5brFRbQPkE0cckbDoxsCRHJ3D294dZ7LKU8pV-VI9oVXSZ78koXz-FSDHURe8ZHbbZUttPezRcK8qcfwf58uONqLj7b78X5H-0p-2fKxtY07SLHp81p9TcXAdvXc2vmRM3hz_lxVAcFy4NFBFPiFTH5oqymzCGI8Un6Vh5SmDGX4nWqj6hW5Oox8zMAQ4K7iIIOdXCqVqgGQwaQ3lhNwuoHoCs8LLimmfiVlY_h2iNtvIgw3GRjex9YrX01ZSZk4Y09DM8Kor-xX15-k2V3-BMaQFwV92tK2F5Bq988BabsuxL-ivcWuFq7IOEiut0Wf6Zp_nsXt8h3BxxL6UOcsFtN7VW1taW_3vjTRCDrjFgP-xzapmqgKIjxmYFuz3aRI3-mT5cabQtt3aFo8QKe1FLY6mUx7wmOFCQKLixvRQlgPruedlxULmgtP4t18B_4lnV688v5CEk7yQ8FffhCKU6GS8y3pta3vc9BtQZRjmhtN0Pdf5NIp06QfHwAqUGh32NVlLhxJQFouxQEO-6ByJBhoXOWGjBBXhubNCg4vJYjiY2_XEvosJHibjl2a2GMbLlOPLubgF-saK0G7HDM3DTn2GBpodOPkq25NEYx3DJiqsA1OGG9wzSFZiqAe4z12iR2kqYUosy1caWS4iaNZ09P--ma4CeV7xM-ZRUcfjEfy2UUYLEBqLfwvAcW3v-0QVx-kXSpwRbqt5LGR1kRwrNpLAL1xPRWgFXWYmu3C-P9wVUlqm-Cp6JkWsbhdG259gyWEraZ5yO44S3vlxMRP-bdkNcfqoY-FcOfYGETYf1xP7kUBWz9JkGtj1kO_Tl_xWC4D9t-h3wjVoejAJ5zw1qDes44HZ3TJ3sKl8iplMM_u7c7ZmRTeLSwtCABrxx890b4Z-guKuoPNetpnJBbLjDCMHPqtojrQhgUSU7fZ4maxRWAKTR11e105Zw7zvi-lRmyp9tLG-g0z5Z4k8Ukt_tFPNFnhHYTUjyPU3w8dzPRxsit5XLvsQEtckk7ou4Tn9oQoKF6YdvO7v88sfOkUvWhjNNIBYjwBKUS8rUN0ZWH5abgljjlkCwRQz0dMbMdLtCTExnUuuSgIZb4-mTz4EYgko3kodKPD0ZCzXndQ-WTqNjHyzQocMvB_dd5LOKtIWneEPb5gP1tr4tZRl-FmdZpd1GH07locQbQba4tDxjKrK9AnukRX_Jv7VXJ7ApUBC9B42Hh25w6TdWcskkjhNVooLAh9sptoVYU4HXjnXJQmrbWPPV66aL1NbY8ad4W_QNkUB5cSXgaa6lLsA8EXIlW7gTvKWZTAu6KAd8Dqt6i8dR1cSwLe-O-O7qCrj77XaIfjL_5mBz8xuORG__TppDGcVYy6JcQwiTcDw6w0lWWHsCEL0GdxETParbTlXoWKiAFqEGYeCfUHiDS82JzPIo11cirDLdeElt7s9IAoxi0jlueK-3l87M16uzqXTqc4SHghTy2p-5qE511D6nHXnqGql06mAFyn0D_XzM4V00xyBBC3wO52Ru4E3NXrznNyvAiSVZaTC7iGRibKJ-pdkC94q6-q5qvkg7D5fheGDwfazgo1prCT4j2xROSOzfZsYAn228bB091eCJcukixfFITUDqlfkXg1PftereB9oOPVkVU6lHTBoOCVcP9fT8BjZwxWxRv-DYSntEVpGJP6ulG7IyIcRntL6FQ4ntK7R7rjHeMhBniA
+```
+
 
 See the section on [cosignatures](#cosignatures) for more details.
 
@@ -2686,10 +2716,10 @@ in a `tlog-tiles` compatible format.
 Each entry committed to the tree will consist of the following:
 
 1.  A SHA-256 hash of the canonicalized Protocol Message.
-2.  An Ed25519 signature of the SHA-256 hash, created by the Public Key Directory server.
-3.  A SHA-256 hash of the Public Key Directory server's Ed25519 public key.
+2.  A ML-DSA-44 signature of the SHA-256 hash, created by the Public Key Directory server.
+3.  A SHA-256 hash of the Public Key Directory server's ML-DSA-44 public key.
 
-The Public Key Directory Server will maintain its own Ed25519 keypair for this purpose. The Protocol Message that is
+The Public Key Directory Server will maintain its own ML-DSA-44 keypair for this purpose. The Protocol Message that is
 hashed is the same subset of the message that was previously committed to the Transparency Log:
 
 ```json5
@@ -2824,7 +2854,7 @@ That is to say, we pre-auth encode the key, followed by the value, for each of t
 3. `hostname`
 4. `merkle-root`
 
-This encoded value is then signed with Ed25519 (for version 1). The signature is then stored in the payload, and the
+This encoded value is then signed with ML-DSA-44 (for version 1). The signature is then stored in the payload, and the
 whole shebang is JSON-encoded.
 
 ##### Verifying a Cosignature
@@ -2855,8 +2885,8 @@ The input validation steps specified by the extension will be performed by the P
 
 This section details any nontrivial cryptographic protocols used in the Public Key Directory server.
 
-Nontrivial is a subjective categorization. For example, signing a message with Ed25519 is considered trivial because a
-separate specification exists for Ed25519. That is not a criticism of the algorithm.
+Nontrivial is a subjective categorization. For example, signing a message with ML-DSA-44 is considered trivial because a
+separate specification exists for ML-DSA-44 (FIPS 204). That is not a criticism of the algorithm.
 
 The authors of this specification strongly recommend asking an applied cryptography expert develop these cryptographic
 components.
@@ -2878,7 +2908,7 @@ The Public Key Directory chooses the cipher suite used for HPKE. Any currently a
 if the client and server both support it.
 
 For the current version of the protocol, clients and servers **MUST** support the
-[DHKEM(X25519, HKDF-SHA256) with HKDF-SHA256 and ChaCha20Poly1305](https://www.rfc-editor.org/rfc/rfc9180.html#name-dhkemx25519-hkdf-sha256-hkdf)
+[X-Wing](https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem/), HKDF-SHA256, ChaCha20Poly1305
 cipher suite.
 
 See [HPKE cipher suites](#hpke-cipher-suites) for more information.
@@ -2968,8 +2998,8 @@ These constants are mostly used for domain separation.
 | MAC           | HMAC-SHA512             |                                                |
 | KDF           | HKDF-HMAC-SHA512        |                                                |
 | PwKDF         | Argon2id                | mem = 16MiB, iter = 3, para = 1                |
-| Sign          | Ed25519.sign()          |                                                |
-| Verify        | Ed25519.verify()        |                                                |
+| Sign          | ML-DSA-44.sign()        |                                                |
+| Verify        | ML-DSA-44.verify()      |                                                |
 
 #### Message Attribute Plaintext Commitment Algorithm
 
@@ -3079,13 +3109,14 @@ HPKE cipher suites consists of the following information:
 
 This table includes some example HPKE cipher suites. This list is not exhaustive.
 
-| Cipher Suite                                              | Remarks                    |
-|-----------------------------------------------------------|----------------------------|
-| DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, ChaCha20Poly1305 | Default; must be supported |
-| DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, AES-128-GCM      |                            | 
-| DHKEM(P-256, HKDF-SHA256), HKDF-SHA256, AES-128-GCM       |                            | 
-| DHKEM(P-256, HKDF-SHA256), HKDF-SHA512, AES-128-GCM       |                            |
-| DHKEM(P-521, HKDF-SHA512), HKDF-SHA512, AES-256-GCM       |                            | 
+| Cipher Suite                                              | Remarks                                         |
+|-----------------------------------------------------------|-------------------------------------------------|
+| MLKEM768-X25519, HKDF-SHA256, ChaCha20Poly1305            | Default; must be supported; post-quantum secure |
+| MLKEM768-X25519, HKDF-SHA256, AES-256-GCM                 | Post-quantum secure                             |
+| ML-KEM-768, HKDF-SHA256, ChaCha20Poly1305                 | Post-quantum secure                             |
+| ML-KEM-768, HKDF-SHA256, AES-128-GCM                      | Post-quantum secure                             |
+| DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, ChaCha20Poly1305 |                                                 |
+| DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, AES-128-GCM      |                                                 |
 
 ## Client-Side Behavior
 
@@ -3240,7 +3271,9 @@ to weak or predictable random number generation.
 
 For AES, this means only supporting hardware acceleration or constant-time, bitsliced software implementations.
 
-For Ed25519, this means rejecting low-order public keys or non-canonical signatures.
+For Ed25519 (used in RFC 9421 HTTP signatures), this means rejecting low-order public keys or non-canonical signatures.
+
+For ML-DSA-44, this means using a constant-time implementation that performs all validity checks specified in FIPS 204.
 
 For Argon2id, this means that at least one of the rounds must use data-independent memory addresses. It's acceptable if
 one or more rounds uses data-dependent memory addresses to improve GPU attack resistance.
