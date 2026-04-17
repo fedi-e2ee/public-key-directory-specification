@@ -356,10 +356,16 @@ try {
         ),
     ];
 
-    echo json_encode(
+    $encoded = json_encode(
         $output,
         JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-    ) . PHP_EOL;
+    );
+    file_put_contents(
+        __DIR__ . '/output/test-vectors.json',
+        $encoded
+    );
+    echo 'OK', PHP_EOL;
+    // echo $encoded . PHP_EOL;
 } catch (Throwable $e) {
     fwrite(STDERR, $e->getMessage() . PHP_EOL);
     exit(1);
