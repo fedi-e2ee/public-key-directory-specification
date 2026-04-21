@@ -12,6 +12,8 @@ class TestCase
     private MerkleTreeState $merkleTree;
     /** @var array<string, array{mldsa44: array, xwing: array}> */
     private array $identities = [];
+    /** @var array<string, array{mldsa44: array, xwing: array}> */
+    private array $standaloneSigners = [];
     /** @var array<string, array<int, array{mldsa44: array, xwing: array}>> */
     private array $additionalKeys = [];
     /** @var array<string, array{fireproof: bool, public-keys: array, aux-data: array}> */
@@ -65,6 +67,20 @@ class TestCase
             ];
         }
         return $this->additionalKeys[$actor][$keyIndex];
+    }
+
+    /**
+     * @return array{mldsa44: array, xwing: array}
+     */
+    public function getStandaloneSigner(string $label): array
+    {
+        if (!isset($this->standaloneSigners[$label])) {
+            $signerId = $this->seed . ':signer:' . $label;
+            $this->standaloneSigners[$label] = [
+                'mldsa44' => DeterministicKeyDerivation::deriveMlDsa44Keypair($signerId),
+            ];
+        }
+        return $this->standaloneSigners[$label];
     }
 
     public function getActorKeyCount(string $actor): int
@@ -155,6 +171,67 @@ class TestCase
         ];
     }
 
+    public function removeActorKeyByPublicKey(string $actor, string $publicKey): void
+    {
+        if (!isset($this->actorState[$actor]['public-keys'])) {
+            return;
+        }
+        foreach ($this->actorState[$actor]['public-keys'] as $keyId => $entry) {
+            if (($entry['public-key'] ?? '') === $publicKey) {
+                unset($this->actorState[$actor]['public-keys'][$keyId]);
+            }
+        }
+    }
+
+    public function addActorAuxData(string $actor, string $auxType, string $auxData): void
+    {
+        if (!isset($this->actorState[$actor])) {
+            $this->actorState[$actor] = [
+                'fireproof' => false,
+                'public-keys' => [],
+                'aux-data' => []
+            ];
+        }
+        $this->actorState[$actor]['aux-data'][] = [
+            'aux-type' => $auxType,
+            'aux-data' => $auxData
+        ];
+    }
+
+    public function removeActorAuxData(string $actor, string $auxType, string $auxData): void
+    {
+        if (!isset($this->actorState[$actor]['aux-data'])) {
+            return;
+        }
+        $this->actorState[$actor]['aux-data'] = array_values(
+            array_filter(
+                $this->actorState[$actor]['aux-data'],
+                static fn (array $entry): bool =>
+                    ($entry['aux-type'] ?? '') !== $auxType
+                    || ($entry['aux-data'] ?? '') !== $auxData
+            )
+        );
+    }
+
+    public function moveActorState(string $oldActor, string $newActor): void
+    {
+        $oldState = $this->actorState[$oldActor] ?? [
+            'fireproof' => false,
+            'public-keys' => [],
+            'aux-data' => []
+        ];
+        $this->actorState[$newActor] = [
+            'fireproof' => $oldState['fireproof'],
+            'public-keys' => $oldState['public-keys'],
+            'aux-data' => $oldState['aux-data']
+        ];
+        $this->actorState[$oldActor] = [
+            'fireproof' => false,
+            'public-keys' => [],
+            'aux-data' => []
+        ];
+    }
+
     /**
      * Set fireproof status.
      */
@@ -179,6 +256,9 @@ class TestCase
                     $result[$actor . ':key:' . $index] = $additionalKey;
                 }
             }
+        }
+        foreach ($this->standaloneSigners as $label => $signer) {
+            $result[$label] = $signer;
         }
         return $result;
     }

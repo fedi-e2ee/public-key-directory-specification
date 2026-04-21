@@ -312,6 +312,115 @@ function testKeyManagementLifecycle(): TestCase
     return $tc;
 }
 
+/**
+ * Test Case 11: Successful RevokeKey
+ */
+function testSuccessfulRevokeKey(): TestCase
+{
+    $seed = 'test-11-successful-revoke-key';
+    $tc = new TestCase(
+        'successful-revoke-key',
+        generateServerKeys($seed),
+        $seed
+    );
+    $builder = new StepBuilder($tc);
+    $actor = 'https://example.com/users/erin';
+    $builder->addKey($actor, selfSigned: true);
+    $builder->addKey($actor);
+    $extraKey = $tc->getAdditionalKey($actor, 1);
+    $builder->revokeKey(
+        $actor,
+        'mldsa44:' . $extraKey['mldsa44']['public-key']
+    );
+
+    return $tc;
+}
+
+/**
+ * Test Case 12: RevokeKey blocked for last remaining key
+ */
+function testCannotRevokeLastRemainingKey(): TestCase
+{
+    $seed = 'test-12-no-revoke-last-key';
+    $tc = new TestCase(
+        'cannot-revoke-last-remaining-key',
+        generateServerKeys($seed),
+        $seed
+    );
+    $builder = new StepBuilder($tc);
+    $actor = 'https://example.com/users/frank';
+    $identity = $tc->getIdentity($actor);
+    $builder->addKey($actor, selfSigned: true);
+    $builder->revokeKey(
+        $actor,
+        'mldsa44:' . $identity['mldsa44']['public-key'],
+        expectFail: true,
+        expectedError: 'Cannot revoke the last remaining key'
+    );
+
+    return $tc;
+}
+
+/**
+ * Test Case 13: Successful MoveIdentity
+ */
+function testSuccessfulMoveIdentity(): TestCase
+{
+    $seed = 'test-13-successful-move-identity';
+    $tc = new TestCase(
+        'successful-move-identity',
+        generateServerKeys($seed),
+        $seed
+    );
+    $builder = new StepBuilder($tc);
+    $oldActor = 'https://example.net/users/grace';
+    $newActor = 'https://example.com/users/grace';
+    $builder->addKey($oldActor, selfSigned: true);
+    $builder->addKey($oldActor);
+    $builder->moveIdentity($oldActor, $newActor);
+
+    return $tc;
+}
+
+/**
+ * Test Case 14: Successful Checkpoint
+ */
+function testSuccessfulCheckpoint(): TestCase
+{
+    $seed = 'test-14-successful-checkpoint';
+    $tc = new TestCase(
+        'successful-checkpoint',
+        generateServerKeys($seed),
+        $seed
+    );
+    $builder = new StepBuilder($tc);
+    $builder->checkpoint(
+        'https://pkd-a.example.net',
+        'https://pkd-b.example.com'
+    );
+
+    return $tc;
+}
+
+/**
+ * Test Case 15: Successful RevokeKeyThirdParty
+ */
+function testSuccessfulRevokeKeyThirdParty(): TestCase
+{
+    $seed = 'test-15-successful-revoke-key-third-party';
+    $tc = new TestCase(
+        'successful-revoke-key-third-party',
+        generateServerKeys($seed),
+        $seed
+    );
+    $builder = new StepBuilder($tc);
+    $actor = 'https://example.org/users/heidi';
+    $builder->addKey($actor, selfSigned: true);
+    $builder->revokeKeyThirdParty($actor);
+
+    return $tc;
+}
+
 try {
     $testCases = [
         testBasicFlow(),
@@ -324,14 +433,19 @@ try {
         testOperationsOnNonExistentActor(),
         testSuccessfulBurndown(),
         testKeyManagementLifecycle(),
+        testSuccessfulRevokeKey(),
+        testCannotRevokeLastRemainingKey(),
+        testSuccessfulMoveIdentity(),
+        testSuccessfulCheckpoint(),
+        testSuccessfulRevokeKeyThirdParty(),
     ];
 
     $output = [
-        'version' => '0.8.0',
+        'version' => '0.9.0',
         'specification' => 'https://github.com/fedi-e2ee/public-key-directory-specification',
         'generated' => date('c'),
         'description' => 'Complete test vectors for PKD specification. ' .
-            'Includes both acceptance tests and rejection tests.',
+            'Includes both acceptance tests and rejection tests for all 10 actions.',
         'algorithms' => [
             'signing' => 'ML-DSA-44 (FIPS 204)',
             'hpke-kem' => 'X-Wing (mlkem768x25519)',
@@ -343,10 +457,10 @@ try {
             'merkle-root-before' => 'Merkle root before processing this step',
             'merkle-root-after' => 'Merkle root after acceptance; equals merkle-root-before if rejected',
             'expect-fail' => 'If true, this step MUST be rejected',
-            'protocol-message' => 'Unsigned protocol message with symmetric keys for encrypted fields',
-            'signed-message' => 'Protocol message with ML-DSA-44 signature',
-            'hpke-wrapped-message' => 'Signed message with padding, X-Wing HPKE-encrypted (empty for BurnDown)',
-            'merkle-leaf' => 'Data committed to Merkle tree: hash || server_sig || server_pk_hash',
+            'protocol-message' => 'Transmitted protocol JSON (includes symmetric keys for encrypted fields; RevokeKeyThirdParty is minimal plaintext)',
+            'signed-message' => 'Protocol message with ML-DSA-44 signature (empty for RevokeKeyThirdParty)',
+            'hpke-wrapped-message' => 'Signed message with padding, X-Wing HPKE-encrypted (empty for plaintext actions)',
+            'merkle-leaf' => 'Data committed to Merkle tree: hash || server_sig || server_pk_hash (computed from the Merkle payload JSON)',
             'expected-error' => 'Error description (only present when expect-fail is true)',
             'description' => 'Human-readable description of the step',
         ],
