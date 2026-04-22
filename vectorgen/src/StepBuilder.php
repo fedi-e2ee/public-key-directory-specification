@@ -48,8 +48,13 @@ class StepBuilder
      * When selfSigned is true, the new key signs for itself (only valid for first key).
      * When selfSigned is false, an existing key signs for a new/different key.
      *
+     * @throws CryptoException
+     * @throws HPKEException
      * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
      * @throws RandomException
+     * @throws SodiumException
      */
     public function addKey(
         string $actor,
@@ -102,8 +107,13 @@ class StepBuilder
     /**
      * Build a Fireproof step.
      *
+     * @throws CryptoException
+     * @throws HPKEException
      * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
      * @throws RandomException
+     * @throws SodiumException
      */
     public function fireproof(
         string $actor,
@@ -133,8 +143,13 @@ class StepBuilder
     /**
      * Build an UndoFireproof step.
      *
+     * @throws CryptoException
+     * @throws HPKEException
      * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
      * @throws RandomException
+     * @throws SodiumException
      */
     public function undoFireproof(
         string $actor,
@@ -164,8 +179,13 @@ class StepBuilder
     /**
      * Build a BurnDown step.
      *
+     * @throws CryptoException
+     * @throws HPKEException
      * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
      * @throws RandomException
+     * @throws SodiumException
      */
     public function burnDown(
         string $operator,
@@ -204,8 +224,13 @@ class StepBuilder
     /**
      * Build an AddAuxData step.
      *
+     * @throws CryptoException
+     * @throws HPKEException
      * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
      * @throws RandomException
+     * @throws SodiumException
      */
     public function addAuxData(
         string $actor,
@@ -231,6 +256,7 @@ class StepBuilder
             $expectedError,
             "AddAuxData ({$auxType}) for {$actor}",
             function () use ($actor, $auxType, $auxData) {
+                $this->testCase->addActorAuxData($actor, $auxType, $auxData);
             }
         );
     }
@@ -238,8 +264,13 @@ class StepBuilder
     /**
      * Build a RevokeAuxData step.
      *
+     * @throws CryptoException
+     * @throws HPKEException
      * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
      * @throws RandomException
+     * @throws SodiumException
      */
     public function revokeAuxData(
         string $actor,
@@ -264,7 +295,8 @@ class StepBuilder
             $expectFail,
             $expectedError,
             "RevokeAuxData ({$auxType}) for {$actor}",
-            function () {
+            function () use ($actor, $auxType, $auxData) {
+                $this->testCase->removeActorAuxData($actor, $auxType, $auxData);
             }
         );
     }
@@ -272,8 +304,13 @@ class StepBuilder
     /**
      * Build a RevokeKey step.
      *
+     * @throws CryptoException
+     * @throws HPKEException
      * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
      * @throws RandomException
+     * @throws SodiumException
      */
     public function revokeKey(
         string $actor,
@@ -297,6 +334,130 @@ class StepBuilder
             $expectedError,
             "RevokeKey for {$actor}",
             function () use ($actor, $publicKeyToRevoke) {
+                $this->testCase->removeActorKeyByPublicKey(
+                    $actor,
+                    $publicKeyToRevoke
+                );
+            }
+        );
+    }
+
+    /**
+     * @throws CryptoException
+     * @throws HPKEException
+     * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
+     * @throws RandomException
+     * @throws SodiumException
+     */
+    public function moveIdentity(
+        string $oldActor,
+        string $newActor,
+        bool $expectFail = false,
+        string $expectedError = ''
+    ): TestStep {
+        $identity = $this->testCase->getIdentity($oldActor);
+        $signingKey = $identity['mldsa44']['secret-key'];
+
+        $message = $this->buildMessage('MoveIdentity', [
+            'old-actor' => $oldActor,
+            'new-actor' => $newActor,
+            'time' => (string) $this->getTimestamp()
+        ], ['old-actor', 'new-actor']);
+
+        return $this->buildStep(
+            $message,
+            $signingKey,
+            $expectFail,
+            $expectedError,
+            "MoveIdentity {$oldActor} -> {$newActor}",
+            function () use ($oldActor, $newActor) {
+                $this->testCase->moveActorState($oldActor, $newActor);
+            }
+        );
+    }
+
+    /**
+     * Build a Checkpoint step.
+     *
+     * @throws CryptoException
+     * @throws HPKEException
+     * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
+     * @throws RandomException
+     * @throws SodiumException
+     */
+    public function checkpoint(
+        string $fromDirectory,
+        string $toDirectory,
+        bool $expectFail = false,
+        string $expectedError = ''
+    ): TestStep {
+        $signer = $this->testCase->getStandaloneSigner('directory:' . $fromDirectory);
+        $signingKey = $signer['mldsa44']['secret-key'];
+        $recentRoot = $this->testCase->getRecentMerkleRoot();
+
+        $message = $this->buildMessage('Checkpoint', [
+            'from-directory' => $fromDirectory,
+            'from-public-key' =>
+                'mldsa44:' . $signer['mldsa44']['public-key'],
+            'from-root' => $recentRoot,
+            'time' => (string) $this->getTimestamp(),
+            'to-directory' => $toDirectory,
+            'to-validated-root' => $recentRoot
+        ], []);
+
+        return $this->buildStep(
+            $message,
+            $signingKey,
+            $expectFail,
+            $expectedError,
+            "Checkpoint {$fromDirectory} -> {$toDirectory}",
+            function () {
+            },
+            skipHpke: true
+        );
+    }
+
+    /**
+     * @throws CryptoException
+     * @throws JsonException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
+     * @throws RandomException
+     * @throws SodiumException
+     */
+    public function revokeKeyThirdParty(
+        string $actor,
+        bool $expectFail = false,
+        string $expectedError = ''
+    ): TestStep {
+        $identity = $this->testCase->getIdentity($actor);
+        $publicKey = 'mldsa44:' . $identity['mldsa44']['public-key'];
+        $secretKey = new SecretKey(
+            Base64UrlSafe::decodeNoPadding($identity['mldsa44']['secret-key']),
+            SigningAlgorithm::MLDSA44
+        );
+        $payload = [
+            'action' => 'RevokeKeyThirdParty',
+            'revocation-token' => $secretKey->getRevocationToken()
+        ];
+        ksort($payload);
+
+        $protocolMessageJson = json_encode(
+            $payload,
+            JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+        );
+
+        return $this->buildRawJsonStep(
+            $protocolMessageJson,
+            $expectFail,
+            $expectedError,
+            "RevokeKeyThirdParty for {$actor}",
+            function () use ($actor, $publicKey) {
+                $this->testCase->removeActorKeyByPublicKey($actor, $publicKey);
             }
         );
     }
@@ -499,12 +660,22 @@ class StepBuilder
      */
     private function createMerkleLeaf(array $signedMessage): string
     {
-        // Per spec: leaf = hash(message) || server_sig || hash(server_pk)
         $messageJson = json_encode(
             $signedMessage,
             JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         );
+        return $this->createMerkleLeafFromJson($messageJson);
+    }
 
+    /**
+     * @throws CryptoException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
+     * @throws RandomException
+     * @throws SodiumException
+     */
+    private function createMerkleLeafFromJson(string $messageJson): string
+    {
         $messageHash = hash('sha256', $messageJson, true);
 
         $serverSk = new SecretKey(
@@ -520,6 +691,51 @@ class StepBuilder
         return Base64UrlSafe::encodeUnpadded(
             $messageHash . $serverSignature . $serverPkHash
         );
+    }
+
+    /**
+     * @throws CryptoException
+     * @throws MLDSAInternalException
+     * @throws PQCryptoCompatException
+     * @throws RandomException
+     * @throws SodiumException
+     */
+    private function buildRawJsonStep(
+        string $protocolMessageJson,
+        bool $expectFail,
+        string $expectedError,
+        string $description,
+        callable $onSuccess
+    ): TestStep {
+        $this->stepCounter++;
+
+        $merkleRootBefore = $this->testCase->getCurrentMerkleRoot();
+        $merkleLeaf = $this->createMerkleLeafFromJson($protocolMessageJson);
+
+        if (!$expectFail) {
+            $onSuccess();
+            $this->testCase->addLeafToMerkleTree($merkleLeaf);
+        }
+
+        $merkleRootAfter = $expectFail
+            ? $merkleRootBefore
+            : $this->testCase->getCurrentMerkleRoot();
+
+        $step = new TestStep(
+            merkleRootBefore: $merkleRootBefore,
+            merkleRootAfter: $merkleRootAfter,
+            expectFail: $expectFail,
+            protocolMessage: $protocolMessageJson,
+            signedMessage: '',
+            hpkeWrappedMessage: '',
+            merkleLeaf: $merkleLeaf,
+            expectedError: $expectedError,
+            description: $description
+        );
+
+        $this->testCase->addStep($step);
+
+        return $step;
     }
 
     /**
