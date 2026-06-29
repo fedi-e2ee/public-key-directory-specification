@@ -1086,7 +1086,7 @@ validating an `AddKey` message are as follows:
    error status.
 2. Using `symmetric-keys.public-key`, decrypt `message.public-key`. If the decryption fails, return an error status.
 3. If there are no other public keys for the provided Actor, use the given public key (it is self-signed) and go to
-   step 7. If the signature is invalid, return an error status.
+   step 5. If the signature is invalid, return an error status.
 4. Otherwise, if the `key-id` is provided, select this public key for the given Actor. If there is no public key for
    this Actor with a matching `key-id`, return an error status.
 5. Verify the `actor` field from [the ActivityPub message](#wire-format-for-protocol-messages) equals `message.actor`
