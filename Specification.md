@@ -982,9 +982,14 @@ Since version 0.8.0 of this specification, the Public Key Directory uses ML-DSA-
 adversaries. Additionally, we use ML-KEM-768 and X-Wing (which combines ML-KEM-768 and X25519) as HPKE KEMs for 
 encrypting protocol messages such that the instance processing messages cannot read their contents.
 
-**However**, due to compatibility reasons, HTTP Message Signatures still permit Ed25519. This means the communication
-between the Fediverse instance and the directory service is still a weak leak against quantum computers. We plan to drop
-Ed25519 support as soon as is reasonably practical and close this hole. 
+HTTP Message Signatures still permit Ed25519 for compatibility with existing ActivityPub implementations, as well as
+ML-DSA-44 through the [C2SP post-quantum HTTP Message Signatures profile](https://c2sp.org/httpsig-pq), which defines 
+`ml-dsa-44` for RFC 9421 without changing the signature-base construction.
+
+Instances and Public Key Directories **SHOULD** use ML-DSA-44 for HTTP Message Signatures when both sides support it.
+They **MAY** send both an Ed25519 signature and an ML-DSA-44 signature on the same HTTP message during migration.
+Ed25519-only HTTP Message Signatures remain a compatibility concession and do not provide post-quantum authentication
+for the transport-level Actor-to-Directory hop.
 
 ## Protocol Messages
 
@@ -1836,7 +1841,12 @@ Every HTTP response will include a signature over the HTTP response body, which 
 header, adhering to [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421.html).
 Public Key Directory software **MUST NOT** support the HMAC, RSA, ECDSA, or JWS signature algorithms from RFC 9421.
 Only [EdDSA over edwards25519](https://www.rfc-editor.org/rfc/rfc9421.html#name-eddsa-using-curve-edwards25) and
-ML-DSA-44 may be used for HTTP Message Signatures.
+ML-DSA-44 using the [C2SP post-quantum HTTP Message Signatures profile](https://c2sp.org/httpsig-pq) with 
+`alg="ml-dsa-44"` may be used for HTTP Message Signatures.
+
+A single HTTP message **MAY** carry both an Ed25519 signature and an ML-DSA-44 signature. Each signature **MUST** be
+verified independently against its own RFC 9421 signature base. If both signatures are required by local policy, the
+message **MUST NOT** be accepted unless both signatures are valid.
 
 #### Error Responses
 
