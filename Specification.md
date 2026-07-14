@@ -529,6 +529,8 @@ This section seeks to outline specific risks and whether they are prevented, mit
 | [Attacks against the One-Time Password on BurnDown](#attacks-against-the-one-time-password-on-burndown)                                                                                                            | Mitigated               |
 | [Permanent lockout via `RevokeKeyThirdParty` + `Fireproof` + hostile instance](#permanent-lockout-via-revokekeythirdparty--fireproof--hostile-instance)                                                            | Open                    |
 | [An adversary with a cryptography-relevant quantum computer wants to forge protocol messages](#an-adversary-with-a-cryptography-relevant-quantum-computer-wants-to-forge-protocol-messages)                        | Addressable             |
+| [Slander campaign against an instance and its administrators](#slander-campaign-against-an-instance-and-its-administrators)                                                                                        | _Open_                  |
+
 
 Each status is defined as follows:
 
@@ -990,6 +992,33 @@ Instances and Public Key Directories **SHOULD** use ML-DSA-44 for HTTP Message S
 They **MAY** send both an Ed25519 signature and an ML-DSA-44 signature on the same HTTP message during migration.
 Ed25519-only HTTP Message Signatures remain a compatibility concession and do not provide post-quantum authentication
 for the transport-level Actor-to-Directory hop.
+
+#### Slander campaign against an instance and its administrators
+
+**Status**: Open
+
+Troy, Grace and friends (or bots) want to discredit Alice and her instance.
+They create accounts on Alice's instance and send an `AddKey` message via her instance.
+But they never use or advertise the added keys.
+After a while Grace publicly claims that a key was falsely added in her name.
+Troy shortly after comes out with a similar claim and all of their friends as well.
+
+Alice cannot prove that the keys originated from any of them, so this is Alice's word against theirs.
+This can erode the trust of Alice's user base and might convince them to migrate to another instance.
+
+This attack can not be prevented by design as long as "[Instance administrator attempts to enroll a new public key for a previously enrolled user.](#instance-administrator-attempts-to-enroll-a-new-public-key-for-a-previously-enrolled-user)" is possible.
+But such a scenario cannot happen regularly without being suspicious.
+
+Troy's motivation might be to just annoy Alice once and to discredit her.
+Grace could use this to guide a specific user or group of users onto her instance, especially if it is combined with a pro Grace campaign.
+
+Alice could try to mitigate this by asking users who have not send an `AddKey` to regularly check if a key was added in their name.
+This tries to push the responsibility on to the users, but this might not be very effective.
+Troy and Grace can always push back on this and ask why it should be their responsibility, since they did not want this feature.
+
+Alice could alternatively mandate that all users have to send an `AddKey` and that the users should verify the added key.
+This is a single action for each user and after the first `AddKey` all other actions require the matching secret key.
+This solves the problem for Alice, because all users who have added and verified their key, can verify Alice's actions.
 
 ## Protocol Messages
 
